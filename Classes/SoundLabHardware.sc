@@ -24,7 +24,7 @@ Changelog....?
 
 SoundLabHardware {
 	var <midiPortName = "External MIDI- MIDI 1", <cardNameIncludes = "RME";
-	var cardID, sampleRate, <ins, <outs, midiPort, <server;
+	var cardID, <sampleRate, <ins, <outs, midiPort, <server;
 	// var getCardID, setSR, initMIDI, sendSysex, startJack, stopJack, initAll, prStartServer;
 	var <audioIsRunning, parametersSetting;//bools for status
 	var updatingCondition, isUpdating;
@@ -32,7 +32,7 @@ SoundLabHardware {
 	var addWaitTime;
 	var jackWasStartedBySC;
 	var <clientsDictionary; //name -> [outs, ins]
-	var newJackName, newJackIns, newJackOuts;
+	var newJackName, newJackIns, newJackOuts, <jackPeriodSize;
 	var serverInputNameInJack;
 	var fixAudioIn;
 
@@ -49,7 +49,7 @@ SoundLabHardware {
 		//set default synth
 		if(useSupernova, {
 			Server.supernova;
-			serverInputNameInJack = "supernova:input_";
+			serverInputNameInJack = "supernova:input_"; //this could be set with s.options.device = "supercollider", but not sure about in vs input... leaving for now
 			}, {
 				Server.scsynth;
 				serverInputNameInJack = "SuperCollider:in_";
@@ -112,6 +112,8 @@ SoundLabHardware {
 				// 4.wait;
 				updatingCondition.wait;
 				addWaitTime.wait;
+				// "--before setting jack connections".postln;
+				this.prSetJackConnections;
 				this.changed(\updatingConfiguration, 0.9);
 				// "--before starting server".postln;
 				this.prStartServer;
@@ -121,10 +123,14 @@ SoundLabHardware {
 				this.audioIsRunning_(true);
 				addWaitTime = 0;
 				clientsDictionary = Dictionary.new;
-				// fix for not getting analog ins in the decoder
-				if((sampleRate > 48000) && fixAudioIn, {
-					this.prDisconnectRedundantHardwareIns((16..32));
-				});
+				// fix for not getting analog ins in the decoder - got moved into separate method, uses env vars now
+/*				if((sampleRate > 48000) && fixAudioIn, {
+					this.prDisconnectRedundantHardwareIns((16..32)); //keeping as is for now
+					//this
+					//"SC_JACK_DEFAULT_OUTPUTS".setenv("".ccatList(16.collect({|inc| "system:playback_" ++ (inc + 1).asString})).replace(" ", "").replace("[", "").replace("]", "").drop(1));
+					//not
+					//would make SC connect only to the first 16 outputs (needs appro
+				});*/
 				// clientsDictionary.add("PreSonus", [ins * 0.5, 0]);
 				this.prAddClient("PreSonus", [ins * 0.5, ins * 0.5], false); //ins, because outs is fake 32 for 48k
 				this.changed(\updatingConfiguration, 1.0);
@@ -278,6 +284,7 @@ SoundLabHardware {
 						"oscpipe: jack finished.".postln;
 				});
 		});
+		jackPeriodSize = periodSize;
 
 		// {"jack_load netmanager".unixCmd;}.defer(6); //load netmanager later - went to prParseJackOutput
 	}
@@ -374,9 +381,10 @@ SoundLabHardware {
 		SCJConnection.connect(srcDestArray, srcDestArray, "system:capture_", clientName ++ ":to_slave_");
 	}
 
-	prDisconnectRedundantHardwareIns {arg channelArrayToDisconnect; //should be 0-based
+	//not needed anymore
+/*	prDisconnectRedundantHardwareIns {arg channelArrayToDisconnect; //should be 0-based
 		SCJConnection.disconnect(channelArrayToDisconnect, channelArrayToDisconnect, "system:capture_", serverInputNameInJack);
-	}
+	}*/
 
 	/*
 	parse jack output tests
@@ -392,6 +400,15 @@ SoundLabHardware {
 	"Return channels (audio - midi) : 32 - 0".copyToEnd(33).split($ )[0]
 	"Exiting 'dyferstation'".copyToEnd(8).replace("'", "")
 	*/
+
+	prSetJackConnections {
+		//connect only as many sc outputs as jack outputs
+		"SC_JACK_DEFAULT_OUTPUTS".setenv("".ccatList(outs.collect({|inc| "system:playback_" ++ (inc + 1).asString})).replace(" ", "").replace("[", "").replace("]", "").drop(1));
+		//fix audio in
+		if((sampleRate > 48000) && fixAudioIn, {
+			"SC_JACK_DEFAULT_INPUTS".setenv("".ccatList(16.collect({|inc| "system:capture_" ++ (inc + 1).asString})).replace(" ", "").replace("[", "").replace("]", "").drop(1)); //connect only 16 ins so rme input doesn't get into the decoder
+		});
+	}
 
 	prStartServer {
 		updatingCondition.test = false;
@@ -469,7 +486,8 @@ SoundLabHardware {
 				msgBack2.postln;
 				// "after cmds".postln;
 				// server params
-				server.options.numOutputBusChannels = outs;
+				// server.options.numOutputBusChannels = outs;
+				server.options.numOutputBusChannels = 128; //hardcoded, so we have extra to use with jconvolver
 				server.options.numInputBusChannels = ins;
 				server.options.numAudioBusChannels = (ins + outs) * 8;
 				server.options.sampleRate = sampleRate;
