@@ -347,14 +347,6 @@
 		/* library of synths other than decoders */
 		synthLib = CtkProtoNotes(
 
-			/*// temp change to exclude sub:  only 24 of these will be created
-			SynthDef(\conv, { arg in_bus=0, out_bus=0, kernel, switch_kern=0;
-				var in_sig, conv;
-				in_sig = In.ar(in_bus, 1); // one channel at a time
-				conv = Convolution2.ar(in_sig, kernel, switch_kern, framesize: BufFrames.ir( kernel ));
-				ReplaceOut.ar(out_bus, conv);
-			}),*/
-
 			SynthDef(\gain_comp, { arg in_bus=0, out_bus=0;
 				var in_sig, sat_sig, stereo_sig, sub_sig;
 

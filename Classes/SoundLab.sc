@@ -18,10 +18,11 @@ SoundLab {
 	<satPatcherSynths,<subPatcherSynths, <stereoPatcherSynths,
 	<curDecoder, <convSynth, <delCompSynth, <gainCompSynth, <masterAmpSynth; //<convSynths
 	// other
-	var <clipListener, <reloadGUIListener, <iosGUI, <numSatChans, <numSubChans, <numKernelChans;
+	var <clipListener, <reloadGUIListener, <gui, <numSatChans, <numSubChans, <numKernelChans;
 	var <fftSize, <stateLoaded, <clipMonitoring;
 	var <decAttributeList, <decAttributes, rbtTryCnt, <loadCond;
 	var <kernelsDirPath, <kernelDict, <kernelSynthDict, <curKernel, <>defaultKernel, <decInfo;
+	var <jconvolver;
 
 	// dimensions
 	var <spkrAzims, <spkrElevs, <spkrDists, <spkrDirs, <spkrDels, <spkrGains, <spkrOppDict; //<spkrAmps,
@@ -88,25 +89,25 @@ SoundLab {
 				// "waiting 5 seconds for hardware".postln; 5.wait;
 				1.wait;
 
-				if( server.sampleRate != 48000, {
-					"Note: kernel room correction only available at 48000".postln;
+				if( server.sampleRate == 44100, {
+					"Note: kernel room correction only available at 48k and 96k".postln;
 					this.setNoKernel;
 				});
 
-				("using kernels? " ++ usingKernels).postln;
+				("using kernels?" + usingKernels).postln;
 
 				// see extSoundLab_synths.sc
 				this.loadDelDistGain( if(usingKernels, {curKernel ?? defaultKernel},{nil}) );
 				this.loadSynths;
-				loadCond.wait;
-				loadCond.test_(false).signal;
+				loadCond.wait;  // waiting on loadSynths to signal
+				loadCond.test_(false).signal; // reset the condition to hang when needed later
 
 				if(usingKernels, {
 					curKernel = curKernel ?? defaultKernel;
 					this.loadKernel(curKernel, loadCond)
 				},{ loadCond.test_(true).signal });
 				loadCond.wait;
-				loadCond.test_(false).signal;
+				loadCond.test_(false).signal; // reset the condition to hang when needed later
 				"passed loading kernels".postln;
 
 				hwInStart = server.options.numOutputBusChannels;
@@ -539,7 +540,7 @@ SoundLab {
 
 	// expects kernels to be located in kernelsDirPath/sampleRate/kernelType/
 	loadKernel { |newKernel, completeCondition|
-		var c, kernelDir_pn;
+		var kernelDir_pn, k_path, partSize, k_size, numFoundKernels = 0;
 		fork {
 			block { |break|
 				// does the kernel folder exist?
@@ -554,17 +555,51 @@ SoundLab {
 					})
 				});
 
-				// prepare/load buffers
-				if(kernelDir_pn.isNil,
-					{
-						"\n Kernel name not found in this sample rate's kernel folder".warn;
-						this.changed(\reportStatus, "Kernel name not found.");
-						break.();
-					},{
-						var spectra_arr = [];
+				kernelDir_pn ?? {
+					this.changed(\reportStatus, "Kernel name not found.".warn);
+					break.();
+				};
 
-						"Loading kernel for channels: ".post;
-						kernelDir_pn.filesDo({ |file, i|
+				"Generating jconvolver configuration file...".postln;
+
+				// for osx
+				Jconvolver.jackScOutNameDefault = "scsynth:out";
+				Jconvolver.executablePath_("/usr/local/bin/jconvolver");
+
+				k_path = kernelDir_pn.absolutePath;
+				partSize = if(usingSLHW, {},{512});
+				kernelDir_pn.filesDo({ |file, i|
+					if(file.extension == "wav", {
+						SoundFile.use(file, {|fl|
+							k_size = fl.numFrames;
+							numFoundKernels = numFoundKernels + 1;
+						})
+						}
+					)
+				});
+				postf("path to kernels: % \npartition size: % \nkernel size: %",
+					k_path, partSize, k_size
+				);
+
+				// check that we have enough kernels to match all necessary speakers
+				if( numFoundKernels != numKernelChans, {
+					"Number of kernels found does not match the numKernelChannels!".warn;
+					this.changed(\reportStatus, "Number of kernels found does not match the numKernelChannels!");
+					break.();
+				});
+
+				// TODO: check if Jconvolver is already running, if so quit it
+				Jconvolver.createSimpleConfigFileFromFolder(
+					kernelFolderPath: k_path, partitionSize: partSize,
+					maxKernelSize: k_size, matchFileName: "*.wav",
+					autoConnectToScChannels: 32, autoConnectToSoundcardChannels: 0
+				);
+
+				jconvolver = Jconvolver.newFromFolder(k_path);
+
+				// TODO: check that Jconvolver is running, then continue or break
+
+						/*kernelDir_pn.filesDo({ |file, i|
 							var kernFile, specKernel;
 							file.postln;
 							if( (file.extension == "wav") || (file.extension == "aiff"), {
@@ -597,14 +632,6 @@ SoundLab {
 						});
 						"\n".post;
 
-						// check that we have enough kernels to match all necessary speakers
-						if( spectra_arr.size != numKernelChans, {
-							"Number of kernels found does not match the numKernelChannels!".warn;
-							this.changed(\reportStatus, "Number of kernels found does not match the numKernelChannels!");
-							spectra_arr.do(_.free);
-							break.();
-						});
-
 						// store new buffers, create new conv synth
 						try {
 							kernelDict.put( newKernel.asSymbol, spectra_arr);
@@ -630,103 +657,15 @@ SoundLab {
 							this.changed(\reportStatus, "Error preparing new conv synth.");
 							break.()
 						};
-				});
+						*/
 			};
 			completeCondition.test_(true).signal;
 		}
 	}
-		/*{
-
-			if( kernelsDirPath.entries.size > 0, {
-				kernelDict = IdentityDictionary.new(know: true);
-				kernelSynthDict = IdentityDictionary.new(know: true);
-				c = Condition(false);
-				// iterate through kernel type folders
-				kernelsDirPath.folders.do({ |sr_pn|
-					var spectra_arr;
-					if( sr_pn.folderName.asInt == server.sampleRate, {
-						// iterate through kernel folders within sr folder
-						sr_pn.folders.do({ |kernel_pn|
-							if( kernel_pn.folderName == newKernel, {
-								block { |break|
-									debug.if{ postln("loading kernels from \n" ++ kernel_pn) };
-									spectra_arr = [];
-									// iterate through kernel files to load
-									kernel_pn.filesDo({|file|
-										var buf, sf;
-										if( (file.extension == "wav") || (file.extension == "aiff"), {
-
-											spectra_arr = (numSatChans+numSubChans).collect({ arg i;
-												var kernFile;
-
-												"Loading kernel for channel: ".post; i.asString.padLeft(2, "0").postln;
-
-												// path to kernel
-												kernFile = file.fullPath;
-
-												// allocate a padded buffer and comput spectrum
-												SoundFile.use(kernFile, {arg file;
-													var kernelBuffer, kernelSpectrum;
-
-													// read kernel into zero padded buffer
-													kernelBuffer = Buffer.alloc(server, file.numFrames + fftSize);
-													kernelBuffer.read(kernFile, bufStartFrame: fftSize/2);
-													server.sync;
-
-													// prepare spectra buffer
-													kernelSpectrum = Buffer.alloc(server, PartConv.calcBufSize(fftSize, kernelBuffer));
-													kernelSpectrum.preparePartConv(kernelBuffer, fftSize);
-													kernelBuffer.free; // don't need time domain data anymore
-
-													// return value
-													kernelSpectrum;
-												});
-											});
-										});
-									});
-									// check that we have enough kernels to match all necessary speakers
-									if( spectra_arr.size == (numKernelChans),
-										{
-											kernelDict.put( kernel_pn.folderName.asSymbol, spectra_arr);
-											kernelSynthDict.put( kernel_pn.folderName.asSymbol,
-												CtkSynthDef( \corr_++kernel_pn.folderName.asSymbol, { arg in_bus, out_bus = 0, fadeIO = 0.1, gate=1;
-													var env, in, out;
-													env = EnvGen.kr(Env(times: [fadeIO,fadeIO], releaseNode:1), gate);
-													in = In.ar(in_bus, numKernelChans);
-													out = numKernelChans.collect({ arg i;
-														PartConv.ar(
-															in.at(i),
-															fftSize,
-															spectra_arr.at(i)
-														)
-													});
-													ReplaceOut.ar(out_bus, out * env);
-												});
-											);
-										},{
-											warn("Number of kernels found in "++
-												sr_pn.folderName++"/"++kernel_pn.folderName++
-												" does not match the numKernelChannels. Kernel Dictionary not updated.");
-											spectra_arr.do(_.free);
-										}
-									);
-								}
-							},{"kernel name not found in kernel folder".warn})
-						});
-					});
-				});
-
-				if(kernelSynthDict.size == 0, {"No kernels found matching the current sample rate or kernel type".warn});
-				},{"No contents found in Kernel directory path".warn}
-			);
-			debug.if{" *************** kernels loaded **************** ".postln};
-
-			loadCond.test_(true).signal;
-		}.fork;*/
 
 	buildGUI {
 		//start gui only if the instance is nil - this won't unnecessarily recreate the class (which causes problems)
-		iosGUI ?? {iosGUI = SoundLabGUI.new( this)};
+		gui ?? {gui = SoundLabGUI.new( this)};
 	}
 
 	prClearServerSide {
@@ -749,7 +688,7 @@ SoundLab {
 		this.prClearServerSide;
 		clipListener.free;
 		reloadGUIListener.free;
-		if ( iosGUI.notNil, {iosGUI.cleanup} );
+		if ( gui.notNil, {gui.cleanup} );
 	}
 
 	// responding to changes in SoundLabHardware
