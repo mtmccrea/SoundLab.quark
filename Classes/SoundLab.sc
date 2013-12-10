@@ -21,7 +21,7 @@ SoundLab {
 	var <clipListener, <reloadGUIListener, <gui, <numSatChans, <numSubChans, <numKernelChans;
 	var <fftSize, <stateLoaded, <clipMonitoring;
 	var <decAttributeList, <decAttributes, rbtTryCnt, <loadCond;
-	var <kernelsDirPath, <kernelDict, <kernelSynthDict, <curKernel, <>defaultKernel, <decInfo;
+	var <kernelsDirPath, <kernelDict, <curKernel, <>defaultKernel, <decInfo;
 	var <jconvolver;
 
 	// dimensions
@@ -53,7 +53,7 @@ SoundLab {
 		/* gain comp in synth or in kernel variable */
 		kernelsDirPath = PathName.new(Platform.resourceDir ++ "/sounds/SoundLabKernelsNew/");
 		kernelDict = IdentityDictionary.new(know: true);
-		kernelSynthDict = IdentityDictionary.new(know: true);
+		// kernelSynthDict = IdentityDictionary.new(know: true);
 
 		this.initRigDimensions;
 		this.initDecoderAttributes;
@@ -109,6 +109,9 @@ SoundLab {
 				loadCond.wait;
 				loadCond.test_(false).signal; // reset the condition to hang when needed later
 				"passed loading kernels".postln;
+
+				jconvolver !? { jconvolver.free };
+				jconvolver = new_jconvolver;
 
 				hwInStart = server.options.numOutputBusChannels;
 				hwInCount = server.options.numInputBusChannels;// used for monitoring
@@ -177,12 +180,14 @@ SoundLab {
 			});
 
 			if( usingKernels, {
-				if( kernelSynthDict[curKernel].notNil, {
-					// includes sats + subs
+				if( kernelDict[curKernel].notNil, {
+					// TODO: update any kernel-specific routing
+
+					/*// includes sats + subs
 					convSynth = kernelSynthDict[curKernel].note(0.2, target: convGroup)
 					.in_bus_(patcherOutBus.bus)
 					.out_bus_(patcherOutBus.bus) // uses ReplaceOut
-					.play;
+					.play;*/
 				},{"no current kernel specified or mismatch between curKernel name and key, conv synths not created".warn});
 			});
 			0.1.wait;
@@ -229,14 +234,14 @@ SoundLab {
 			.in_bus_(patcherOutBus.bus)
 			.out_bus_(patcherOutBus.bus) // uses ReplaceOut
 			.play;
-			0.1.wait;
+			server.sync;
 
 			delCompSynth = synthLib[\delay_comp].note(addAction: \after, target: gainCompSynth)
 			.in_bus_(patcherOutBus.bus)
 			.out_bus_(patcherOutBus.bus) // uses ReplaceOut
 			.play;
-			0.1.wait;
-	}}
+		}
+	}
 
 	// newKernel should match the folder name holding the kernels
 	switchKernel { |newKernel|
@@ -244,46 +249,52 @@ SoundLab {
 		block {|break|
 			kernelDict[newKernel] !? { "This kernel is already loaded".postln; break.(true) };
 			fork {
-				debug.if{postf("Switching to kernel: % (%)\n", newKernel, newKernel.class)};
+				debug.if{postf("Switching to kernel: %\n", newKernel)};
 				loadCond = Condition(false);
 				this.loadKernel(newKernel, loadCond);
 				loadCond.wait;
+				loadCond.test_(false).signal; // reset the condition to hang when needed later
 				"passed kernel loading condition".postln;
 
 				// test that kernel bufs were loaded and conv synth defined successfully
-				if (kernelDict[newKernel].notNil && kernelSynthDict[newKernel].notNil, {
-					fork {
-						this.loadDelDistGain(newKernel);
-						this.loadSynths;
-						0.3.wait;
+				if (kernelDict[newKernel].notNil, {
+					this.loadDelDistGain(newKernel);
+					"del, dist, gains loaded".postln;
+					this.loadSynths;
+					loadCond.wait;
+					// TODO: consider server.sync here
+					"synths loaded".postln;
 
-						// free all the synth whose values are affected by the new kernel
-						convSynth.release;
-						curDecoder.release;
-						[curDecoder.fadeTime, convSynth.fadeIO].maxItem.wait;
-						gainCompSynth.free;
-						delCompSynth.free;
+					// free all the synth whose values are affected by the new kernel
+					curDecoder.release;
+					curDecoder.fadeTime.wait;
+					[gainCompSynth, delCompSynth].do(_.free);
 
-						convSynth = kernelSynthDict[newKernel].note(0.1, target: convGroup)
-						.in_bus_(patcherOutBus.bus)
-						.out_bus_(patcherOutBus.bus) // uses ReplaceOut
-						.play;
-						0.3.wait;
+					// TODO: stop old kernel and start new one
 
-						kernelDict[curKernel].do(_.free);
-						kernelDict.removeAt(curKernel);
-						kernelSynthDict.removeAt(curKernel);
-						curKernel = newKernel;
-						debug.if{postln("Completed switch to kernel: " ++ curKernel)};
-						this.changed(\kernel, curKernel);
-						usingKernels = true;
+					/*convSynth = kernelSynthDict[newKernel].note(0.1, target: convGroup)
+					.in_bus_(patcherOutBus.bus)
+					.out_bus_(patcherOutBus.bus) // uses ReplaceOut
+					.play;
+					0.3.wait;*/
 
-						// restart delays, gains, and decoder now with updated
-						// del, gain and dist values to match the kernel
-						this.startDelGainSynth;
-						0.3.wait;
-						this.startDecoder( if(curDecoder.notNil, {curDecoder.synthdefname},{defaultDecName}) );
-					}
+					// kernelDict[curKernel].do(_.free);
+					kernelDict.removeAt(curKernel);
+					// kernelSynthDict.removeAt(curKernel);
+					curKernel = newKernel;
+
+					jconvolver !? { jconvolver.free };	// free the old jconvolver
+					jconvolver = new_jconvolver;		// update jconvolver var
+
+					debug.if{postln("Completed switch to kernel: " ++ curKernel)};
+					this.changed(\kernel, curKernel);
+					usingKernels = true;
+
+					// restart delays, gains, and decoder now with updated
+					// del, gain and dist values to match the kernel
+					this.startDelGainSynth;
+					server.sync;
+					this.startDecoder( if(curDecoder.notNil, {curDecoder.synthdefname},{defaultDecName}) );
 					},{ "no new kernels loaded".postln; }
 				);
 			}
@@ -293,27 +304,27 @@ SoundLab {
 	stopKernel {
 		fork {
 			// free all the synth whose values are affected by the new kernel
-			convSynth.release;
+			// todo: start up new default routing before releasing current signal path synths
+
 			curDecoder.release;
-			[curDecoder.fadeTime, convSynth.fadeIO].maxItem.wait;
-			gainCompSynth.free;
-			delCompSynth.free;
+			curDecoder.fadeTime.wait;
+			[gainCompSynth, delCompSynth].do(_.free);
 
 			curKernel !? {
-				"freeing kernel data".postln;
-				kernelDict[curKernel].do(_.free);
+				// "freeing kernel data".postln;
+				// kernelDict[curKernel].do(_.free);
 				kernelDict.removeAt(curKernel);
-				kernelSynthDict.removeAt(curKernel);
+				// kernelSynthDict.removeAt(curKernel);
 			};
 
-			this.loadDelDistGain(\default); // \default arg not necessary
+			this.loadDelDistGain(\default);
 			this.loadSynths;
-			server.sync;
+			server.sync; // todo: will this wait for forked process in loadSynths?
 
 			// restart delays, gains, and decoder now with updated
 			// del, gain and dist values to match the kernel
 			this.startDelGainSynth;
-			0.3.wait;
+			server.sync;
 			this.startDecoder( if(curDecoder.notNil, {curDecoder.synthdefname},{defaultDecName}) );
 		}
 	}
@@ -548,7 +559,7 @@ SoundLab {
 					if( sr_pn.folderName.asInt == server.sampleRate,
 						{	sr_pn.folders.do({ |kernel_pn|
 							if( kernel_pn.folderName.asSymbol == newKernel, {
-								"found kernel match".postln;
+								("found kernel match"+kernel_pn).postln;
 								kernelDir_pn = kernel_pn;
 							});
 							});
@@ -567,17 +578,18 @@ SoundLab {
 				Jconvolver.executablePath_("/usr/local/bin/jconvolver");
 
 				k_path = kernelDir_pn.absolutePath;
-				partSize = if(usingSLHW, {},{512});
-				kernelDir_pn.filesDo({ |file, i|
+				partSize = if(usingSLHW, {slhw.jackPeriodSize},{512});
+
+				kernelDir_pn.filesDo({ |file|
 					if(file.extension == "wav", {
-						SoundFile.use(file, {|fl|
+						SoundFile.use(file.absolutePath, {|fl|
 							k_size = fl.numFrames;
 							numFoundKernels = numFoundKernels + 1;
 						})
 						}
 					)
 				});
-				postf("path to kernels: % \npartition size: % \nkernel size: %",
+				postf("path to kernels: % \npartition size: % \nkernel size: %\n",
 					k_path, partSize, k_size
 				);
 
@@ -595,7 +607,7 @@ SoundLab {
 					autoConnectToScChannels: 32, autoConnectToSoundcardChannels: 0
 				);
 
-				jconvolver = Jconvolver.newFromFolder(k_path);
+				new_jconvolver = Jconvolver.newFromFolder(k_path);
 
 				// TODO: check that Jconvolver is running, then continue or break
 
@@ -670,15 +682,21 @@ SoundLab {
 
 	prClearServerSide {
 		// cleanup server objects to be reloaded after reboot
-		[	convGroup, correctionGroup, patcherGroup, monitorGroup_ins, monitorGroup_outs,
+		[	correctionGroup, patcherGroup, monitorGroup_ins, monitorGroup_outs,
 			curDecoder, delCompSynth, masterAmpSynth, gainCompSynth, patcherOutBus, decoderOutBus
 		].do(_.free);
+		// TODO: can kernelDict be replaced by an array?
 		kernelDict !? {
-			kernelDict.keysValuesDo({ |key, bufarr|
+			kernelDict.keysValuesDo({ |key|
+				kernelDict.removeAt(key);
+			});
+
+			jconvolver !? {jconvolver.free};
+			/*kernelDict.keysValuesDo({ |key, bufarr|
 				"freeing a kernel buffer".postln;
 				bufarr.do(_.free); // free kernels
 				kernelDict.removeAt(key);
-			});
+			});*/
 		};
 		stateLoaded = false;
 	}

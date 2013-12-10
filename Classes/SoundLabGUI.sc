@@ -402,7 +402,7 @@ SoundLabGUI {
 
 						},{ // stereoActive = false;
 							this.setColor(\Stereo, \default);
-							deviceAddr.sendMsg( \Stereo, 0);
+							interfaceJS.value_( \Stereo, 0);
 							this.status("Stereo cleared.");
 							stereoPending = nil;
 						}
@@ -851,7 +851,7 @@ l.sampleRate
 
 InterfaceJS.killNode //class method - kill all processes called node
 
-l.iosGUI.interfaceJS.reloadPage
+l.gui.interfaceJS.reloadPage
 l.cleanup
 */
 
