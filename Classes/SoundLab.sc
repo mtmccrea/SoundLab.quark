@@ -272,11 +272,6 @@ SoundLab {
 
 					// TODO: stop old kernel and start new one
 
-					/*convSynth = kernelSynthDict[newKernel].note(0.1, target: convGroup)
-					.in_bus_(patcherOutBus.bus)
-					.out_bus_(patcherOutBus.bus) // uses ReplaceOut
-					.play;
-					0.3.wait;*/
 
 					// kernelDict[curKernel].do(_.free);
 					kernelDict.removeAt(curKernel);
@@ -352,7 +347,9 @@ SoundLab {
 				"stereo channels, reading in on: " ++ dInBusNum
 		)};
 		curDecoder = decoderLib[newDecSynthName].note(
-			addAction: \before, target: patcherGroup).in_bus_(dInBusNum).out_bus_(decoderOutBus.bus).play;
+			addAction: \before, target: patcherGroup)
+		.in_bus_(dInBusNum).out_bus_(decoderOutBus.bus).play;
+
 		finishCondition !? {finishCondition.test_(true).signal};
 
 		// update decInfo variable with new decoder attributes

@@ -842,11 +842,10 @@ l.kernelDict.keys
 l.usingKernels
 l.useKernel_(true)
 
-l.iosGUI.pendingKernel
-l.iosGUI.curSR== \SR48000
+l.gui.pendingKernel
+l.gui.curSR== \SR48000
 
-l.iosGUI.curSR
-l.iosGUI.curSR
+l.gui.curSR
 l.sampleRate
 
 InterfaceJS.killNode //class method - kill all processes called node

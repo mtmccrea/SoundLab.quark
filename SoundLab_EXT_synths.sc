@@ -379,7 +379,7 @@
 
 			SynthDef(\masterAmp, { arg in_bus=0, out_bus=0, masterAmp = 1.0;
 				Out.ar(out_bus,
-					In.ar(in_bus, 30) * Lag.kr(masterAmp, 0.25)
+					In.ar(in_bus, 32) * Lag.kr(masterAmp, 0.25)
 				)
 			}),
 
