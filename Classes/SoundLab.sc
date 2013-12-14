@@ -111,7 +111,7 @@ SoundLab {
 				"passed loading kernels".postln;
 
 				jconvolver !? { jconvolver.free };
-				jconvolver = new_jconvolver;
+				// jconvolver = new_jconvolver;
 
 				hwInStart = server.options.numOutputBusChannels;
 				hwInCount = server.options.numInputBusChannels;// used for monitoring
@@ -279,7 +279,7 @@ SoundLab {
 					curKernel = newKernel;
 
 					jconvolver !? { jconvolver.free };	// free the old jconvolver
-					jconvolver = new_jconvolver;		// update jconvolver var
+					// jconvolver = new_jconvolver;		// update jconvolver var
 
 					debug.if{postln("Completed switch to kernel: " ++ curKernel)};
 					this.changed(\kernel, curKernel);
@@ -604,7 +604,7 @@ SoundLab {
 					autoConnectToScChannels: 32, autoConnectToSoundcardChannels: 0
 				);
 
-				new_jconvolver = Jconvolver.newFromFolder(k_path);
+				// new_jconvolver = Jconvolver.newFromFolder(k_path);
 
 				// TODO: check that Jconvolver is running, then continue or break
 

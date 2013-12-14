@@ -2,16 +2,21 @@ SoundLabRevamp {
 	// copyArgs
 	var <initSR, <loadGUI, <usingSLHW, <>usingKernels;
 
-	var <globalAmp, <>defaultDecName, <>defaultKernel;
-	var <stereoActive, <isMuted, <isAttenuated, <stateLoaded;
-	var <clipMonitoring, <numSatChans, <numSubChans, <totalArrayChans;
-	var <>kernelDirPath, <loadCond, rbtTryCnt;
-	var <clipListener, <reloadGUIListener;
+	var <>xfade = 0.2, <>defaultDecName, <>defaultKernel, <>kernelDirPath, <>debug=true;
+	var <globalAmp, <numSatChans, <numSubChans, <totalArrayChans;
+	var <numHardwareOuts, <numHardwareIns, <hwInCount, <hwInStart;
 
-	var <comDict, <decAttributes, <decAttributeList;
-	var <spkrAzims, <spkrElevs, <spkrDirs, <spkrOppDict;
-	var <decoderLib, <decoderPatch;
-	var <numHardwareOuts, <numHardwareIns, <hwInCount;
+	var <server, <gui, <curKernel, <stereoActive, <isMuted, <isAttenuated, <stateLoaded;
+	var <clipMonitoring, <curDecoderPatch, rbtTryCnt;
+	var <clipListener, <reloadGUIListener;
+	var <patcherGroup, <stereoPatcherSynths, <satPatcherSynths, <subPatcherSynths;
+	var <monitorGroup_ins, <monitorGroup_outs, <monitorSynths_outs, <monitorSynths_ins;
+
+	// SoundLabUtils (SoundLab extension)
+	var <compDict, <decAttributes, <decAttributeList;
+	var <spkrAzims, <spkrElevs, <spkrDirs, <spkrOppDict, <spkrDels, <spkrGains, <spkrDists;
+	var <decoderLib, <synthLib;
+	var <slhw;
 
 	*new { |initSR=96000, loadGUI=true, useSLHW=true, useKernels=true|
 		^super.newCopyArgs(initSR, loadGUI, useSLHW, useKernels).init;
@@ -27,7 +32,7 @@ SoundLabRevamp {
 		numHardwareOuts = 32;	// TODO import from config
 		numHardwareIns = 32;	// TODO import from config
 		kernelDirPath = PathName.new(Platform.resourceDir ++ "/sounds/SoundLabKernelsNew/");
-		defaultDecName = \Sphere_24ch_First_dual;  // synthDef name
+		defaultDecName = \Sphere_24ch_first_dual;  // synthDef name // TODO infer from defaults in config file
 		defaultKernel = \decor_700;
 		// NOTE: speaker order is assumed to be satellites, subs, stereo (optional)
 		// 		 see prLoadSynthDefs for how channel mappings are used
@@ -45,7 +50,6 @@ SoundLabRevamp {
 		this.prInitRigDimensions;
 		this.prInitDecoderAttributes;
 
-		loadCond = Condition(false);
 		rbtTryCnt = 0;
 
 		clipListener = OSCFunc({
@@ -70,38 +74,41 @@ SoundLabRevamp {
 
 	// this happens after hardware is intitialized abd server is booted
 	prLoadServerSide { |argServer|
-		debug.if{
-			postln("Loading Server Side ...
-			loading synths, intializing channel counts, groups, and busses.")
-		};
+		var loadCond;
+
+		loadCond = Condition(false);
+		// debug
+		postln("Loading Server Side ...
+			loading synths, intializing channel counts, groups, and busses.");
+
 		server = argServer ??  {"server defaulting because none provided".warn; Server.default};
 		server.doWhenBooted({
 			fork {
 				hwInStart = server.options.numOutputBusChannels;
 
 				this.prLoadDelDistGain( if(usingKernels, {curKernel ?? defaultKernel},{nil}) );
-				this.prLoadSynthDefs;
-				loadCond.wait;  // waiting on prLoadSynthDefs to signal
-				loadCond.test_(false).signal; // reset the condition to hang when needed later
-
-				if(usingKernels, {
-					curKernel = curKernel ?? defaultKernel;
-					this.loadKernel(curKernel, loadCond)
-				},{ loadCond.test_(true).signal });
+				this.prLoadSynthDefs(loadCond);
+				// waiting on prLoadSynthDefs to signal, meaning synthdefs are sent, not necessarily loaded...
 				loadCond.wait;
-				loadCond.test_(false).signal; // reset the condition to hang when needed later
-				"passed loading kernels".postln;
-				jconvolver !? { jconvolver.free };
-				jconvolver = new_jconvolver;
+				server.sync; // sync to let all the synths load
 
-
+				// if(usingKernels, {
+					// curKernel = curKernel ?? defaultKernel;
+					// this.loadKernel(curKernel, loadCond)
+				// },{ loadCond.test_(true).signal });
+				// loadCond.wait;
+				// loadCond.test_(false).signal; // reset the condition to hang when needed later
+				// "passed loading kernels".postln;
+				// jconvolver !? { jconvolver.free };
+				// jconvolver = new_jconvolver;
 
 				// group for clip monitoring synths
-				monitorGroup_ins = CtkGroup.new( addAction: \head, target: 1);
-				monitorGroup_outs = CtkGroup.new( addAction: \tail, target: 1 );
+				monitorGroup_ins = CtkGroup.play( addAction: \head, target: 1, server: server);
+				monitorGroup_outs = CtkGroup.play( addAction: \tail, target: 1, server: server);
+				server.sync;
 				// group for patching synths
-				patcherGroup = CtkGroup.new( addAction: \after, target: monitorGroup_ins );
-
+				patcherGroup = CtkGroup.play( addAction: \after, target: monitorGroup_ins, server: server );
+				server.sync;
 				/* proper NODE TREE order
 				monitorGroup_ins
 				SoundLabDecoderPatch.group
@@ -117,12 +124,15 @@ SoundLabRevamp {
 	}
 
 	loadState {
-		debug.if{postln("loading SoundLab state")};
+		// debug
+		"loading SoundLab state".postln;
 		// TODO remove fork
 		fork {
 			monitorGroup_ins.play;
-			monitorGroup_outs.play; 0.15.wait;
-			patcherGroup.play; 0.15.wait;
+			monitorGroup_outs.play;
+			server.sync;
+			patcherGroup.play;
+			server.sync;
 
 			// patcherOutBus is only satellites + stereo, NO subs
 			// outputs don't change on the patcher synths, only the inputs
@@ -137,6 +147,7 @@ SoundLabRevamp {
 					.play
 				})
 			}).flat;
+			server.sync;
 
 			subPatcherSynths =  3.collect({|j|
 				var start_in_dex;
@@ -149,6 +160,7 @@ SoundLabRevamp {
 					.play
 				})
 			}).flat;
+			server.sync;
 
 			stereoPatcherSynths = 2.collect({|i|
 				synthLib[\patcher].note(
@@ -157,23 +169,7 @@ SoundLabRevamp {
 				.out_bus_(numSatChans+numSubChans+i) // atm stereo always goes to first set of outs
 				.play
 			});
-
-/*			if( usingKernels, {
-				if( kernelDict[curKernel].notNil, {
-					// TODO: update any kernel-specific routing
-
-					/*// includes sats + subs
-					convSynth = kernelSynthDict[curKernel].note(0.2, target: convGroup)
-					.in_bus_(patcherOutBus.bus)
-					.out_bus_(patcherOutBus.bus) // uses ReplaceOut
-					.play;*/
-				},{"no current kernel specified or mismatch between curKernel name and key, conv synths not created".warn});
-			});*/
-			0.1.wait;
-			this.startDelGainSynth;
-			0.3.wait;
-
-			0.1.wait;
+			server.sync;
 
 			// init monitors, not played yet
 			monitorSynths_ins = numHardwareIns.collect{ |i|
@@ -185,12 +181,11 @@ SoundLabRevamp {
 				// note: in_bus index is a hardware out channel
 				synthLib[\clipMonitor].note(target: monitorGroup_outs).in_bus_(i)
 			};
-			0.1.wait;
 
 			if(stereoActive.not, {stereoPatcherSynths.do(_.pause)});
 
-			// decoder
-			this.startDecoder( if(curDecoder.notNil, {curDecoder.synthdefname},{defaultDecName}) );
+			// TODO how does curDecoderPatch persist between reboots?
+			this.startDecoder( if(curDecoderPatch.notNil, {curDecoderPatch.decoderName},{defaultDecName}) );
 
 			if(clipMonitoring, {this.clipMonitor_(true)});
 
@@ -201,50 +196,95 @@ SoundLabRevamp {
 		};
 	}
 
+		// cleanup server objects to be reloaded after reboot
+	prClearServerSide {
+		fork {
+			curDecoderPatch.free(xfade);
+			curDecoderPatch = nil;
+			xfade.wait;
+			[ patcherGroup, monitorGroup_ins, monitorGroup_outs ].do(_.free);
+
+			// // TODO: can kernelDict be replaced by an array?
+			// kernelDict !? {
+			// 	kernelDict.keysValuesDo({ |key|
+			// 		kernelDict.removeAt(key);
+			// 	});
+			//
+			// 	jconvolver !? {jconvolver.free};
+			// 	/*kernelDict.keysValuesDo({ |key, bufarr|
+			// 	"freeing a kernel buffer".postln;
+			// 	bufarr.do(_.free); // free kernels
+			// 	kernelDict.removeAt(key);
+			// 	});*/
+			// };
+			stateLoaded = false;
+		}
+	}
+
 	startDecoder  { |newDecSynthName|
-		var cur_decoutbus, new_decoutbus;
+		var loadCond, newDecoderPatch, cur_decoutbus, new_decoutbus;
+
+		loadCond = Condition(false);
+		// debug
+		"starting decoder".postln;
 
 		// select which of the 3 out groups to send decoder/correction to
 		new_decoutbus = if(usingKernels,
 			{
-				if(decoderPatch.notNil,
+				if(curDecoderPatch.notNil,
 					{
 						// this is the outbus being replaced..
-						cur_decoutbus = decoderPatch.outbusnum
+						cur_decoutbus = curDecoderPatch.outbusnum
 						// jump to next set of outputs, always numHardwareOuts or (numHardwareOuts*2)
 						(cur_decoutbus + numHardwareOuts).wrap(1, numHardwareOuts*2)
 					},{
-						// first set of outputs routed to kernel
-						numHardwareOuts
+						numHardwareOuts // first set of outputs routed to kernel
 					}
 				);
 			},{0}	// else 0 for no kernels
 		);
 
-		decoderPatch = SoundLabDecoderPatch(this,
+		// TODO: confirm decoderLib[newDecSynthName] exists
+
+		newDecoderPatch = SoundLabDecoderPatch(this,
 			newDecSynthName,
 			if( stereoActive, {hwInStart+2}, {hwInStart}), // decoder inbusnum
-			new_decoutbus	// decoder outbusnum
+			new_decoutbus,  // decoder outbusnum
+			loadCond		// finishCondition
 		);
+		loadCond.wait;
 
+		// debug
+		"newDecoderPatch initialized".postln;
+
+		curDecoderPatch !? {curDecoderPatch.free(xfade)};
+		newDecoderPatch.play(xfade);
+
+		fork {
+			xfade.wait;
+			curDecoderPatch = newDecoderPatch;
+			// TODO update changed \decoder message
+			this.changed(\decoder,
+				decAttributes.select({|attDict| attDict.synthdefName == newDecSynthName.asSymbol})
+			);
+		};
 		// TODO update decInfo variable with new decoder attributes
 		/*result = decAttributes.select({|item| item.defname == curDecoder.synthdefname });
 		decInfo = result[0];
 		debug.if{ postln("Updating decInfo variable with new decoder attributes:\n"++"\t"++decInfo.defname);
 			decInfo.keysValuesDo({|k,v|postln("\t\t"++k++" "++v)})
 		};
-
-		this.changed(\decoder, decInfo);*/
+			*/
 	}
 
-	// -------- State Setters -------------------------------------------
 	// ------------------------------------------------------------------
+	// -------- State Setters/Getters -----------------------------------
 	// ------------------------------------------------------------------
 
 	mute { |bool = true|
 		if(bool,
 			{
-				decoderPatch.compsynth.masterAmp_(0);
+				curDecoderPatch.compsynth.masterAmp_(0);
 				("amp set to " ++ 0).postln;
 				isMuted = true;
 				this.changed(\mute, 1);
@@ -254,7 +294,7 @@ SoundLabRevamp {
 				if( isAttenuated,
 					{this.attenuate},
 					{
-						decoderPatch.compsynth.masterAmp_(globalAmp);
+						curDecoderPatch.compsynth.masterAmp_(globalAmp);
 						("amp set to " ++ globalAmp.ampdb).postln;
 					}
 				);
@@ -266,14 +306,14 @@ SoundLabRevamp {
 		if(bool,
 			{
 				if(isMuted.not, {
-					decoderPatch.compsynth.masterAmp_(att_dB.dbamp);
+					curDecoderPatch.compsynth.masterAmp_(att_dB.dbamp);
 					("amp set to " ++ att_dB).postln;
 				});
 				isAttenuated = true;
 				this.changed(\attenuate, 1);
 			},{
 				if(isMuted.not, {
-					decoderPatch.compsynth.masterAmp_(globalAmp);
+					curDecoderPatch.compsynth.masterAmp_(globalAmp);
 					("amp set to " ++ globalAmp.ampdb).postln;
 				});
 				isAttenuated = false;
@@ -287,7 +327,7 @@ SoundLabRevamp {
 		ampnorm = amp_dB.dbamp;
 		// only update amp if not muted or att
 		if( isAttenuated.not && isMuted.not, {
-			decoderPatch.compsynth.masterAmp_(ampnorm);
+			curDecoderPatch.compsynth.masterAmp_(ampnorm);
 			("amp set to " ++ ampnorm.ampdb).postln;
 		});
 		globalAmp = ampnorm; // normalized, not dB
@@ -301,6 +341,14 @@ SoundLabRevamp {
 		);
 	}
 
+	sampleRate { if(usingSLHW, {^slhw.server.sampleRate}, {^server.sampleRate}) }
+
+	setNoKernel {
+		curKernel = \no_correction; //nil; // TODO rethink this
+		usingKernels = false;
+		this.changed(\kernel, curKernel);
+	}
+
 	free { this.cleanup }
 
 	cleanup  {
@@ -311,3 +359,7 @@ SoundLabRevamp {
 		if ( gui.notNil, {gui.cleanup} );
 	}
 }
+
+/* ------ TESTING ---------
+l = SoundLabRevamp(44100, useSLHW:false, useKernels:false)
+l.free

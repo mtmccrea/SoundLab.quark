@@ -1,4 +1,4 @@
-+ SoundLab {
++ SoundLabRevamp {
 
 	prInitRigDimensions {
 		// TODO consider adding sat and sub keys to compDict
@@ -35,7 +35,7 @@
 		].neg );
 
 		/* parse distance delay and gain files from kernel folders */
-		kernelsDirPath.entries.do({ |sr_pn|
+		kernelDirPath.entries.do({ |sr_pn|
 			var sr, nm, knm, result;
 
 			(sr_pn.isFolder && (sr_pn.folderName.asInt !=0)).if{
@@ -58,7 +58,7 @@
 										(knm++"_"++sr).asSymbol, this.prParseFile(file_pn)
 									);
 								}{nm.contains("gains")}{
-									debug.if{postf("parsing gins for %, % \n", knm, sr)};
+									debug.if{postf("parsing gains for %, % \n", knm, sr)};
 									compDict.gains.put(
 										(knm++"_"++sr).asSymbol, this.prParseFile(file_pn)
 									);
@@ -123,7 +123,7 @@
 		" ************* rig coordinates initialized **************** ".postln;
 	}
 
-	initDecoderAttributes {
+	prInitDecoderAttributes {
 		decAttributeList = [
 			// decoder attributes:
 			// decoderName, kind, order, k, dimensions, arrayOutIndices, numInChannels;
@@ -143,7 +143,7 @@
 		decAttributes = decAttributeList.collect({ |attributes|
 			IdentityDictionary(know: true).putPairs([
 				\decName, attributes[0],
-				\kind, attributes[1]
+				\kind, attributes[1],
 				\ambiOrder, attributes[2], // don't use "order" as a keyword, it's a Dictionary method!
 				\k, attributes[3],
 				\dimensions, attributes[4],
@@ -153,6 +153,8 @@
 					attributes[0] ++ '_' ++ attributes[2].asSymbol ++ '_' ++ attributes[3].asSymbol
 			])
 		});
+
+		" ************* decoder attributes initialized **************** ".postln;
 	}
 
 	/*	load speaker delays, distances, gains here because
@@ -161,8 +163,13 @@
 	been initialized. */
 	prLoadDelDistGain { |kernelName|
 		var sr, key;
+		// debug
+		"prLoadDelDistGain".postln;
+
 		sr = this.sampleRate;
 		key = (kernelName++"_"++sr).asSymbol;
+
+		// debug
 		("setting del dist gains to key: "++key).postln;
 
 		if(
@@ -179,15 +186,19 @@
 				spkrDists = compDict.distances.at(\default);
 				spkrDels = compDict.delays.at(\default);
 				spkrGains = compDict.gains.at(\default);
+				key = \default;
 			}
 		);
 		debug.if{ this.prCheckArrayData };
-		"delays, gains, distances loaded".postln;
+		("delays, gains, distances loaded:" ++ key).postln;
 	}
 
 	prLoadDiametricDecoderSynth { |decSpecs|
 		var arrayOutIndices, satOutbusNums, subOutbusNums, satDirections, subDirections;
-		var matrix_dec, matrix_dec_sub, decSynthDef;
+		var matrix_dec_sat, matrix_dec_sub, decSynthDef;
+
+		// debug
+		"loading Diametric synthdef".postln;
 
 		/* --satellites-- */
 		arrayOutIndices = decSpecs.arrayOutIndices;
@@ -204,17 +215,21 @@
 
 		/* --subs-- */
 		subOutbusNums = (numSatChans..(numSatChans+numSubChans-1)); // always use all the subs
+
+		// debug
+		subOutbusNums.postln;
+
 		if(numSubChans.even, {
 			// only need to provide 1/2 of the directions for diametric decoder
-			subDirections = subOutbusNums.keep(subOutbusNums/2).collect({|busnum|
+			subDirections = subOutbusNums.keep( (subOutbusNums.size/2).asInt ).collect({|busnum|
 				spkrDirs[busnum][0]  // subs always 2D
 			});
+
 			matrix_dec_sub = FoaDecoderMatrix.newDiametric(subDirections, decSpecs.k);
 		});
 
-		// build the synth
-		decSynthDef =
-		SynthDef( decSpecs.synthdefName, {
+		// build the synthdef
+		decSynthDef = SynthDef( decSpecs.synthdefName, {
 			arg out_bus, in_bus, fadeTime = 0.2, subgain = 0, gate = 1;
 			var in, env, sat_out, sub_out;
 			// TODO infer numInputChans from decSpecs.ambiOrder
@@ -261,9 +276,16 @@
 		});
 
 		decoderLib.add( decSynthDef ); // add the synth to the decoder library
+
+		// debug
+		"added diametric decoder to the decoderLib".postln;
 	}
 
 	prLoadDiscreteRoutingSynth { |decSpecs|
+
+		// debug
+		"loading discrete routing synthdef".postln;
+
 		decoderLib.add(
 			SynthDef( decSpecs.synthdefName, {
 				arg out_bus, in_bus, fadeTime = 0.3, subgain = 0, gate = 1;
@@ -276,17 +298,29 @@
 				- see commented-out code below for crossover scheme to be added */
 				Out.ar( decSpecs.arrayOutIndices.first, in * env );
 			})
-		)
+		);
+
+		// debug
+		"added discrete router to decoderLib".postln;
 	}
 
 	// load every possible decoding SynthDef based on decAttList
-	prLoadSynthDefs {
+	prLoadSynthDefs { |finishLoadCondition|
+
+		// debug
+		"prLoadSynthDefs".postln;
+
 		decoderLib = CtkProtoNotes();
 
 		/* build and load decoders */
 		decAttributes.do{ |decSpecs|
+
+			// debug
+			"build and load decoders".postln;
+			decSpecs.postln;
+
 			switch( decSpecs.kind,
-				\diametric,	{ this.prLoadDiametricDecoderSynth(decSpecs)	},
+				\diametric,	{ this.prLoadDiametricDecoderSynth(decSpecs)},
 				\discrete,	{ this.prLoadDiscreteRoutingSynth(decSpecs)	}
 			);
 		};
@@ -318,12 +352,6 @@
 				outs = sats_delayed ++ subs_delayed ++ stereo_sig;
 				ReplaceOut.ar(out_busnum, outs * masterAmp);
 			}),
-			// TODO remove
-/*			SynthDef(\masterAmp, { arg in_bus=0, out_bus=0, masterAmp = 1.0;
-				Out.ar(out_bus,
-					In.ar(in_bus, 32) * Lag.kr(masterAmp, 0.25)
-				)
-			}),*/
 
 			SynthDef(\patcher, { arg in_bus=0, out_bus=0;
 				Out.ar(out_bus,
@@ -339,11 +367,13 @@
 			})
 		);
 
-		" *********** Sound Lab synths loaded ************ ".postln;
-		loadCond.test_(true).signal;
+		" *********** Sound Lab synths loaded ************ \n".postln;
+		finishLoadCondition.test_(true).signal;
 	}
 
 	prInitSLHW { |initSR|
+		// debug
+		"initializing SLHW".postln;
 		// TODO take care of the number of ins and outs (HWIns/HWOuts*3) in SLHW
 		slhw = SoundLabHardware(useSupernova:false); // false to for SC, true for SN
 		debug.if{"SLHW initiated".postln};
@@ -354,6 +384,9 @@
 
 	prInitDefaultHW { |initSR|
 		var so;
+		// debug
+		"initializing default hardware".postln;
+
 		server = server ?? Server.default;
 		server !? { server.serverRunning.if{server.quit} };
 		"REBOOTING".postln;
