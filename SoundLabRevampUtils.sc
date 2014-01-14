@@ -135,7 +135,8 @@
 			[\Sphere_6ch,	\diametric,	\first,	'dual',	3,	[8, 9, 20],	4	],
 			[\Hex,			\diametric,	\first,	'dual',	2,	(9..11),	4	],
 			/* --discrete channel routing-- */
-			[\Thru_All,		\discrete,	nil,	nil,	2,	(0..11),	24	],
+			// thru routing assumes contiguous channels, starting at arrayOutIndices.first
+			[\Thru_All,		\discrete,	nil,	nil,	2,	(0..23),	24	],
 			[\Thru_Hex,		\discrete,	nil,	nil,	2,	(9..11),	6	]
 		];
 
@@ -213,11 +214,11 @@
 		});
 		matrix_dec_sat = FoaDecoderMatrix.newDiametric(satDirections, decSpecs.k);
 
+		// debug
+		matrix_dec_sat.postln;
+
 		/* --subs-- */
 		subOutbusNums = (numSatChans..(numSatChans+numSubChans-1)); // always use all the subs
-
-		// debug
-		subOutbusNums.postln;
 
 		if(numSubChans.even, {
 			// only need to provide 1/2 of the directions for diametric decoder
@@ -226,18 +227,33 @@
 			});
 
 			matrix_dec_sub = FoaDecoderMatrix.newDiametric(subDirections, decSpecs.k);
+
+			// debug
+			matrix_dec_sub.postln;
 		});
 
 		// build the synthdef
 		decSynthDef = SynthDef( decSpecs.synthdefName, {
-			arg out_bus, in_bus, fadeTime = 0.2, subgain = 0, gate = 1;
+			arg out_busnum, in_busnum, fadeTime = 0.2, subgain = 0, gate = 1;
 			var in, env, sat_out, sub_out;
 			// TODO infer numInputChans from decSpecs.ambiOrder
-			in = In.ar(in_bus, decSpecs.numInputChans); // B-Format signal
+
+			// debug
+			("inbus setup: "++decSpecs.numInputChans).postln;
+
+			in = In.ar(in_busnum, decSpecs.numInputChans); // B-Format signal
 			env = EnvGen.ar(
 				Env( [0,1,0],[fadeTime, fadeTime],\sin, 1),
 				gate, doneAction: 2
 			);
+
+			// debug
+			postf("psycho shelf setup: %, %, %, %\n", matrix_dec_sat.shelfFreq.isNumber,
+			matrix_dec_sat.shelfFreq,
+					matrix_dec_sat.shelfK.at(0),
+					matrix_dec_sat.shelfK.at(1)
+			);
+
 			// include shelf filter?
 			if( matrix_dec_sat.shelfFreq.isNumber, {
 				in = FoaPsychoShelf.ar(
@@ -249,16 +265,20 @@
 			});
 			// near-field compensate, decode, remap to rig
 			satOutbusNums.do({ arg spkdex, i;
-				Out.ar(out_bus + spkdex, // remap decoder channels to rig channels
+				Out.ar(out_busnum + spkdex, // remap decoder channels to rig channels
 					AtkMatrixMix.ar(
 						FoaNFC.ar( in, spkrDists.at(spkdex) ),
 						matrix_dec_sat.matrix.fromRow(i)
 					)
 				)
 			});
+
+			// debug: setting up subs
+			([numSubChans, subOutbusNums]).postln;
+
 			if(numSubChans.even, {
 				subOutbusNums.do({ arg spkdex, i;
-					Out.ar(out_bus + spkdex, // remap decoder channels to rig channels
+					Out.ar(out_busnum + spkdex, // remap decoder channels to rig channels
 						AtkMatrixMix.ar(
 							FoaNFC.ar( in, spkrDists.at(spkdex) ),
 							matrix_dec_sub.matrix.fromRow(i)
@@ -267,7 +287,7 @@
 				})
 				},{	// quick fix for non-even/diametric sub layout
 					subOutbusNums.do({ arg spkdex, i;
-						Out.ar(out_bus + spkdex,
+						Out.ar(out_busnum + spkdex,
 							in[0] * numSubChans.reciprocal // send W to subs
 						) * subgain.dbamp
 					})
@@ -288,9 +308,9 @@
 
 		decoderLib.add(
 			SynthDef( decSpecs.synthdefName, {
-				arg out_bus, in_bus, fadeTime = 0.3, subgain = 0, gate = 1;
+				arg in_busnum, fadeTime = 0.3, subgain = 0, gate = 1;
 				var in, env, out;
-				in = In.ar(in_bus, decSpecs.numInputChans);
+				in = In.ar(in_busnum, decSpecs.numInputChans);
 				env = EnvGen.ar(
 					Env( [0,1,0],[fadeTime, fadeTime],\sin, 1),
 					gate, doneAction: 2 );

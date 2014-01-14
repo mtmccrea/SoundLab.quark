@@ -88,19 +88,18 @@ SoundLabRevamp {
 
 				this.prLoadDelDistGain( if(usingKernels, {curKernel ?? defaultKernel},{nil}) );
 				this.prLoadSynthDefs(loadCond);
-				// waiting on prLoadSynthDefs to signal, meaning synthdefs are sent, not necessarily loaded...
-				loadCond.wait;
+
+				loadCond.wait;// waiting on prLoadSynthDefs to signal
 				server.sync; // sync to let all the synths load
 
-				// if(usingKernels, {
-					// curKernel = curKernel ?? defaultKernel;
-					// this.loadKernel(curKernel, loadCond)
-				// },{ loadCond.test_(true).signal });
-				// loadCond.wait;
-				// loadCond.test_(false).signal; // reset the condition to hang when needed later
-				// "passed loading kernels".postln;
-				// jconvolver !? { jconvolver.free };
-				// jconvolver = new_jconvolver;
+				if(usingKernels, {
+					curKernel = curKernel ?? defaultKernel;
+					this.loadKernel(curKernel, loadCond)
+				},{ loadCond.test_(true).signal });
+				loadCond.wait;
+				loadCond.test_(false).signal; // reset the condition to hang when needed later
+				"passed loading kernels".postln;
+
 
 				// group for clip monitoring synths
 				monitorGroup_ins = CtkGroup.play( addAction: \head, target: 1, server: server);
@@ -133,6 +132,14 @@ SoundLabRevamp {
 			server.sync;
 			patcherGroup.play;
 			server.sync;
+
+			// debug
+			postf("monitorGroup_ins group: %
+				monitorGroup_out group: %
+				patcherGroup group: %\n",
+				monitorGroup_ins.node,
+				monitorGroup_outs.node,
+				patcherGroup.node);
 
 			// patcherOutBus is only satellites + stereo, NO subs
 			// outputs don't change on the patcher synths, only the inputs
@@ -182,6 +189,17 @@ SoundLabRevamp {
 				synthLib[\clipMonitor].note(target: monitorGroup_outs).in_bus_(i)
 			};
 
+
+			server.sync; // to make sure stereo patchers have started
+
+			// debug
+			stereoPatcherSynths.do({|synth|synth.isPlaying.postln});
+			stereoPatcherSynths.do({|synth|synth.node.postln});
+
+			while( {stereoPatcherSynths.collect({|synth|synth.isPlaying}).includes(false)},
+				{"waiting on stereo pathers".postln; 0.02.wait;});
+			0.2.wait; // TODO find a better solution here
+
 			if(stereoActive.not, {stereoPatcherSynths.do(_.pause)});
 
 			// TODO how does curDecoderPatch persist between reboots?
@@ -225,56 +243,123 @@ SoundLabRevamp {
 		var loadCond, newDecoderPatch, cur_decoutbus, new_decoutbus;
 
 		loadCond = Condition(false);
-		// debug
-		"starting decoder".postln;
-
-		// select which of the 3 out groups to send decoder/correction to
-		new_decoutbus = if(usingKernels,
-			{
-				if(curDecoderPatch.notNil,
-					{
-						// this is the outbus being replaced..
-						cur_decoutbus = curDecoderPatch.outbusnum
-						// jump to next set of outputs, always numHardwareOuts or (numHardwareOuts*2)
-						(cur_decoutbus + numHardwareOuts).wrap(1, numHardwareOuts*2)
-					},{
-						numHardwareOuts // first set of outputs routed to kernel
-					}
-				);
-			},{0}	// else 0 for no kernels
-		);
-
-		// TODO: confirm decoderLib[newDecSynthName] exists
-
-		newDecoderPatch = SoundLabDecoderPatch(this,
-			newDecSynthName,
-			if( stereoActive, {hwInStart+2}, {hwInStart}), // decoder inbusnum
-			new_decoutbus,  // decoder outbusnum
-			loadCond		// finishCondition
-		);
-		loadCond.wait;
-
-		// debug
-		"newDecoderPatch initialized".postln;
-
-		curDecoderPatch !? {curDecoderPatch.free(xfade)};
-		newDecoderPatch.play(xfade);
-
 		fork {
+			// debug
+			"starting decoder".postln;
+
+			// select which of the 3 out groups to send decoder/correction to
+			new_decoutbus = if(usingKernels,
+				{
+					if(curDecoderPatch.notNil,
+						{
+							// this is the outbus being replaced..
+							cur_decoutbus = curDecoderPatch.outbusnum
+							// jump to next set of outputs, always numHardwareOuts or (numHardwareOuts*2)
+							(cur_decoutbus + numHardwareOuts).wrap(1, numHardwareOuts*2)
+						},{
+							numHardwareOuts // first set of outputs routed to kernel
+						}
+					);
+				},{0}	// else 0 for no kernels
+			);
+
+			// TODO: confirm decoderLib[newDecSynthName] exists
+
+			newDecoderPatch = SoundLabDecoderPatch(this,
+				newDecSynthName,
+				if( stereoActive, {hwInStart+2}, {hwInStart}), // decoder inbusnum
+				new_decoutbus,  // decoder outbusnum
+				loadCond		// finishCondition
+			);
+			loadCond.wait;
+
+			// debug
+			"newDecoderPatch initialized".postln;
+
+			curDecoderPatch !? {curDecoderPatch.free(xfade)};
+			newDecoderPatch.play(xfade);
+
 			xfade.wait;
 			curDecoderPatch = newDecoderPatch;
 			// TODO update changed \decoder message
 			this.changed(\decoder,
 				decAttributes.select({|attDict| attDict.synthdefName == newDecSynthName.asSymbol})
 			);
-		};
-		// TODO update decInfo variable with new decoder attributes
-		/*result = decAttributes.select({|item| item.defname == curDecoder.synthdefname });
-		decInfo = result[0];
-		debug.if{ postln("Updating decInfo variable with new decoder attributes:\n"++"\t"++decInfo.defname);
+
+			// TODO update decInfo variable with new decoder attributes
+			/*result = decAttributes.select({|item| item.defname == curDecoder.synthdefname });
+			decInfo = result[0];
+			debug.if{ postln("Updating decInfo variable with new decoder attributes:\n"++"\t"++decInfo.defname);
 			decInfo.keysValuesDo({|k,v|postln("\t\t"++k++" "++v)})
-		};
+			};
 			*/
+		}
+	}
+
+		// expects kernels to be located in kernelsDirPath/sampleRate/kernelType/
+	loadKernel { |newKernel, completeCondition|
+		var kernelDir_pn, k_path, partSize, k_size, numFoundKernels = 0;
+		fork {
+			block { |break|
+				// does the kernel folder exist?
+				kernelsDirPath.folders.do({ |sr_pn|
+					if( sr_pn.folderName.asInt == server.sampleRate,
+						{	sr_pn.folders.do({ |kernel_pn|
+							if( kernel_pn.folderName.asSymbol == newKernel, {
+								("found kernel match"+kernel_pn).postln;
+								kernelDir_pn = kernel_pn;
+							});
+							});
+					})
+				});
+
+				kernelDir_pn ?? {
+					this.changed(\reportStatus, "Kernel name not found.".warn);
+					break.();
+				};
+
+				"Generating jconvolver configuration file...".postln;
+
+				// for osx
+				Jconvolver.jackScOutNameDefault = "scsynth:out";
+				Jconvolver.executablePath_("/usr/local/bin/jconvolver");
+
+				k_path = kernelDir_pn.absolutePath;
+				partSize = if(usingSLHW, {slhw.jackPeriodSize},{512});
+
+				kernelDir_pn.filesDo({ |file|
+					if(file.extension == "wav", {
+						SoundFile.use(file.absolutePath, {|fl|
+							k_size = fl.numFrames;
+							numFoundKernels = numFoundKernels + 1;
+						})
+						}
+					)
+				});
+				postf("path to kernels: % \npartition size: % \nkernel size: %\n",
+					k_path, partSize, k_size
+				);
+
+				// check that we have enough kernels to match all necessary speakers
+				if( numFoundKernels != numKernelChans, {
+					"Number of kernels found does not match the numKernelChannels!".warn;
+					this.changed(\reportStatus, "Number of kernels found does not match the numKernelChannels!");
+					break.();
+				});
+
+				// TODO: check if Jconvolver is already running, if so quit it
+				// TODO: check autoConnectToScChannels: is correct
+				Jconvolver.createSimpleConfigFileFromFolder(
+					kernelFolderPath: k_path, partitionSize: partSize,
+					maxKernelSize: k_size, matchFileName: "*.wav",
+					autoConnectToScChannels: 32, autoConnectToSoundcardChannels: 0
+				);
+
+				// new_jconvolver = Jconvolver.newFromFolder(k_path);
+				// TODO: check that Jconvolver is running, then continue or break
+			};
+			completeCondition.test_(true).signal;
+		}
 	}
 
 	// ------------------------------------------------------------------
@@ -357,9 +442,24 @@ SoundLabRevamp {
 		clipListener.free;
 		reloadGUIListener.free;
 		if ( gui.notNil, {gui.cleanup} );
+		// TODO: cleanup Jconvolver
 	}
 }
-
 /* ------ TESTING ---------
-l = SoundLabRevamp(44100, useSLHW:false, useKernels:false)
+l = SoundLabRevamp(44100, useSLHW:false, useKernels:true)
+l.startDecoder(\Sphere_12ch_first_dual)
+"~~~~~~".postln
+l.decoderLib.dict.keys
+
 l.free
+
+InterfaceJS.nodePath = "/usr/local/bin/node"
+l = SoundLab(48000, useSLHW:false)
+l.cleanup
+l.jconvolver
+l.gui
+l.jconvolver.free
+l.gui.buildControls
+l.kernelDict
+
+s.scope(2,3)

@@ -18,15 +18,15 @@ SoundLabDecoderPatch {
 
 			// debug
 			"server sync'd?".postln;
-			("buuilding: "++soundlab.decoderLib[decoderName]).postln;
+			("building: "++soundlab.decoderLib[decoderName].synthdefname).postln;
 			group.node.postln;
 			[inbusnum, outbusnum].postln;
 
 			// TODO it appears there's something wrong with the decoder synthDefs
 			// likely in the way they're built...
-			/*decodersynth = soundlab.decoderLib[decoderName].note(
+			decodersynth = soundlab.decoderLib[decoderName].note(
 				addAction: \head, target: group)
-			.in_busnum_(inbusnum).out_busnum_(outbusnum);*/
+			.in_busnum_(inbusnum).out_busnum_(outbusnum);
 
 			// debug
 			"decoder synth'd".postln;
