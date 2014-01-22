@@ -1,10 +1,10 @@
 SoundLabDecoderPatch {
 	// copyArgs
-	var <soundlab, <decoderName, <inbusnum, <outbusnum, <finishInitCondition;
+	var <soundlab, <decoderName, <inbusnum, <outbusnum, <loadCondition;
 	var <server, <group, <decodersynth, <compsynth;
 
-	*new { |soundlab, decoderSynthDefName, inbusnum, outbusnum, finishInitCondition|
-		^super.newCopyArgs(soundlab, decoderSynthDefName, inbusnum, outbusnum, finishInitCondition).init;
+	*new { |soundlab, decoderSynthDefName, inbusnum, outbusnum, loadCondition|
+		^super.newCopyArgs(soundlab, decoderSynthDefName, inbusnum, outbusnum, loadCondition).init;
 	}
 
 	init {
@@ -24,8 +24,7 @@ SoundLabDecoderPatch {
 
 			// TODO it appears there's something wrong with the decoder synthDefs
 			// likely in the way they're built...
-			decodersynth = soundlab.decoderLib[decoderName].note(
-				addAction: \head, target: group)
+			decodersynth = soundlab.decoderLib[decoderName].note(addAction: \head, target: group)
 			.in_busnum_(inbusnum).out_busnum_(outbusnum);
 
 			// debug
@@ -38,7 +37,7 @@ SoundLabDecoderPatch {
 			// debug
 			"comp synth'd".postln;
 
-			finishInitCondition.test_(true).signal;
+			loadCondition.test_(true).signal;
 
 			// debug
 			"signal'd".postln;

@@ -168,30 +168,27 @@
 		"prLoadDelDistGain".postln;
 
 		sr = this.sampleRate;
-		key = (kernelName++"_"++sr).asSymbol;
+		key = if(kernelName != \default, {(kernelName++"_"++sr).asSymbol},{\default});
 
 		// debug
 		("setting del dist gains to key: "++key).postln;
 
-		if(
-			usingKernels and:
-			compDict.distances.includesKey(key) and:
-			compDict.delays.includesKey(key) and:
-			compDict.gains.includesKey(key),
-			{
-				spkrDists = compDict.distances.at(key);
-				spkrDels = compDict.delays.at(key);
-				spkrGains = compDict.gains.at(key);
-			},{
+		if( usingKernels.not or:
+			compDict.distances.includesKey(key).not or:
+			compDict.delays.includesKey(key).not or:
+			compDict.gains.includesKey(key).not, {
+				"kernel name is default or otherwise wasn't found in
+				distances, delays or gains lists".postln;
 				this.setNoKernel;
-				spkrDists = compDict.distances.at(\default);
-				spkrDels = compDict.delays.at(\default);
-				spkrGains = compDict.gains.at(\default);
 				key = \default;
-			}
-		);
+		});
+
+		spkrDists = compDict.distances.at(key);
+		spkrDels = compDict.delays.at(key);
+		spkrGains = compDict.gains.at(key);
+
 		debug.if{ this.prCheckArrayData };
-		("delays, gains, distances loaded:" ++ key).postln;
+		("delays, gains, distances loaded for:" ++ key).postln;
 	}
 
 	prLoadDiametricDecoderSynth { |decSpecs|
@@ -437,6 +434,20 @@
 				}
 			)
 		});
+	}
+
+	prFindKernelDir { |kenelName|
+		var kernelDir_pn;
+		kernelDirPath.folders.do({ |sr_pn|
+			if( sr_pn.folderName.asInt == server.sampleRate, {
+				sr_pn.folders.do({ |kernel_pn|
+					if( kernel_pn.folderName.asSymbol == kenelName, {
+						("found kernel match"+kernel_pn).postln;
+						kernelDir_pn = kernel_pn; });
+				});
+			})
+		});
+		^kernelDir_pn
 	}
 
 	// parse text file for delays, distances, gains
