@@ -11,7 +11,7 @@ SoundLabRevamp {
 	var <clipListener, <reloadGUIListener;
 	var <patcherGroup, <stereoPatcherSynths, <satPatcherSynths, <subPatcherSynths;
 	var <monitorGroup_ins, <monitorGroup_outs, <monitorSynths_outs, <monitorSynths_ins;
-	var <jconvolver, <nextjconvolver;
+	var <jconvolver, <nextjconvolver, <nextKernel;
 
 	// SoundLabUtils (SoundLab extension)
 	var <compDict, <decAttributes, <decAttributeList;
@@ -92,6 +92,7 @@ SoundLabRevamp {
 			server.options.sampleRate = initSR ?? 96000;
 			server.options.memSize = 8192 * 16;
 			server.options.numOutputBusChannels_(numHardwareOuts*3).numInputBusChannels_(numHardwareIns);
+			server.options.numWireBufs_(64*8);
 
 			// the following will otherwise be called from update: \audioIsRunning
 			server.waitForBoot({
@@ -128,8 +129,27 @@ SoundLabRevamp {
 
 		server.doWhenBooted({
 			fork {
+				// LOAD JCONVOLVER
+				jconvolver !? {jconvolver.free}; // kill any running Jconvolvers
+				if( usingKernels, {
+					nextKernel = curKernel ?? defaultKernel;
+					this.loadJconvolver(nextKernel, loadCondition); // this sets nextjconvolver var
+				},{ loadCondition.test_(true).signal });
+				loadCondition.wait; "passed loading kernels".postln;
+				loadCondition.test_(false).signal; // reset the condition to hang when needed later
+
+				// LOAD DELAYS AND GAINS
+				this.prLoadDelDistGain(
+					// nextjconvolver var set in loadJconvolver method
+					if( usingKernels, {nextKernel}, {\default} );
+				);
+
+				// LOAD SYNTHDEFS
+				// speaker dels, dists, gains must be written before loading synthdefs
+				// NOTE: this needs to happen for every new kernel being loaded
 				this.prLoadSynthDefs(loadCondition);
-				loadCondition.wait;// waiting on prLoadSynthDefs to signal
+				loadCondition.wait; // waiting on prLoadSynthDefs to signal
+				"SynthDefs loaded".postln;
 				loadCondition.test_(false).signal; // reset the condition to hang when needed later
 				server.sync; // sync to let all the synths load
 
@@ -221,25 +241,9 @@ SoundLabRevamp {
 	}
 
 	loadState { |loadCondition|
-		var nextKernel;
 		// debug
 		"loading SoundLab state".postln;
 		fork {
-			// LOAD JCONVOLVER
-			jconvolver !? {jconvolver.free}; // kill any running Jconvolvers
-			if( usingKernels, {
-				nextKernel = curKernel ?? defaultKernel;
-				this.loadJconvolver(nextKernel, loadCondition); // this sets nextjconvolver var
-			},{ loadCondition.test_(true).signal });
-			loadCondition.wait; "passed loading kernels".postln;
-			loadCondition.test_(false).signal; // reset the condition to hang when needed later
-
-			// LOAD DELAYS AND GAINS
-			this.prLoadDelDistGain(
-				// nextjconvolver var set in loadJconvolver method
-				if( usingKernels, {nextKernel}, {\default} );
-			);
-
 			// START DECODER
 			// TODO how does curDecoderPatch persist between reboots?
 			this.startDecoder(
@@ -273,18 +277,14 @@ SoundLabRevamp {
 			xfade.wait;
 			[ patcherGroup, monitorGroup_ins, monitorGroup_outs ].do(_.free);
 
+			jconvolver !? {jconvolver.free};
+			nextjconvolver !? {nextjconvolver.free};
+
 			// // TODO: can kernelDict be replaced by an array?
 			// kernelDict !? {
 			// 	kernelDict.keysValuesDo({ |key|
 			// 		kernelDict.removeAt(key);
 			// 	});
-			//
-			// 	jconvolver !? {jconvolver.free};
-			// 	/*kernelDict.keysValuesDo({ |key, bufarr|
-			// 	"freeing a kernel buffer".postln;
-			// 	bufarr.do(_.free); // free kernels
-			// 	kernelDict.removeAt(key);
-			// 	});*/
 			// };
 			stateLoaded = false;
 		}
@@ -308,7 +308,7 @@ SoundLabRevamp {
 						numHardwareOuts // first set of outputs routed to kernel
 					}
 				);
-				},{0}	// else 0 for no kernels
+				},{0}	// 0 for no kernels
 			);
 
 			// TODO: confirm decoderLib[newDecSynthName] exists
@@ -353,7 +353,7 @@ SoundLabRevamp {
 			block { |break|
 				kernelDir_pn = this.prFindKernelDir(newKernel);
 				kernelDir_pn ?? {
-					this.changed(\reportStatus, "Kernel name not found.".warn);
+					this.changed(\reportStatus, warn("Kernel name not found: "++newKernel));
 					break.();
 				};
 
@@ -494,7 +494,7 @@ SoundLabRevamp {
 	}
 }
 /* ------ TESTING ---------
-l = SoundLabRevamp(44100, useSLHW:false, useKernels:true)
+l = SoundLabRevamp(48000, useSLHW:false, useKernels:true)
 l.startDecoder(\Sphere_12ch_first_dual)
 "~~~~~~".postln
 l.decoderLib.dict.keys

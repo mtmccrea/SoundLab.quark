@@ -231,12 +231,9 @@
 
 		// build the synthdef
 		decSynthDef = SynthDef( decSpecs.synthdefName, {
-			arg out_busnum, in_busnum, fadeTime = 0.2, subgain = 0, gate = 1;
+			arg out_busnum=0, in_busnum, fadeTime = 0.2, subgain = 0, gate = 1;
 			var in, env, sat_out, sub_out;
 			// TODO infer numInputChans from decSpecs.ambiOrder
-
-			// debug
-			("inbus setup: "++decSpecs.numInputChans).postln;
 
 			in = In.ar(in_busnum, decSpecs.numInputChans); // B-Format signal
 			env = EnvGen.ar(
@@ -246,13 +243,14 @@
 
 			// debug
 			postf("psycho shelf setup: %, %, %, %\n", matrix_dec_sat.shelfFreq.isNumber,
-			matrix_dec_sat.shelfFreq,
-					matrix_dec_sat.shelfK.at(0),
-					matrix_dec_sat.shelfK.at(1)
+				matrix_dec_sat.shelfFreq,
+				matrix_dec_sat.shelfK.at(0),
+				matrix_dec_sat.shelfK.at(1)
 			);
 
 			// include shelf filter?
 			if( matrix_dec_sat.shelfFreq.isNumber, {
+				"adding shelf1".postln;
 				in = FoaPsychoShelf.ar(
 					in,
 					matrix_dec_sat.shelfFreq,
@@ -260,6 +258,10 @@
 					matrix_dec_sat.shelfK.at(1)
 				)
 			});
+						// debug: setting up subs
+			numSubChans.postln;
+			subOutbusNums.postln;
+
 			// near-field compensate, decode, remap to rig
 			satOutbusNums.do({ arg spkdex, i;
 				Out.ar(out_busnum + spkdex, // remap decoder channels to rig channels
@@ -271,7 +273,8 @@
 			});
 
 			// debug: setting up subs
-			([numSubChans, subOutbusNums]).postln;
+			numSubChans.postln;
+			subOutbusNums.postln;
 
 			if(numSubChans.even, {
 				subOutbusNums.do({ arg spkdex, i;
