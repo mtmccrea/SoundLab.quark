@@ -5,9 +5,6 @@
 //path in config file relative to config file
 
 Jconvolver {
-	var kernelFolderPath, compensateLatency, configFileStringArr;
-	var <partitionSize, <maxKernelSize, <numInChannels, <numOutChannels, channelMatrix;
-	var <pid;
 	classvar <>jackScOutNameDefault = "SuperCollider:out_"; // for supernova: "supernova:output_"
 	classvar <>jackScInNameDefault = "SuperCollider:in_"; // for supernova: "supernova:input_"
 	classvar <>jackJconvolverOutNameDefault = "jconvolver:Out-";
@@ -15,6 +12,10 @@ Jconvolver {
 	classvar <>jackSystemOutNameDefault = "system:playback_";
 	classvar <>executablePath = "jconvolver";
 	classvar <>configFileName = "jconvolver.conf";
+
+	var kernelFolderPath, compensateLatency, configFileStringArr;
+	var <partitionSize, <maxKernelSize, <numInChannels, <numOutChannels, channelMatrix;
+	var <kernelName, <pid;
 
 	// srcChannels: number for number of channels starting at first, array for anything else, 0-based
 	// dstChannels: (use srcCh) or an array, 0-based
@@ -80,11 +81,13 @@ Jconvolver {
 	// add number of kernels limit
 	// everything 0-based...
 	// add automatic max size
-	// num ins and outs equals number of found kernels, also uses 1:1 matrix, assumes single channel kernels,
-	// autoConnect.. if simple number, will connect starting on that channel (with respective number of ins/outs),
-	// 	if array, will map to specified input...
+	// num ins and outs equals number of found kernels, also uses 1:1 matrix,
+	// assumes single channel kernels,
+	// autoConnect.. if simple number, will connect starting on that channel
+	// (with respective number of ins/outs),
+	// if array, will map to specified input...
 	// maxKernelSize must be larger than numFrames of the kernel
-	*createSimpleConfigFileFromFolder {|kernelFolderPath, partitionSize = 1024, maxKernelSize = 100000, matchFileName = "*.wav", configFilePath, autoConnectToScChannels = 28, autoConnectToSoundcardChannels = 0|
+	*createSimpleConfigFileFromFolder {|kernelFolderPath, partitionSize = 1024, maxKernelSize = 100000, matchFileName = "*.wav", configFilePath, autoConnectToScChannels = 32, autoConnectToSoundcardChannels = 0|
 		var soundFilesArray, useRelativePaths, file;
 		var numInChannels, numOutChannels;
 
@@ -192,6 +195,9 @@ Jconvolver {
 				maxKernelSize = thisArr[4].asInteger;
 			});
 		});
+		kernelName = kernelFolderPath.withoutTrailingSlash.split.last.asSymbol;
+		//debug
+		postf("kernelName: %", kernelName);
 		//start convolver
 		"Starting jconvolver...".postln;
 		// command = executablePath;

@@ -19,8 +19,6 @@ SoundLabDecoderPatch {
 			// debug
 			"server sync'd?".postln;
 			("building: "++soundlab.decoderLib[decoderName].synthdefname).postln;
-			group.node.postln;
-			[inbusnum, outbusnum].postln;
 
 			// TODO it appears there's something wrong with the decoder synthDefs
 			// likely in the way they're built...

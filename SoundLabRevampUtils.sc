@@ -179,7 +179,7 @@
 			compDict.gains.includesKey(key).not, {
 				"kernel name is default or otherwise wasn't found in
 				distances, delays or gains lists".postln;
-				this.setNoKernel;
+				// this.setNoKernel;
 				key = \default;
 		});
 
@@ -189,6 +189,7 @@
 
 		debug.if{ this.prCheckArrayData };
 		("delays, gains, distances loaded for:" ++ key).postln;
+		loadedDelDistGain = key;
 	}
 
 	prLoadDiametricDecoderSynth { |decSpecs|
@@ -224,9 +225,6 @@
 			});
 
 			matrix_dec_sub = FoaDecoderMatrix.newDiametric(subDirections, decSpecs.k);
-
-			// debug
-			matrix_dec_sub.postln;
 		});
 
 		// build the synthdef
@@ -250,7 +248,6 @@
 
 			// include shelf filter?
 			if( matrix_dec_sat.shelfFreq.isNumber, {
-				"adding shelf1".postln;
 				in = FoaPsychoShelf.ar(
 					in,
 					matrix_dec_sat.shelfFreq,
@@ -258,9 +255,6 @@
 					matrix_dec_sat.shelfK.at(1)
 				)
 			});
-						// debug: setting up subs
-			numSubChans.postln;
-			subOutbusNums.postln;
 
 			// near-field compensate, decode, remap to rig
 			satOutbusNums.do({ arg spkdex, i;
@@ -271,10 +265,6 @@
 					)
 				)
 			});
-
-			// debug: setting up subs
-			numSubChans.postln;
-			subOutbusNums.postln;
 
 			if(numSubChans.even, {
 				subOutbusNums.do({ arg spkdex, i;
@@ -358,12 +348,6 @@
 				* spkrGains[numSatChans..(numSatChans+numSubChans-1)].dbamp;
 				stereo_sig = In.ar(in_busnum+totalArrayChans);
 
-				// TODO remove
-				// in_sig = In.ar(in_bus, totalArrayChans); // totalArrayChans global
-				// sat_sig = in_sig[0..23];
-				// sub_sig = in_sig[24..27];
-				// stereo_sig = in_sig[28..29];
-
 				sats_delayed = DelayN.ar( sat_sig,
 					spkrDels.maxItem, spkrDels[0..(numSatChans-1)] );
 				subs_delayed = DelayN.ar( sub_sig,
@@ -371,19 +355,6 @@
 				// TODO no stereo delay/gain comp atm
 				outs = sats_delayed ++ subs_delayed ++ stereo_sig;
 				ReplaceOut.ar(out_busnum, outs * masterAmp);
-			}),
-
-			SynthDef(\patcher, { arg in_bus=0, out_bus=0;
-				Out.ar(out_bus,
-					In.ar(in_bus, 1)
-				)
-			}),
-
-			SynthDef(\clipMonitor, { arg in_bus=0, clipThresh = 0.977;
-				var sig, peak;
-				sig = In.ar(in_bus, 1);
-				peak = Peak.ar(sig, Impulse.kr(10));
-				SendReply.ar( peak > clipThresh, '/clip', [in_bus, peak] );
 			})
 		);
 
