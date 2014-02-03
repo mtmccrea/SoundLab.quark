@@ -1,10 +1,15 @@
 SoundLabRevamp {
+	// defaults set from SETUP.scd
+	// classvar <>numHardwareOuts, <>numHardwareIns, <>defaultDecoderName, <>defaultKernel, <>kernelDirPath;
+
 	// copyArgs
 	var <initSR, <loadGUI, <usingSLHW, <>usingKernels;
 
-	var <>xfade = 0.2, <>defaultDecoderName, <>defaultKernel, <>kernelDirPath, <>debug=true;
+	var <>xfade = 0.2,  <>debug=true;
 	var <globalAmp, <numSatChans, <numSubChans, <totalArrayChans, <numKernelChans;
-	var <numHardwareOuts, <numHardwareIns, <hwInCount, <hwInStart;
+	var <hwInCount, <hwInStart;
+	var <config;
+	var <numHardwareOuts, <numHardwareIns, <>defaultDecoderName, <>defaultKernel, <>kernelDirPath;
 
 	var <server, <gui, <curKernel, <stereoActive, <isMuted, <isAttenuated, <stateLoaded;
 	var <clipMonitoring, <curDecoderPatch, <nextDecoderPatch, rbtTryCnt;
@@ -29,21 +34,23 @@ SoundLabRevamp {
 	// jconvolver 2 (numHardwareOuts..numHardwareOuts*3-1)
 	// Thus SC will boot with s.option.numOutputBusChannels = numHarwareOuts * 3.
 	init {
+		config = thisProcess.interpreter.executeFile(File.realpath(this.class.filenameSymbol).dirname ++ "/CONFIG.scd");
 		// defaults
-		numHardwareOuts = 32;	// TODO import from config
-		numHardwareIns = 32;	// TODO import from config
-		kernelDirPath = PathName.new(Platform.resourceDir ++ "/sounds/SoundLabKernelsNew/");
-		defaultDecoderName = \Sphere_24ch_first_dual;  // synthDef name // TODO infer from defaults in config file
-		defaultKernel = \decor_700;
-		// NOTE: speaker order is assumed to be satellites, subs, stereo (optional)
-		// 		 see prLoadSynthDefs for how channel mappings are used
-		numSatChans = 24;
-		numSubChans = 4;
+		numHardwareOuts = config.numHardwareOuts;
+		numHardwareIns = config.numHardwareIns;
+		defaultDecoderName = config.defaultDecoderName;//\Sphere_24ch_first_dual;  // synthDef name
+		defaultKernel = config.defaultKernel; //\decor_700;
+		numSatChans = config.numSatChans;
+		numSubChans = config.numSubChans;
 		totalArrayChans = numSatChans+numSubChans;	// stereo not included
 		numKernelChans = totalArrayChans; 	// TODO: confirm this approach
 
+		// kernelDirPath = PathName.new(Platform.resourceDir ++ "/sounds/SoundLabKernelsNew/");
+		kernelDirPath = kernelDirPath ?? {
+			PathName.new(File.realpath(this.class.filenameSymbol).dirname ++ "/SoundLabKernels/") };
+
 		globalAmp = 0.dbamp;
-		stereoActive = false;
+		stereoActive = stereoActive ?? {true};
 		isMuted = false;
 		isAttenuated = false;
 		stateLoaded = false;
@@ -88,6 +95,7 @@ SoundLabRevamp {
 			server.options.sampleRate = initSR ?? 96000;
 			server.options.memSize = 8192 * 16;
 			server.options.numWireBufs = 64*8;
+			// TODO: setting this device doesn't seem to work
 			server.options.device = "JackRouter";
 			server.options.numOutputBusChannels = numHardwareOuts*3;
 			server.options.numInputBusChannels = numHardwareIns;
@@ -118,7 +126,6 @@ SoundLabRevamp {
 	// this happens after hardware is intitialized abd server is booted
 	prLoadServerSide { |argServer|
 		var loadCondition;
-
 		loadCondition = Condition(false);
 		// debug
 		postln("Loading Server Side ... loading synths, intializing channel counts, groups, and busses.");
@@ -170,8 +177,8 @@ SoundLabRevamp {
 				patcherGroup.play;
 				server.sync;
 				// debug
-				postf("\tmonitorGroup_ins group: %\n\tmonitorGroup_out group: %\n\tpatcherGroup group: %\n",
-					monitorGroup_ins.node, monitorGroup_outs.node, patcherGroup.node);
+				// postf("\tmonitorGroup_ins group: %\n\tmonitorGroup_out group: %\n\tpatcherGroup group: %\n",
+				// monitorGroup_ins.node, monitorGroup_outs.node, patcherGroup.node);
 
 				// PATCHERS
 				// patcherOutBus is only satellites + stereo, NO subs
@@ -187,7 +194,7 @@ SoundLabRevamp {
 					});
 				}).flat;
 				server.sync;
-				"passed".postln;
+
 				subPatcherSynths =  3.collect({|j|
 					var start_in_dex;
 					start_in_dex = j * numHardwareOuts;
@@ -211,13 +218,13 @@ SoundLabRevamp {
 				server.sync;
 
 				// debug
-				stereoPatcherSynths.do({|synth|synth.isPlaying.postln});
-				stereoPatcherSynths.do({|synth|synth.node.postln});
+				// stereoPatcherSynths.do({|synth|synth.isPlaying.postln});
+				// stereoPatcherSynths.do({|synth|synth.node.postln});
 				while(	{stereoPatcherSynths.collect({|synth|synth.isPlaying}).includes(false)},
 					{"waiting on stereo patchers".postln; 0.02.wait;}
 				);
 				0.2.wait; // TODO find a better solution here
-				if(stereoActive.not, {stereoPatcherSynths.do(_.pause)});
+				stereoActive.not.if{stereoPatcherSynths.do(_.pause)};
 
 				// CLIP MONITORS
 				// - initialized, not played yet
@@ -232,8 +239,11 @@ SoundLabRevamp {
 				server.sync; // to make sure stereo patchers have started
 
 				this.startNewSignalChain(
-					if(curDecoderPatch.notNil, {curDecoderPatch.decoderName}, {defaultDecoderName}),
-					curKernel ?? {defaultKernel},
+					if(curDecoderPatch.notNil,
+						{curDecoderPatch.decoderName}, // carried over from reboot/sr change
+						{defaultDecoderName}
+					),
+					if(usingKernels, {curKernel ?? {defaultKernel}},{nil}),
 					loadCondition
 				);
 				loadCondition.wait; "New Signal Chain Loaded".postln;
@@ -253,48 +263,53 @@ SoundLabRevamp {
 		fork {
 			// LOAD JCONVOLVER
 			if( kernelName.notNil, {
+				usingKernels = true;
 				"loading new jconvolver".postln;
 				this.loadJconvolver(kernelName, cond); // this sets nextjconvolver var
 			},{ cond.test_(true).signal });
 			cond.wait; "1 - Passed loading kernels".postln;
 			cond.test_(false); // reset the condition to hang when needed later
 
-			kernelName.notNil.if{
-				// LOAD DELAYS AND GAINS
-				"loading new dels and gains".postln;
-				this.prLoadDelDistGain(
-					// TODO: get rid of usingKernels var?
-					// nextjconvolver var set in loadJconvolver method
-					if( usingKernels and: nextjconvolver.notNil,
-						{nextjconvolver.kernelName},
-						{\default}
+			if( loadedDelDistGain.isNil // startup
+				or: nextjconvolver.notNil,  // kernel change
+				{
+					// LOAD DELAYS AND GAINS
+					"loading new dels and gains".postln;
+					this.prLoadDelDistGain(
+						// TODO: get rid of usingKernels var?
+						// nextjconvolver var set in loadJconvolver method above
+						if( usingKernels and: nextjconvolver.notNil,
+							{nextjconvolver.kernelName},
+							{\default}
+						),
+						cond
 					);
-				);
+					cond.wait; "advancing to load synthdefs".postln;
+					cond.test_(false);
 
-				// debug
-				if( (	nextjconvolver.notNil and:
-					( loadedDelDistGain == (nextjconvolver.kernelName++"_"++server.sampleRate).asSymbol )
-					).not,
-					{ warn("nextjconvolver kernel doesn't match the key that
-						sets the delays, distances and gains in the decoder synth");
-						nextjconvolver.free;
-						nextjconvolver = nil;
-					}
-				);
-			};
+					// debug
+					"nextjconvolver: ".post; nextjconvolver.postln;
+					// debug
+					nextjconvolver.notNil.if{
+						if( loadedDelDistGain != ((nextjconvolver.kernelName++"_"++server.sampleRate).asSymbol),
+							{ warn("nextjconvolver kernel doesn't match the key that
+								sets the delays, distances and gains in the decoder synth");
+								nextjconvolver.free;
+								nextjconvolver = nil;
+							}
+						);
+					};
 
+					// LOAD SYNTHDEFS
+					/*	speaker dels, dists, gains must be written before loading synthdefs
+					NOTE: this needs to happen for every new kernel being loaded */
+					"loading synthdefs".postln;
+					this.prLoadSynthDefs(cond);
 
-			// LOAD SYNTHDEFS
-			/*	speaker dels, dists, gains must be written before loading synthdefs
-				NOTE: this needs to happen for every new kernel being loaded */
-			if( loadedDelDistGain.isNil or: // no deldistgain yet loaded (startup)
-				nextjconvolver.notNil,		// new kernel, so update the synthdefs with new deldistgains
-				{ 	"loading synthdefs".postln;
-					this.prLoadSynthDefs(cond) },
-				{ cond.test_(true).signal } // no need to reload synths if no new kernel
-			);
-			cond.wait; "2 - SynthDefs loaded".postln;
-			cond.test_(false); // reset the condition to hang when needed later
+					cond.wait; "2 - SynthDefs loaded".postln;
+					cond.test_(false); // reset the condition to hang when needed later
+			});
+
 			server.sync; // sync to let all the synths load
 
 			// START DECODER
@@ -308,7 +323,6 @@ SoundLabRevamp {
 					};
 					"new decoder name: ".post; newDecName.postln;
 					if( newDecName.notNil, {
-						"starting decoder ".post; newDecName.postln;
 						this.startDecoder(newDecName, cond)
 						},{ warn(
 							"No decoder name provided and no current decoder name found -
@@ -328,7 +342,13 @@ SoundLabRevamp {
 				jconvinbus = nextjconvinbus;
 				nextjconvolver = nil;
 			};
-			nextDecoderPatch !? {curDecoderPatch = nextDecoderPatch};
+			nextDecoderPatch !? {
+				//debug
+				"setting curDecoderPatch".postln;
+				nextDecoderPatch.postln;
+
+				curDecoderPatch = nextDecoderPatch
+			};
 
 			completeCondition !? {completeCondition.test_(true).signal};
 		}
@@ -338,12 +358,12 @@ SoundLabRevamp {
 	prClearServerSide {
 		fork {
 			curDecoderPatch.free(xfade);
-			curDecoderPatch = nil;
+			// curDecoderPatch = nil; // removed so variable remains for reload/sr change
 			xfade.wait;
 			[ patcherGroup, monitorGroup_ins, monitorGroup_outs ].do(_.free);
 
 			jconvolver !? {jconvolver.free};
-			nextjconvolver !? {nextjconvolver.free};
+			nextjconvolver !? {nextjconvolver.free}; // ...just in case
 
 			stateLoaded = false;
 		}
@@ -354,7 +374,7 @@ SoundLabRevamp {
 		cond = Condition(false);
 		fork {
 			// debug
-			"starting decoder".postln;
+			postf("Starting decoder: % \n", newDecSynthName);
 
 			// select which of the 3 out groups to send decoder/correction to
 			new_decoutbus = if(usingKernels, {
@@ -385,11 +405,10 @@ SoundLabRevamp {
 			cond.wait;
 
 			// debug
-			"newDecoderPatch initialized: ".post; newDecoderPatch.postln;
+			postf("newDecoderPatch initialized, playing: % \n", newDecoderPatch.decoderName);
 
 			curDecoderPatch !? {curDecoderPatch.free(xfade: xfade)};
 			newDecoderPatch.play(xfade: xfade);
-
 			xfade.wait;
 			nextDecoderPatch = newDecoderPatch;
 			// TODO update changed \decoder message
@@ -416,8 +435,10 @@ SoundLabRevamp {
 		fork {
 			block { |break|
 				kernelDir_pn = this.prFindKernelDir(newKernel);
+				kernelDir_pn.postln;
 				kernelDir_pn ?? {
 					this.changed(\reportStatus, warn("Kernel name not found: "++newKernel));
+					jconvolver ?? {warn("No longer usingKernels"); usingKernels = false}; // if no kernel already loaded, not using kernels
 					break.();
 				};
 
@@ -481,6 +502,25 @@ SoundLabRevamp {
 	// -------- State Setters/Getters -----------------------------------
 	// ------------------------------------------------------------------
 
+	stereoRouting_ { |bool|
+		block({ |break|
+			(stereoActive == bool).if{ break.("stereo setting already current".warn) };
+			if( bool,
+				{
+					postln("enabling stereo from stereoRouting");
+					curDecoderPatch.decodersynth.in_busnum_(hwInStart+2);
+					stereoPatcherSynths.do(_.run);
+					stereoActive = true;
+				},{
+					postln("removing stereo from stereoRouting");
+					curDecoderPatch.decodersynth.in_busnum_(hwInStart);
+					stereoPatcherSynths.do(_.pause);
+					stereoActive = false;
+			});
+			this.changed(\stereo, bool);
+		});
+	}
+
 	mute { |bool = true|
 		if(bool,
 			{
@@ -541,6 +581,13 @@ SoundLabRevamp {
 		);
 	}
 
+	sampleRate_ { |newSR|
+		this.prClearServerSide;
+		if(usingSLHW,
+			{ slhw.startAudio(newSR) },{ this.prInitDefaultHW(newSR) }
+		)
+	}
+
 	sampleRate { if(usingSLHW, {^slhw.server.sampleRate}, {^server.sampleRate}) }
 
 	setNoKernel {
@@ -578,12 +625,18 @@ x.free
 s.scope
 s.meter
 
-
+// testing decoder/kernel switching
 l.decoderLib.synthdefs.do{|sd|sd.name.postln}
-
 l.startNewSignalChain(\Sphere_24ch_first_dual)
+l.startNewSignalChain(\Sphere_12ch_first_dual)
 l.startNewSignalChain(\Sphere_12ch_first_dual, kernelName: \decor)
 l.startNewSignalChain(\Sphere_24ch_first_dual, kernelName: \decor_700)
+
+// testing sample rate change
+l = SoundLabRevamp(48000, useSLHW:false, useKernels:false)
+l.startNewSignalChain(\Sphere_12ch_first_dual)
+l.sampleRate_(44100)
+l.sampleRate_(96000)
 
 
 x = {Out.ar(0, 4.collect{PinkNoise.ar * SinOsc.kr(rrand(3.0, 5.0).reciprocal).range(0, 0.35)})}.play

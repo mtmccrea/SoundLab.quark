@@ -17,7 +17,6 @@ SoundLabDecoderPatch {
 			server.sync; // TODO confirm server.sync works here (i.e. no fork in CTK group .play)
 
 			// debug
-			"server sync'd?".postln;
 			("building: "++soundlab.decoderLib[decoderName].synthdefname).postln;
 
 			// TODO it appears there's something wrong with the decoder synthDefs
@@ -25,20 +24,11 @@ SoundLabDecoderPatch {
 			decodersynth = soundlab.decoderLib[decoderName].note(addAction: \head, target: group)
 			.in_busnum_(inbusnum).out_busnum_(outbusnum);
 
-			// debug
-			"decoder synth'd".postln;
-
 			compsynth = soundlab.synthLib[\delay_gain_comp].note(
 				addAction: \tail, target: group)
 			.in_busnum_(outbusnum).out_busnum_(outbusnum).masterAmp_(soundlab.globalAmp); // uses ReplaceOut
 
-			// debug
-			"comp synth'd".postln;
-
 			loadCondition.test_(true).signal;
-
-			// debug
-			"signal'd".postln;
 		}
 	}
 
