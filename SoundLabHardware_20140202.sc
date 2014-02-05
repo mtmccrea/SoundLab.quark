@@ -9,6 +9,10 @@ a = SoundLabHardware.new;
 a.startAudio(96000);
 a.stopAudio;
 a.sampleRate_(44100); //also valid: 48000, 88200, 96000
+under osx(for test):
+l = SoundLabHardware.new(false, true, false, nil, nil, "jackdmp");
+l.startAudio;
+l.stopAudio
 */
 
 /*
@@ -20,11 +24,21 @@ Changelog....?
 2013.01.11
 -added Condition
 -updated notifications (.changed)
+
+2013.12.05
+-added fireface control
+	//fireface IDs
+	//000a3500c1da0056 //205
+	//000a35009caf3c69 //117
 */
 
 SoundLabHardware {
-	var <midiPortName = "External MIDI- MIDI 1", <cardNameIncludes = "RME";
-	var cardID, <sampleRate, <ins, <outs, midiPort, <server;
+	var useSupernova, fixAudioInputGoingToTheDecoder, <>useFireface;
+	var <midiPortName, <cardNameIncludes, jackPath;
+	var serverIns = 32, serverOuts = 128, numHwOutChToConnectTo = 32, numHwInChToConnectTo = 32;
+	// var firstOutput = 66, firstInput = 66;//0 for 117, 64 for 205, at 96k!
+	var whichMadiInput = 2, whichMadiOutput = 2; //nil for regular MADI, 0-2 for MADIFX
+	var cardID, <sampleRate, /*<ins, <outs, */midiPort, <server;
 	// var getCardID, setSR, initMIDI, sendSysex, startJack, stopJack, initAll, prStartServer;
 	var <audioIsRunning, parametersSetting;//bools for status
 	var updatingCondition, isUpdating;
@@ -35,15 +49,29 @@ SoundLabHardware {
 	var newJackName, newJackIns, newJackOuts, <jackPeriodSize;
 	var serverInputNameInJack;
 	var fixAudioIn;
+	var <dbusServerPid, <phantomState, firefaceID = "000a3500c1da0056"; //205: 000a3500c1da0056, 117: 000a35009caf3c69
 
 	//remmeber to use update notification at some point!!!!
 
-	*new {arg useSupernova = true, fixAudioInputGoingToTheDecoder = true;
+
+	*new {arg useSupernova = false, fixAudioInputGoingToTheDecoder = true, useFireface = true,
+		midiPortName = "External MIDI-MADIFXtest MIDI 1", // nil for no MIDI
+		cardNameIncludes = "RME", // nil for OSX
+		jackPath = "/usr/bin/jackd",
+		serverIns = 32, serverOuts = 128, numHwOutChToConnectTo = 32, numHwInChToConnectTo = 32;
 		// ^super.newCopyArgs(shellCommand, receiveAction, exitAction, id).init(false);
-		^super.new.init(useSupernova, fixAudioInputGoingToTheDecoder);
+		^super.newCopyArgs(useSupernova, fixAudioInputGoingToTheDecoder, useFireface, midiPortName, cardNameIncludes, jackPath, serverIns, serverOuts, numHwOutChToConnectTo, numHwInChToConnectTo).init;
 	}
 
-	init {arg useSupernova, fixAudioInputGoingToTheDecoder;
+	*killJack {
+		"killall -9 jackdbus".unixCmd;
+		"killall -9 jackd".unixCmd;
+	}
+
+	init {//arg useSupernova, fixAudioInputGoingToTheDecoder;
+		midiPortName.postln;
+		useFireface.postln;
+		this.dump;
 		//notification
 		this.changed(\updatingConfiguration, 0.0);
 		//set default synth
@@ -61,12 +89,17 @@ SoundLabHardware {
 		addWaitTime = 0;
 		jackWasStartedBySC = false;
 		fixAudioIn = fixAudioInputGoingToTheDecoder;
+		phantomState = 4.collect({false});
 		// clientsDictionary = Dictionary.new; //not here
 		//init hardware
 		this.prGetCardID;
 		this.prInitMIDI;
 		this.changed(\updatingConfiguration, 1.0);
+		if(cardNameIncludes.isNil, {
+			server.options.device_("JackRouter");//osx hack?
+		});
 		// this.changed(\audioIsRunning, false);
+		this.dump;
 	}
 
 	startAudio { arg newSR, periodSize = 256, periodNum = 2;
@@ -82,10 +115,14 @@ SoundLabHardware {
 				// if(audioIsRunning, {
 				//for now - do it always, just in case something was running before
 					"stopping audio first...".postln;
+
 					this.prStopAudioFunction;
 					// 6.wait;
 					// "------------- before wait".postln;
 					updatingCondition.wait;
+				// if(useFireface, { conditinal moved to class
+					this.initFireface; //init fireface here as well
+				// });
 					addWaitTime.wait;
 			// });
 				// "------------- after wait".postln;
@@ -114,6 +151,9 @@ SoundLabHardware {
 				addWaitTime.wait;
 				// "--before setting jack connections".postln;
 				this.prSetJackConnections;
+				//Fireface - phantom and Routing
+				this.setDefaultFfRouting;
+				this.recallFfPhantom;
 				this.changed(\updatingConfiguration, 0.9);
 				// "--before starting server".postln;
 				this.prStartServer;
@@ -132,7 +172,7 @@ SoundLabHardware {
 					//would make SC connect only to the first 16 outputs (needs appro
 				});*/
 				// clientsDictionary.add("PreSonus", [ins * 0.5, 0]);
-				this.prAddClient("PreSonus", [ins * 0.5, ins * 0.5], false); //ins, because outs is fake 32 for 48k
+				this.prAddClient("PreSonus", [32 * 0.5, 32 * 0.5], false); //ins, because outs is fake 32 for 48k
 				this.changed(\updatingConfiguration, 1.0);
 				// this.changed(\audioIsRunning, true);
 			});
@@ -149,10 +189,11 @@ SoundLabHardware {
 
 
 	stopAudio {
-		if(startRoutine.isPlaying, {
-			startRoutine.stop;
-		});
 		Routine.run({
+			if(startRoutine.isPlaying, {
+				startRoutine.stop;
+			});
+			1.wait;
 			this.prStopAudioFunction;
 		});
 	}
@@ -182,6 +223,8 @@ SoundLabHardware {
 		this.changed(\updatingConfiguration, 0.6);
 		this.audioIsRunning_(false);//moved here so jack knows we're stopping
 		this.prStopJack;
+		//clear Fireface
+		this.clearFireface;
 		// 1.wait;
 		updatingCondition.wait;
 		1.wait;//just to make sure everything's off
@@ -194,52 +237,70 @@ SoundLabHardware {
 	prGetCardID {/* arg cardNameIncludes = "RME";*/
 		//get card ID
 		var p, l, extractedID;
-		p = Pipe.new("cat /proc/asound/cards", "r");
-		l = p.getLine;
-		while({l.notNil}, {
-			//l.postln;
-			if(l.contains(cardNameIncludes), {
-				extractedID = l.split($ )[1];
-				//"l.split($ ): ".post; l.split($ ).postln;
-				//extractedID.postln;
-				if(extractedID.size > 0, { //use only lines, where there is something as the second argument
-					cardID = extractedID.asInteger;
-					l.postln; "cardID: ".post; cardID.postln;
-				});
+		postf("cardNameIncludes: %\n", cardNameIncludes);
+		if(cardNameIncludes.notNil, {
+			if(cardNameIncludes.isKindOf(SimpleNumber), {
+				cardID = cardNameIncludes;
+			}, {
+				p = Pipe.new("cat /proc/asound/cards", "r");
+				l = p.getLine;
+				while({l.notNil}, {
+					// l.postln;
+					if(l.contains(cardNameIncludes), {
+						extractedID = l.split($ )[1];
+						// "l.split($ ): ".post; l.split($ ).postln;
+						// extractedID.postln;
+						if(extractedID.size > 0, { //use only lines, where there is something as the second argument
+							cardID = extractedID.asInteger;
+							l.postln; "cardID: ".post; cardID.postln;
+						});
+					});
+					l = p.getLine;
+				});    // run until l = nil
+				p.close; // close the pipe
 			});
-			l = p.getLine;
-		});    // run until l = nil
-		p.close; // close the pipe
+		}, {
+			cardID = 0;
+		});
+		postf("cardID: %\n", cardID);
 	}
 
 	prInitMIDI {
+		"ini here".postln;
 		// init MIDI
-		MIDIClient.init;
-		// MIDIClient.destinations;
-		// MIDI INIT!!!!!! don't forget to connect.... blah
-		midiPort = MIDIOut.newByName(midiPortName, midiPortName);
-		midiPort.connect(midiPort.port);
+		if(midiPortName.notNil, {
+			"now ini here".postln;
+			MIDIClient.init;
+			// MIDIClient.destinations;
+			// MIDI INIT!!!!!! don't forget to connect.... blah
+			midiPort = MIDIOut.newByName(midiPortName, midiPortName);
+			postf("midiPort: %\n", midiPort);
+			try { midiPort.connect(midiPort.port); };
+		});
+		postf("midiPort: %\n", midiPort);
 	}
 
-	prSendSysex { arg midiDevice, data; // for DA-32
+	prSendSysex { arg midiDevice, data; // for DA-32 and DA-16
 		var sysexHeader, manufacturerID, modelID, bankOrDeviceID, messageType, eof;
 		var sysexCommand;
-		// these are taken from RME M-32 DA documentation
-		sysexHeader = 0xf0;
-		manufacturerID = [0x00, 0x20, 0x0d];
-		modelID = 0x32;
-		bankOrDeviceID = 0x7f; //0x7f addresses all devices... just to be sure.
-		messageType =  0x20; //this is to set values (0x10 to request, 0x30 for response)
-		eof = 0xf7; //end of the message
-		sysexCommand = Int8Array.newFrom(
-			sysexHeader.asArray ++ manufacturerID.asArray ++
-			modelID.asArray ++ bankOrDeviceID.asArray ++
-			messageType.asArray ++ data.asArray ++
-			eof.asArray
-		);
-		// sysexCommand.dump;
-		"sending SysEx: ".post; sysexCommand.postln;
-		midiDevice.sysex(sysexCommand);
+		if(midiPortName.notNil, {
+			// these are taken from RME M-32 DA documentation
+			sysexHeader = 0xf0;
+			manufacturerID = [0x00, 0x20, 0x0d];
+			modelID = 0x32;
+			bankOrDeviceID = 0x7f; //0x7f addresses all devices... just to be sure.
+			messageType =  0x20; //this is to set values (0x10 to request, 0x30 for response)
+			eof = 0xf7; //end of the message
+			sysexCommand = Int8Array.newFrom(
+				sysexHeader.asArray ++ manufacturerID.asArray ++
+				modelID.asArray ++ bankOrDeviceID.asArray ++
+				messageType.asArray ++ data.asArray ++
+				eof.asArray
+			);
+			// sysexCommand.dump;
+			"sending SysEx: ".post; sysexCommand.postln;
+			midiDevice.sysex(sysexCommand);
+		});
 	}
 	//setting clock on RME - trial and error...
 	/*
@@ -249,7 +310,7 @@ SoundLabHardware {
 	sendSysex.value(m, [0x01, 2r00010001]);//96k
 	*/
 
-	prStartJack { arg periodSize = 256, periodNum = 2, jackPath = "/usr/bin/jackd";
+	prStartJack { arg periodSize = 256, periodNum = 2;//, jackPath = "/usr/bin/jackd";
 		var cmd, options;
 		updatingCondition.test = false;
 /*		if("pidof jackd".unixCmdGetStdOut.size > 0, {
@@ -257,14 +318,20 @@ SoundLabHardware {
 			this.prStopJack;
 		});
 		while({"pidof jackd".unixCmdGetStdOut.size > 0}, {"waiting for jack to stop...".postln; 0.1.wait});*/
-		cmd = jackPath ++
-		" -R -dalsa -r"++sampleRate.asString++
+		cmd = "exec " ++ jackPath ++
+		" -R ";
+		if(cardNameIncludes.notNil, {
+			cmd = cmd ++ " -dalsa -H -dhw:"++cardID.asString; //assuming linux
+		}, {
+			cmd = cmd ++ " -dcoreaudio"; //assuming osx
+		});
+		cmd = cmd ++ " -r"++sampleRate.asString++
 		" -p"++periodSize.asString++
 		" -n"++periodNum.asString++
-		" -D -H -dhw:"++cardID.asString++
-		" -i"++ins.asString++
+		" -D";//++
+		// " -i"++ins.asString++ //needs to be exact as MADI expects, not needed?
 		// " -o"++outs.asString;
-		" -o"++ins.asString;
+		// " -o"++ins.asString; //needs to be exact as MADI expects, not needed?
 		"run jack command ".post; cmd.postln;
 		cmd.unixCmdGetStdOutThruOsc({|line|
 			"from jack: ".post; line.postln;
@@ -272,10 +339,12 @@ SoundLabHardware {
 			}, {
 				if(audioIsRunning, {
 					"Jack crashed, restarting!".warn;
+					startRoutine.stop;
+					// this.stopAudio;
 					"killall scsynth".unixCmd;
 					"killall supernova".unixCmd;
 					this.changed(\message, "Jack crashed, restarting!");
-					{this.startAudio;}.defer(1);//to give extra time
+					{this.startAudio;}.defer(5);//to give extra time
 					}, {
 						//when exits, signal routine
 						updatingCondition.test = true;
@@ -290,8 +359,9 @@ SoundLabHardware {
 	}
 
 	prStopJack {
+		"killall -9 jackd".unixCmd; //should be PID based....
 		if("pidof jackd".unixCmdGetStdOut.size > 0, {
-			// "killall -9 jackdbus".unixCmd;
+			"killall -9 jackdbus".unixCmd;
 			"killall -9 jackd".unixCmd;
 			if(jackWasStartedBySC, {
 				updatingCondition.test = false;
@@ -309,6 +379,18 @@ SoundLabHardware {
 		//use switch on first 8 characters from the line
 		switch(line.asString.copyRange(0, 7),
 			"configur", {
+				//when jack started up, signal routine
+				"oscpipe: jack started up!".postln;
+				jackWasStartedBySC = true;
+				{
+					updatingCondition.test = true;
+					updatingCondition.signal;
+				}.defer(1);// to give extra time
+
+				//and start netmanager
+				"jack_load netmanager".unixCmd;
+			},
+			"CoreAudi", { // for osx....
 				//when jack started up, signal routine
 				"oscpipe: jack started up!".postln;
 				jackWasStartedBySC = true;
@@ -403,11 +485,29 @@ SoundLabHardware {
 
 	prSetJackConnections {
 		//connect only as many sc outputs as jack outputs
-		"SC_JACK_DEFAULT_OUTPUTS".setenv("".ccatList(outs.collect({|inc| "system:playback_" ++ (inc + 1).asString})).replace(" ", "").replace("[", "").replace("]", "").drop(1));
-		//fix audio in
-		if((sampleRate > 48000) && fixAudioIn, {
-			"SC_JACK_DEFAULT_INPUTS".setenv("".ccatList(16.collect({|inc| "system:capture_" ++ (inc + 1).asString})).replace(" ", "").replace("[", "").replace("]", "").drop(1)); //connect only 16 ins so rme input doesn't get into the decoder
+		var numChannelsPerMADI, inOffset, outOffset;
+		if(sampleRate <= 48000, {
+			numChannelsPerMADI = 64;
+			}, {
+				numChannelsPerMADI = 32;
 		});
+		if(whichMadiInput.isNil, {
+			inOffset = 0
+			}, {
+				inOffset = (whichMadiInput * numChannelsPerMADI) + 2;
+		});
+		if(whichMadiOutput.isNil, {
+			outOffset = 0
+			}, {
+				outOffset = (whichMadiOutput * numChannelsPerMADI) + 2;
+		});
+
+		"SC_JACK_DEFAULT_OUTPUTS".setenv("".ccatList(numHwOutChToConnectTo.collect({|inc| "system:playback_" ++ (inc + 1 + outOffset).asString})).replace(" ", "").replace("[", "").replace("]", "").drop(1));
+		//fix audio in
+/*		if((sampleRate > 48000) && fixAudioIn, {
+			"SC_JACK_DEFAULT_INPUTS".setenv("".ccatList(16.collect({|inc| "system:capture_" ++ (inc + 1).asString})).replace(" ", "").replace("[", "").replace("]", "").drop(1)); //connect only 16 ins so rme input doesn't get into the decoder
+		});*/ //this was needed for 117 with Presonus
+		"SC_JACK_DEFAULT_INPUTS".setenv("".ccatList(numHwInChToConnectTo.collect({|inc| "system:capture_" ++ (inc + 1 + inOffset).asString})).replace(" ", "").replace("[", "").replace("]", "").drop(1))
 	}
 
 	prStartServer {
@@ -435,43 +535,48 @@ SoundLabHardware {
 
 	//set paramers for various samplerates - only when audio is NOT running
 	prSetSR {arg sr = 48000; //valid: 44100, 48000, 88200, 96000
-		var modeWord, srWord, modeByte, cmd1, cmd2, msgBack1, msgBack2;
+		var modeWord, srWord, modeByte, cmds, msgBack1, msgBack2;
+		cmds = Array.new;
 		("setting samplerate to " ++ sr).postln;
 		switch(sr,
 			44100, {
 				modeWord = "'Single'";
-				ins = 64;
+				// ins = 64;
 				// outs = 64;
-				outs = 32; //always 32, just in case - we don't have more converters anyway
+				// outs = 32; //always 32, just in case - we don't have more converters anyway
 				modeByte = 2r00000000;
 				srWord = "'44.1 kHz'";
 			},
 			48000, {
 				modeWord = "'Single'";
-				ins = 64;
+				// ins = 64;
 				// outs = 64;
-				outs = 32; //always 32, just in case - we don't have more converters anyway
+				// outs = 32; //always 32, just in case - we don't have more converters anyway
 				modeByte = 2r00010000;
 				srWord = "'48 kHz'";
 			},
 			88200, {
 				modeWord = "'Double'";
-				ins = 32;
-				outs = 32;
+				// ins = 32;
+				// outs = 32;
 				modeByte = 2r00000001;
 				srWord = "'88.2 kHz'";
 			},
 			96000, {
 				modeWord = "'Double'";//would be "'Quad'" for 176/192kHz
-				ins = 32;
-				outs = 32;
+				// ins = 32;
+				// outs = 32;
 				modeByte = 2r00010001;
 				srWord = "'96 kHz'";
 			}
 		);
 		// set commands for card parameters
-		cmd1 = "amixer -c " ++ cardID.asString ++ " sset 'Internal Clock' " ++ srWord;
-		cmd2 = "amixer -c " ++ cardID.asString ++ " sset 'MADI Speed Mode' " ++ modeWord;
+		// cmd1 = "amixer -c " ++ cardID.asString ++ " sset 'Internal Clock' " ++ srWord;
+		cmds = cmds.add("amixer -c " ++ cardID.asString ++ " sset 'Clock Selection' " ++ "'Word Clock'");
+		cmds = cmds.add("amixer -c " ++ cardID.asString ++ " sset 'Internal Clock' " ++ srWord);
+		cmds = cmds.add("amixer -c " ++ cardID.asString ++ " sset 'MADI Speed Mode' " ++ modeWord);
+		//add Clock Selection
+		//add WC Single speed?
 		if(modeWord.notNil,
 			{
 				updatingCondition.test = false;
@@ -480,18 +585,27 @@ SoundLabHardware {
 				this.prSendSysex(midiPort, [0x01, modeByte]);
 				// 0.1.wait; // to stabilize - propbably not needed... it's destabilized for some time anyway
 				// "before cmds".postln;
-				msgBack1 = cmd1.unixCmdGetStdOut; // set proper sample rate on madi
-				msgBack1.postln;
-				msgBack2 = cmd2.unixCmdGetStdOut; // set proper speed mode on madi
-				msgBack2.postln;
+				// msgBack1 = cmd1.unixCmdGetStdOut; // set proper sample rate on madi
+				// msgBack1.postln;
+				// msgBack2 = cmd2.unixCmdGetStdOut; // set proper speed mode on madi
+				// msgBack2.postln;
+				if(cardNameIncludes.notNil, {
+					cmds.postln;
+					cmds.do(_.unixCmd);
+				});//run commands only if card name provided -> assuming we're on linux
 				// "after cmds".postln;
 				// server params
 				// server.options.numOutputBusChannels = outs;
-				server.options.numOutputBusChannels = 128; //hardcoded, so we have extra to use with jconvolver
-				server.options.numInputBusChannels = ins;
-				server.options.numAudioBusChannels = (ins + outs) * 8;
+				server.options.numOutputBusChannels = serverOuts; //hardcoded, so we have extra to use with jconvolver
+				server.options.numInputBusChannels = serverIns;
+				server.options.numAudioBusChannels = (serverIns + serverOuts) * 8;
 				server.options.sampleRate = sampleRate;
-				6.wait;//wait for clocks to get in sync
+				server.options.numWireBufs = 512; //to make metering possible with many channels
+
+				//fireface here as well
+
+				6.wait;//wait for clocks to get in sync - not sure if we need that much...
+				this.setFfSampleRate(sampleRate);
 				updatingCondition.test = true;
 				updatingCondition.signal;
 				this.changed(\sampleRate, sampleRate);
@@ -513,6 +627,132 @@ SoundLabHardware {
 			});
 		}, {
 			^true;
+		});
+	}
+
+	//fireface
+	initFireface {
+		if(useFireface, {
+			// this.clearFireface;
+			"Starting ffado-dbus-server for Fireface".postln;
+			dbusServerPid = "exec ffado-dbus-server".unixCmd({|msg| "Dbus server finished".postln}); //needs to be run each time fireface disconnects
+			//so to be safe: record the pid of the process, and kill/restart it on each sampleRate change / audio restart, that way user can bring the device back if needed.
+			//also, set autoSync shortly afterwards here, so we don't have to remember
+			{this.setFfAutoSync(true)}.defer(2);
+		});
+	}
+
+	clearFireface {
+		if(dbusServerPid.notNil, {
+			"killing pid ".post; dbusServerPid.postln;
+			("killing pid " ++ dbusServerPid).postln;
+			("kill -9 " ++ dbusServerPid).unixCmd;
+		});
+	}
+
+	setFfMatrixGain {|inbus = 6 /*mic: 6-9*/, outbus = 12/*ADAT: 12-19(27)*/, gain = 1|
+		var dbusCmd, gainRaw;
+		if(useFireface, {
+			gainRaw = gain * 16384;
+			dbusCmd = "dbus-send --print-reply --dest=org.ffado.Control /org/ffado/Control/DeviceManager/" ++ firefaceID ++ "/Mixer/InputFaders org.ffado.Control.Element.MatrixMixer.setValue int32:" ++ outbus.asString ++ " int32:" ++ inbus.asString ++ " double:" ++ gainRaw.asString;
+			// dbusCmd.postln;
+			dbusCmd.unixCmd;
+		});
+	}
+
+	setDefaultFfRouting {
+		var micRoutings;
+		if(useFireface, {
+			micRoutings = [
+				[6, 12],
+				[7, 13],
+				[8, 14],
+				[9, 15],
+				[0, 16], //line
+				[1, 17],
+				[2, 18],
+				[3, 19]
+			];
+			26.do({|inInc|
+				26.do({|outInc|
+					if(micRoutings.any({|item| item == [inInc, outInc]}), {
+						this.setFfMatrixGain(inInc, outInc, 1); //full gain for predefined routings
+						}, {
+							this.setFfMatrixGain(inInc, outInc, 0); //mute others
+					});
+				});
+			});
+		});
+	}
+
+	ffPhantom {|channel = 0/*0-3*/, state /*bool or 0-1*/|
+		var phantomRawValue, rawValuesArray, dbusCmd;
+		if(useFireface, {
+			if(state.notNil, {
+				//store in the class
+				phantomState[channel] = state.asBoolean;
+
+				/*
+				mic 7 on -> 65537
+				mic 7 off -> 65536
+				mic 8 on -> 131074
+				mic 8 off -> 131072
+				mic 9 on -> 262148
+				mic 9 off -> 262144
+				mic 10 on -> 524296
+				mic 10 off -> 524288
+				*/
+				//method call sender=:1.88 -> dest=:1.89 serial=220138 path=/org/ffado/Control/DeviceManager/ ++ firefaceID ++ /Control/Phantom; interface=org.ffado.Control.Element.Discrete; member=setValue
+
+				// int32 524296
+
+				rawValuesArray = [
+					[65536, 65537],
+					[131072, 131074],
+					[262144, 262148],
+					[524288, 524296]
+				];
+				phantomRawValue = rawValuesArray[channel][state.asInteger];
+				// phantomRawValue.postln;
+				dbusCmd = "dbus-send --print-reply --dest=org.ffado.Control /org/ffado/Control/DeviceManager/" ++ firefaceID ++ "/Control/Phantom org.ffado.Control.Element.Discrete.setValue int32:" ++ phantomRawValue.asString;
+				// dbusCmd.postln;
+				dbusCmd.unixCmd;
+				^[channel, state];
+				}, {
+					^phantomState[channel];
+			});
+		});
+	}
+
+	recallFfPhantom {
+		if(useFireface, {
+			phantomState.do({|state, inc|
+				if(state.notNil, {
+					this.ffPhantom(inc, state);
+				});
+			});
+		});
+	}
+
+	setFfAutoSync {|val = true|
+		var dbusCmd;
+		if(useFireface, {
+			//method call sender=:1.88 -> dest=:1.89 serial=291689 path=/org/ffado/Control/DeviceManager/000a35009caf3c69/Control/Clock_mode; interface=org.ffado.Control.Element.Discrete; member=setValue
+			// int32 1
+			dbusCmd = "dbus-send --print-reply --dest=org.ffado.Control /org/ffado/Control/DeviceManager/" ++ firefaceID ++ "/Control/Clock_mode org.ffado.Control.Element.Discrete.setValue int32:" ++ val.asInteger.asString;
+			// dbusCmd.postln;
+			dbusCmd.unixCmd;
+		});
+	}
+
+	setFfSampleRate {|sr = 48000|
+		var dbusCmd;
+		if(useFireface, {
+			// cmd = "ffado-test SetSamplerate " ++ sr.asString;
+			// cmd.unixCmd; //now using dbus
+			dbusCmd = "dbus-send --print-reply --dest=org.ffado.Control /org/ffado/Control/DeviceManager/" ++ firefaceID ++ "/Control/sysclock_freq org.ffado.Control.Element.Discrete.setValue int32:" ++ sr.asInteger.asString;
+			// dbusCmd.postln;
+			dbusCmd.unixCmd;
 		});
 	}
 }

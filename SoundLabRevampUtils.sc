@@ -298,13 +298,9 @@
 	}
 
 	prInitSLHW { |initSR|
-		// debug
-		"initializing SLHW".postln;
-		// TODO take care of the number of ins and outs (HWIns/HWOuts*3) in SLHW
-		slhw = SoundLabHardware(useSupernova:false); // false to for SC, true for SN
-		debug.if{"SLHW initiated".postln};
-		slhw.startAudio(initSR, periodSize: 256);
-		debug.if{"SLHW audio started".postln};
+		slhw = SoundLabHardware.new(false,true,false,nil,nil,"/usr/local/bin/jackdmp",32,128);
+		slhw.postln;
+		slhw.startAudio(initSR, periodSize: 256, periodNum:1);
 		slhw.addDependant(this);
 	}
 
@@ -320,6 +316,8 @@
 		so = server.options;
 		so.sampleRate = initSR ?? 96000;
 		so.memSize = 8192 * 16;
+		so.numWireBufs = 64*8;
+		so.device = "JackRouter";
 		// numHardwareOuts*3 to allow fading between settings,
 		// routed to different JACK busses
 		so.numOutputBusChannels = numHardwareOuts * 3;

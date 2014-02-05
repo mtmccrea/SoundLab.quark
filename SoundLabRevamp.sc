@@ -34,7 +34,11 @@ SoundLabRevamp {
 	// jconvolver 2 (numHardwareOuts..numHardwareOuts*3-1)
 	// Thus SC will boot with s.option.numOutputBusChannels = numHarwareOuts * 3.
 	init {
-		config = thisProcess.interpreter.executeFile(File.realpath(this.class.filenameSymbol).dirname ++ "/CONFIG.scd");
+
+		File.use( File.realpath(this.class.filenameSymbol).dirname ++ "/CONFIG.scd", "r", { |f|
+			config = f.readAllString.interpret;
+		});
+		// config = thisProcess.interpreter.executeFile(File.realpath(this.class.filenameSymbol).dirname ++ "/CONFIG.scd");
 		// defaults
 		numHardwareOuts = config.numHardwareOuts;
 		numHardwareIns = config.numHardwareIns;
@@ -79,48 +83,6 @@ SoundLabRevamp {
 			{ this.prInitSLHW(initSR)},
 			{ this.prInitDefaultHW(initSR) }
 		);
-	}
-
-	prInitSLHW { |initSR|
-		slhw = SoundLabHardware.new(false); // false to for SC, true for SN
-		debug.if{"SLHW initiated".postln};
-		slhw.startAudio(initSR, periodSize: 256);
-		debug.if{"SLHW audio started".postln};
-		slhw.addDependant(this);
-	}
-
-	prInitDefaultHW { |initSR|
-		fork {
-			server = server ?? Server.default;
-			server.options.sampleRate = initSR ?? 96000;
-			server.options.memSize = 8192 * 16;
-			server.options.numWireBufs = 64*8;
-			// TODO: setting this device doesn't seem to work
-			server.options.device = "JackRouter";
-			server.options.numOutputBusChannels = numHardwareOuts*3;
-			server.options.numInputBusChannels = numHardwareIns;
-
-			if(server.serverRunning, {server.quit});
-			"REBOOTING".postln;
-			0.5.wait;
-
-			// the following will otherwise be called from update: \audioIsRunning
-			server.waitForBoot({
-				rbtTryCnt = rbtTryCnt+1;
-				if( server.sampleRate == initSR, // in case sample rate isn't set correctly the first time (SC bug)
-					{
-						rbtTryCnt = 0;
-						this.prLoadServerSide(server);
-					},{
-						"reboot sample rate doesn't match requested, retrying...".postln;
-						if(rbtTryCnt < 3,
-							{ this.prInitDefaultHW(initSR) }, // call self
-							{"Error trying to change the sample rate after 3 tries!".warn}
-						)
-					}
-				)
-			});
-		}
 	}
 
 	// this happens after hardware is intitialized abd server is booted
@@ -598,6 +560,28 @@ SoundLabRevamp {
 		nextjconvolver !? {nextjconvolver.free; nextjconvolver = nil;}
 	}
 
+		// responding to changes in SoundLabHardware
+	update {
+		| who, what ... args |
+		if( who == slhw, {	// we're only paying attention to one thing, but just in case we check to see what it is
+			switch ( what,
+				\audioIsRunning, {
+					switch(args[0],
+						true, {
+							server = slhw.server ?? {warn("loading default server"); Server.default;};
+							if(stateLoaded.not, {this.prLoadServerSide(server)})
+						},
+						false, { "Audio stopped running in hardware.".postln }
+					)
+				},
+				\stoppingAudio, {
+					this.prClearServerSide;
+				}
+			)
+		})
+	}
+
+
 	cleanup  {
 		[clipListener, reloadGUIListener].do(_.free);
 		gui !? {gui.cleanup};
@@ -639,6 +623,9 @@ l.sampleRate_(44100)
 l.sampleRate_(96000)
 
 
+// testing slhw
+l = SoundLabRevamp(48000, useSLHW:true, useKernels:true)
+
 x = {Out.ar(0, 4.collect{PinkNoise.ar * SinOsc.kr(rrand(3.0, 5.0).reciprocal).range(0, 0.35)})}.play
 
 
@@ -651,4 +638,9 @@ l.jconvolver.free
 l.gui.buildControls
 l.kernelDict
 
+q = SoundLabHardware.new(useFireface:false,midiPortName:nil,cardNameIncludes:nil,jackPath:"/usr/local/bin/jackdmp");
+q.dump
+q.startAudio(periodNum: 1)
+q.stopAudio
 s.scope(2,3)
+"/usr/local/bin/jackdmp -R  -dcoreaudio -r96000 -p256 -n1 -D".unixCmd
