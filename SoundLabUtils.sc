@@ -112,15 +112,20 @@
 				compDict.gains.includesKey(key).not, {
 					"kernel name is default or otherwise wasn't found in
 					distances, delays or gains lists".postln;
-					// this.setNoKernel;
 					key = \default;
 			});
+
+			// debug
+			("now setting del dist gains to key: "++key).postln;
 
 			spkrDists = compDict.distances.at(key);
 			spkrDels = compDict.delays.at(key);
 			spkrGains = compDict.gains.at(key);
 
-			debug.if{ this.prCheckArrayData };
+			// debug
+			("del dist gains have been set to to key: "++key).postln;
+
+			this.prCheckArrayData;
 			("delays, gains, distances loaded for:" ++ key).postln;
 			loadedDelDistGain = key;
 			completeCondition !? {completeCondition.test_(true).signal};
@@ -145,6 +150,7 @@
 				3, spkrDirs[busnum]     // 3D
 			);
 		});
+
 		matrix_dec_sat = FoaDecoderMatrix.newDiametric(satDirections, decSpecs.k);
 
 		// debug
@@ -159,8 +165,18 @@
 				spkrDirs[busnum][0]  // subs always 2D
 			});
 
-			matrix_dec_sub = FoaDecoderMatrix.newDiametric(subDirections, decSpecs.k);
+			// debug
+			subDirections.postln;
+
+			matrix_dec_sub = (subDirections.size > 1).if(
+				{ "building diametric".postln; FoaDecoderMatrix.newDiametric(subDirections, decSpecs.k) },
+				// stereo decoder for 2 subs, symmetrical across x axis, cardioid decode
+				{ "building stereo".postln; FoaDecoderMatrix.newStereo(subDirections[0], 0.5) }
+			)
 		});
+
+		// debug
+		matrix_dec_sub.postln;
 
 		// build the synthdef
 		decSynthDef = SynthDef( decSpecs.synthdefName, {
@@ -298,9 +314,31 @@
 	}
 
 	prInitSLHW { |initSR|
-		slhw = SoundLabHardware.new(false,true,false,nil,nil,"/usr/local/bin/jackdmp",32,128);
+		var passArgs;
+		// for passing args to SLHW with keyword args
+		passArgs = [
+			config.fixAudioInputGoingToTheDecoder,
+			config.useFireface,
+			config.midiPortName,
+			config.cardNameIncludes,
+			config.jackPath,
+			config.hwPeriodSize,
+			config.hwPeriodNum
+		];
+		//for linux
+		slhw = SoundLabHardware.new(
+			fixAudioInputGoingToTheDecoder: passArgs[0],
+			useFireface: passArgs[1],
+			midiPortName: passArgs[2],
+			cardNameIncludes: passArgs[3],
+			jackPath: passArgs[4],
+			serverIns: numHardwareIns, serverOuts: numHardwareOuts * 3,
+			numHwOutChToConnectTo: numHardwareOuts, numHwInChToConnectTo: numHardwareIns
+		);
+		//for osx
+		// slhw = SoundLabHardware.new(false,true,false,nil,nil,"/usr/local/bin/jackdmp",32,128);
 		slhw.postln;
-		slhw.startAudio(initSR, periodSize: 256, periodNum:1);
+		slhw.startAudio(initSR, periodSize: passArgs[5], periodNum:passArgs[6]);
 		slhw.addDependant(this);
 	}
 
@@ -381,13 +419,26 @@
 
 		// diagnostics for testing
 	prCheckArrayData {
+		// debug
+		"checking array data".postln;
+		[
+					"these should equal numSatChans + numSubChans: "++ (numSatChans+numSubChans),
+					spkrAzims.size,
+					spkrElevs.size,
+					spkrDists.size,
+					spkrDels.size,
+					spkrGains.size,
+					spkrDirs.size,
+					// spkrOppDict.size,
+				].do(_.postln);
+
 		if (
 			spkrAzims.size == spkrElevs.size and:
 			spkrElevs.size == spkrDists.size and:
 			spkrDists.size == spkrDels.size and:
 			spkrDels.size == spkrGains.size and:
-			spkrGains.size == totalArrayChans and:
-			spkrOppDict.size == spkrDirs.size,
+			spkrGains.size == totalArrayChans,
+			// and: spkrOppDict.size == spkrDirs.size,
 			{
 				"OK: array sizes of rig dimensions match".postln;
 			},{
@@ -400,7 +451,7 @@
 					spkrDels.size,
 					spkrGains.size,
 					spkrDirs.size,
-					spkrOppDict.size,
+					// spkrOppDict.size,
 				].do(_.postln);
 			}
 		);

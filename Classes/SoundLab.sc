@@ -9,7 +9,7 @@ SoundLab {
 	var <globalAmp, <numSatChans, <numSubChans, <totalArrayChans, <numKernelChans;
 	var <hwInCount, <hwInStart;
 	var <config;
-	var <numHardwareOuts, <numHardwareIns, <>defaultDecoderName, <>defaultKernel, <>kernelDirPath;
+	var <numHardwareOuts, <numHardwareIns, <stereoChanIndex, <>defaultDecoderName, <>defaultKernel, <>kernelDirPath;
 
 	var <server, <gui, <curKernel, <stereoActive, <isMuted, <isAttenuated, <stateLoaded;
 	var <clipMonitoring, <curDecoderPatch, <nextDecoderPatch, rbtTryCnt;
@@ -24,7 +24,7 @@ SoundLab {
 	var <decoderLib, <synthLib, <loadedDelDistGain;
 	var <slhw;
 
-	*new { |initSR=96000, loadGUI=true, useSLHW=true, useKernels=true|
+	*new { |initSR=96000, loadGUI=false, useSLHW=true, useKernels=true|
 		^super.newCopyArgs(initSR, loadGUI, useSLHW, useKernels).init;
 	}
 
@@ -44,6 +44,7 @@ SoundLab {
 		numHardwareIns = config.numHardwareIns;
 		defaultDecoderName = config.defaultDecoderName;//\Sphere_24ch_first_dual;  // synthDef name
 		defaultKernel = config.defaultKernel; //\decor_700;
+		stereoChanIndex = config.stereoChanIndex;
 		numSatChans = config.numSatChans;
 		numSubChans = config.numSubChans;
 		totalArrayChans = numSatChans+numSubChans;	// stereo not included
@@ -174,7 +175,8 @@ SoundLab {
 				stereoPatcherSynths = 2.collect({|i|
 					patcherDef.note( target: patcherGroup )
 					.in_bus_(hwInStart+i)
-					.out_bus_(numSatChans+numSubChans+i) // atm stereo always goes to first set of outs
+					.out_bus_(stereoChanIndex[i])
+					//.out_bus_(numSatChans+numSubChans+i) // atm stereo always goes to first set of outs
 					.play
 				});
 				server.sync;
@@ -365,18 +367,20 @@ SoundLab {
 				loadCondition: cond				// finishCondition
 			);
 			cond.wait;
+			// if initializing SoundLabDecoderPatch fails, decoderName won't be set
+			newDecoderPatch.decoderName !? {
+				// debug
+				postf("newDecoderPatch initialized, playing: % \n", newDecoderPatch.decoderName);
 
-			// debug
-			postf("newDecoderPatch initialized, playing: % \n", newDecoderPatch.decoderName);
-
-			curDecoderPatch !? {curDecoderPatch.free(xfade: xfade)};
-			newDecoderPatch.play(xfade: xfade);
-			xfade.wait;
-			nextDecoderPatch = newDecoderPatch;
-			// TODO update changed \decoder message
-			this.changed(\decoder,
-				decAttributes.select({|attDict| attDict.synthdefName == newDecSynthName.asSymbol})
-			);
+				curDecoderPatch !? {curDecoderPatch.free(xfade: xfade)};
+				newDecoderPatch.play(xfade: xfade);
+				xfade.wait;
+				nextDecoderPatch = newDecoderPatch;
+				// TODO update changed \decoder message
+				this.changed(\decoder,
+					decAttributes.select({|attDict| attDict.synthdefName == newDecSynthName.asSymbol})
+				);
+			};
 			completeCondition !? {completeCondition.test_(true).signal};
 
 			// TODO update decInfo variable with new decoder attributes
@@ -428,8 +432,8 @@ SoundLab {
 
 				"Generating jconvolver configuration file...".postln;
 				// for osx
-				Jconvolver.jackScOutNameDefault = "scsynth:out";
-				Jconvolver.executablePath_("/usr/local/bin/jconvolver");
+				// Jconvolver.jackScOutNameDefault = "scsynth:out";
+				// Jconvolver.executablePath_("/usr/local/bin/jconvolver");
 
 				nextjconvinbus = if( jconvinbus.notNil,
 					{(jconvinbus + numHardwareOuts).wrap(1, numHardwareOuts*2)}, // replacing another instance
@@ -587,6 +591,7 @@ SoundLab {
 		gui !? {gui.cleanup};
 		slhw !? {slhw.removeDependant(this)};
 		this.prClearServerSide; 			// frees jconvs
+		slhw !? {slhw.stopAudio};
 	}
 
 	free { this.cleanup }
@@ -619,12 +624,16 @@ l.startNewSignalChain(\Sphere_24ch_first_dual, kernelName: \decor_700)
 // testing sample rate change
 l = SoundLab(48000, useSLHW:false, useKernels:false)
 l.startNewSignalChain(\Sphere_12ch_first_dual)
+l.startNewSignalChain(\Dodec_first_dual)
+l.startNewSignalChain(\Quad_Long_first_dual)
+l.startNewSignalChain(\Hex_first_dual)
+
 l.sampleRate_(44100)
 l.sampleRate_(96000)
 
 
 // testing slhw
-l = SoundLab(48000, useSLHW:true, useKernels:true)
+l = SoundLab(48000, useSLHW:false, useKernels:false)
 
 x = {Out.ar(0, 4.collect{PinkNoise.ar * SinOsc.kr(rrand(3.0, 5.0).reciprocal).range(0, 0.35)})}.play
 

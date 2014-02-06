@@ -69,8 +69,8 @@ SoundLabHardware {
 	}
 
 	init {//arg useSupernova, fixAudioInputGoingToTheDecoder;
-		midiPortName.postln;
-		useFireface.postln;
+		// midiPortName.postln;
+		// useFireface.postln;
 		this.dump;
 		//notification
 		this.changed(\updatingConfiguration, 0.0);
@@ -99,7 +99,6 @@ SoundLabHardware {
 			server.options.device_("JackRouter");//osx hack?
 		});
 		// this.changed(\audioIsRunning, false);
-		this.dump;
 	}
 
 	startAudio { arg newSR, periodSize = 256, periodNum = 2;
@@ -601,6 +600,7 @@ SoundLabHardware {
 				server.options.numAudioBusChannels = (serverIns + serverOuts) * 8;
 				server.options.sampleRate = sampleRate;
 				server.options.numWireBufs = 512; //to make metering possible with many channels
+				server.options.memSize = 8192 * 16;
 
 				//fireface here as well
 

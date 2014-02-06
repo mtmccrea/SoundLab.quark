@@ -8,6 +8,14 @@ IdentityDictionary(know: true)
 .put(\numSubChans, 			4)
 .put(\defaultDecoderName,	\Sphere_24ch_first_dual)
 .put(\defaultKernel,		\decor_700)
+.put(\stereoChanIndex,		[27, 28])
+// SoundLabHardware settings
+// SoundLabHardware settings
+.put(\useFireface, 			false) //true)
+.put(\midiPortName,			nil) //"External MIDI-MADIFXtest MIDI 1") // nil for no MIDI
+.put(\cardNameIncludes,		nil) //"RME") // nil for OSX
+.put(\jackPath,				"/usr/local/bin/jackdmp") //"/usr/bin/jackd") //"/usr/local/bin/jackdmp" for osx
+.put(\fixAudioInputGoingToTheDecoder, true)
 
 // speaker order is assumed to be satellites, subs, stereo (optional)
 // see prLoadSynthDefs for how channel mappings are used
@@ -56,6 +64,8 @@ IdentityDictionary(know: true)
 		0.0, 0.0, 0.0, 0.0;	// subs
 	].degrad
 )
+// each speaker channel and it's opposing channel, alternating
+// Array size must equal numDiametricPairsIncludingSubs * 2
 .put(\spkrOppDict,
 	IdentityDictionary.new(know:true).putPairs([
 			// each speaker channel and it's opposing channel, alternating

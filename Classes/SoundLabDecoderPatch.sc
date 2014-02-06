@@ -9,25 +9,28 @@ SoundLabDecoderPatch {
 
 	init {
 		fork {
-			// debug
-			"initializing SoundLabDecoderPatch".postln;
+			block { |break|
+				// debug
+				"initializing SoundLabDecoderPatch".postln;
 
-			server = soundlab.server;
-			group = CtkGroup.play(addAction: \before, target: soundlab.patcherGroup, server: server);
-			server.sync; // TODO confirm server.sync works here (i.e. no fork in CTK group .play)
+				server = soundlab.server;
+				group = CtkGroup.play(addAction: \before, target: soundlab.patcherGroup, server: server);
+				server.sync; // TODO confirm server.sync works here (i.e. no fork in CTK group .play)
 
-			// debug
-			("building: "++soundlab.decoderLib[decoderName].synthdefname).postln;
+				soundlab.decoderLib[decoderName] ?? {"decoder not found in decoderLib!!!".warn; break.()};
+				// debug
+				("building: "++soundlab.decoderLib[decoderName].synthdefname).postln;
 
-			// TODO it appears there's something wrong with the decoder synthDefs
-			// likely in the way they're built...
-			decodersynth = soundlab.decoderLib[decoderName].note(addAction: \head, target: group)
-			.in_busnum_(inbusnum).out_busnum_(outbusnum);
+				// TODO it appears there's something wrong with the decoder synthDefs
+				// likely in the way they're built...
+				decodersynth = soundlab.decoderLib[decoderName].note(addAction: \head, target: group)
+				.in_busnum_(inbusnum).out_busnum_(outbusnum);
 
-			compsynth = soundlab.synthLib[\delay_gain_comp].note(
-				addAction: \tail, target: group)
-			.in_busnum_(outbusnum).out_busnum_(outbusnum).masterAmp_(soundlab.globalAmp); // uses ReplaceOut
+				compsynth = soundlab.synthLib[\delay_gain_comp].note(
+					addAction: \tail, target: group)
+				.in_busnum_(outbusnum).out_busnum_(outbusnum).masterAmp_(soundlab.globalAmp); // uses ReplaceOut
 
+			};
 			loadCondition.test_(true).signal;
 		}
 	}

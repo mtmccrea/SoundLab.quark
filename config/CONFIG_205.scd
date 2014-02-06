@@ -1,83 +1,104 @@
-// setup
-"SETUP RAAAAAAAAAAAAAAAAAAAM".postln;
+// setup - 205
+/* Rig Measurements
+// distances
+d = [3.111, 3.625, 3.38, 2.94, 3.308, 3.625, 3.045, 3.610, 3.482, 2.920, 3.335, 3.619, 4.107, 3.907, 3.150, 3.726, 3.382, 3.679, 2.65]
+d.size
+~delays = (d - d.minItem)/344
+
+// measured gains
+g = [ 79.4, 79.7, 77.8, 79.2, 78.1, 77.4, 78.8, 78.3, 77.2, 78.8, 78.1, 78.8, 77.0, 78.6, 77.4, 76.9, 76.1, 79, 80.7]
+// target the average gain
+~gains = (g - g.mean).neg // .neg for db gain applied
+[ -1.121052631579, -1.421052631579, 0.47894736842105, -0.92105263157896, 0.17894736842105, 0.87894736842104, -0.52105263157895, -0.021052631578954, 1.078947368421, -0.52105263157895, 0.17894736842105, -0.52105263157895, 1.278947368421, -0.32105263157895, 0.87894736842104, 1.378947368421, 2.178947368421, -0.72105263157896, -2.421052631579 ].neg
+
+*/
+
+"CONFIG Loaded".postln;
 
 IdentityDictionary(know: true)
 .put(\numHardwareOuts, 		32)
 .put(\numHardwareIns, 		32)
-.put(\numSatChans,			24)
-.put(\numSubChans, 			4)
-.put(\defaultDecoderName,	\Sphere_24ch_first_dual)
+.put(\numSatChans,			19)
+.put(\numSubChans, 			2)
+.put(\defaultDecoderName,	\Dodec_first_dual)
 .put(\defaultKernel,		\decor_700)
+.put(\stereoChanIndex,		[11, 1])
+// SoundLabHardware settings
+.put(\useFireface, 			false) //true)
+.put(\midiPortName,			nil) //"External MIDI-MADIFXtest MIDI 1") // nil for no MIDI
+.put(\cardNameIncludes,		nil) //"RME") // nil for OSX
+.put(\jackPath,				"/usr/local/bin/jackdmp") //"/usr/bin/jackd") //"/usr/local/bin/jackdmp" for osx
+.put(\fixAudioInputGoingToTheDecoder, true)
+.put(\hwPeriodSize, 		256)
+.put(\hwPeriodNum,			1)
 
 // speaker order is assumed to be satellites, subs, stereo (optional)
 // Array size must equal \numSatChans + \numSubChans
 // see prLoadSynthDefs for how channel mappings are used
 .put(\defaultSpkrDistances,
 	[
-		1.733, 1.774, 1.682,
-		2.699, 2.755, 2.593, 2.568, 2.701, 2.553,
-		2.324, 2.763, 2.784, 2.101, 2.774, 2.790,
-		2.869, 2.940, 3.210, 2.950, 2.915, 3.051,
-		2.244, 2.294, 2.296,
-		3.048, 3.038, 3.046, 3.049 // subs
+		3.111, 3.625, 3.38, 2.94, 3.308, 3.625,
+		3.045, 3.610, 3.482, 2.920, 3.335, 3.619,
+		4.107, 3.907, 3.150, 3.726, 3.382, 3.679, 2.65,
+		//subs
+		2.94, 2.920
 	]
 )
 .put(\defaultSpkrGainsDB,
 	[
-		2.9, 3, 4.3,
-		2.1, 1.5, 2.1, 1.9, 2, 2.5,
-		3.2, 0.9, 0, 0.9, 0.3, 0.8,
-		1.2, 0.9, 0.4, 0.3, 0, 0.6,
-		1.9, 1.2, 1.3,
-		0, 6, 6, 5 // subs
-	].neg
+		-1.121052631579, -1.421052631579, 0.47894736842105,
+		-0.92105263157896, 0.17894736842105, 0.87894736842104,
+		-0.52105263157895, -0.021052631578954, 1.078947368421,
+		-0.52105263157895, 0.17894736842105, -0.52105263157895,
+		1.278947368421, -0.32105263157895, 0.87894736842104,
+		1.378947368421, 2.178947368421, -0.72105263157896,
+		-2.421052631579
+		// subs
+		0, 0
+	]
 )
-.put(\spkrAzimuthsRad,
-	[
-		60, 300, 180, 				// floor
-		37, 324, 270, 220, 141, 90,	// lower
-		0, 300, 240, 180, 120, 60,	// median
-		40, 321, 271, 217, 144, 91,	// upper
-		0, 240, 120,				// ceiling
-		0, 270, 180, 90           	// subs
-	].degrad
+.put(\spkrAzimuthsRad, (
+	Array.series(12, 360, -30)
+	// upper ring
+	++[39.3,323.4,278.3,204.2,159.3,84.2]
+	// overhead
+	++[0]
+	//subs
+	++[90, 270]
+	).degrad
 )
-.put(\spkrElevationsRad,
-	[
-		// [-51.9, -50.9, -54.8], // to LF driver
-		-53.7, -53.7, -53.7,
-		// [-28.7, -28.5, -29.2, -30.7, -29.2, -30.2],
-		-30.0, -30.0, -30.0, -30.0, -30.0, -30.0,
-		0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-		// [ 31.3,  30.7,  30.2,  31.2,  31.4,  30.6],
-		30.0, 30.0, 30.0, 30.0, 30.0, 30.0,
-		// [ 53.8, 52.7, 52.7],
-		53.7, 53.7, 53.7,
-		// [-26.7, -26.9, -26.8, -26.4]
-		0.0, 0.0, 0.0, 0.0;	// subs
-	].degrad
+.put(\spkrElevationsRad, (
+	12.collect({0})
+	// upper ring
+	++[23,42.6,23,42.6,23,42.6] //approx
+	// overhead
+	++[90]
+	//subs
+	++[0, 0]
+	).degrad
 )
 // each speaker channel and it's opposing channel, alternating
-// Array size must equal (\numSatChans + \numSubChans) * 2
+// Array size must equal numDiametricPairsIncludingSubs * 2
 .put(\spkrOppDict,
 	IdentityDictionary.new(know:true).putPairs([
+		0, 6, 6, 0,
+		1,7,7,1,
+		2,8,8,2,
+		3,9,9,3,
+		4,10,10,4,
+		5,11,11,5,
 
-			0, 22, 22, 0,
-			1, 23, 23, 1,
-			2, 21, 21, 2,
-			3, 18, 18, 3,
-			4, 19, 19, 4,
-			5, 20, 20, 5,
-			6, 15, 15, 6,
-			7, 16, 16, 7,
-			8, 17, 17, 8,
-			9, 12, 12, 9,
-			10, 13, 13, 10,
-			11, 14, 14, 11,
-			// subs
-			24, 26, 26, 24,
-			25, 27, 27, 25
-		])
+		/*// dummy values
+		12,19,19,12,
+		13,18,18,13,
+		14,17,17,14,
+		15,16,16,15,
+		20,21,21,20,
+		22,23,23,22,*/
+
+		// subs
+		19, 20, 20, 19
+	])
 )
 
 /* --decoder attributes-- */
@@ -94,16 +115,16 @@ IdentityDictionary(know: true)
 .put(\decAttributeList,
 	[
 		/* --ambisonic decoders-- */
-		[\Sphere_24ch,	\diametric,	\first,	'dual',	3,	(0..11),	4	],
-		[\Sphere_18ch,	\diametric,	\first,	'dual',	3,	(3..11),	4	],
-		[\Sphere_12ch,	\diametric,	\first,	'dual',	3,	(3..8),		4	],
-		[\Sphere_6ch,	\diametric,	\first,	'dual',	3,	[8, 9, 20],	4	],
-		[\Hex,			\diametric,	\first,	'dual',	2,	(9..11),	4	],
+		[\Dodec,	\diametric,	\first,	'dual',	2,	(0..5),		4	],
+		[\Hex,		\diametric,	\first,	'dual',	2,	[0,2,4],	4	],
+		[\Quad_Long,\diametric,	\first,	'dual',	2,	[11,1],		4	],
 
 		/* --discrete channel routing-- */
 		// thru routing assumes contiguous channels, starting at arrayOutIndices.first
-		[\Thru_All,		\discrete,	nil,	nil,	2,	(0..23),	24	],
-		[\Thru_Hex,		\discrete,	nil,	nil,	2,	(9..11),	6	]
+		[\Thru_All,			\discrete,	nil,	nil,	2,	(0..18),				24	],
+		[\Thru_Hex,			\discrete,	nil,	nil,	2,	Array.series(6, 0, 2),	6	],
+		[\Thru_Quad_Square,	\discrete,	nil,	nil,	2,	Array.series(4, 0, 3),	4	],
+		[\Thru_Quad_Rect,	\discrete,	nil,	nil,	2,	[11, 1, 4, 6],			4	]
 	]
 )
 ;
