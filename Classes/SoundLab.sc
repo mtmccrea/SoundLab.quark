@@ -1,4 +1,4 @@
-SoundLabRevamp {
+SoundLab {
 	// defaults set from SETUP.scd
 	// classvar <>numHardwareOuts, <>numHardwareIns, <>defaultDecoderName, <>defaultKernel, <>kernelDirPath;
 
@@ -596,7 +596,7 @@ SoundLabRevamp {
 s.options.device_("JackRouter")
 s.options.numWireBufs_(64*8)
 // make sure Jack has at least 96 virtual ins and outs
-l = SoundLabRevamp(48000, useSLHW:false, useKernels:true)
+l = SoundLab(48000, useSLHW:false, useKernels:true)
 s.scope(2)
 "~~~~~~".postln
 l.decoderLib.dict.keys
@@ -617,14 +617,14 @@ l.startNewSignalChain(\Sphere_12ch_first_dual, kernelName: \decor)
 l.startNewSignalChain(\Sphere_24ch_first_dual, kernelName: \decor_700)
 
 // testing sample rate change
-l = SoundLabRevamp(48000, useSLHW:false, useKernels:false)
+l = SoundLab(48000, useSLHW:false, useKernels:false)
 l.startNewSignalChain(\Sphere_12ch_first_dual)
 l.sampleRate_(44100)
 l.sampleRate_(96000)
 
 
 // testing slhw
-l = SoundLabRevamp(48000, useSLHW:true, useKernels:true)
+l = SoundLab(48000, useSLHW:true, useKernels:true)
 
 x = {Out.ar(0, 4.collect{PinkNoise.ar * SinOsc.kr(rrand(3.0, 5.0).reciprocal).range(0, 0.35)})}.play
 

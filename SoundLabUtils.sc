@@ -1,4 +1,4 @@
-+ SoundLabRevamp {
++ SoundLab {
 
 	prInitRigDimensions {
 		// TODO consider adding sat and sub keys to compDict
