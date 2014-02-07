@@ -1,6 +1,3 @@
-// add pushMyIP button in case iPad IP changes
-
-// <activeHwIns, <numHwInputs, <numHwOutputs;
 SoundLabGUI {
 	// copyArgs
 	var <sl, <wwwPort;
@@ -15,6 +12,7 @@ SoundLabGUI {
 	}
 
 	init {
+		"initializing slgui".postln;
 		sl.addDependant( this );
 		if( sl.usingSLHW, {
 			slhw = sl.slhw.addDependant(this)
@@ -33,19 +31,19 @@ SoundLabGUI {
 				{decoders = decoders.add(attset[0])})
 		});
 		sl.decAttributeList.do({ |attset|
-			if( orders.includes(attset[1]).not,
-				{orders = orders.add(attset[1])}
+			if( orders.includes(attset[2]).not,
+				{orders = orders.add(attset[2])}
 			)
 		});
 		sl.decAttributeList.do({ |attset|
-			if( ks.includes(attset[2]).not,
-				{ks = ks.add(attset[2])}
+			if( ks.includes(attset[3]).not,
+				{ks = ks.add(attset[3])}
 			)
 		});
 
-		// kernels = if(sl.usingKernels, {sl.delDict.keys},{nil}); // delDict keys are kernel names
-		kernels = sl.delDict.keys.select({ |name|
-			name.asString.contains(sl.sampleRate.asString)});
+		kernels = sl.compDict.delays.keys.select({ |name|
+			name.asString.contains(sl.sampleRate.asString)
+		});
 		// reformat to exclude SR
 		kernels = kernels.collect{|key|
 			var modkey;
@@ -55,22 +53,9 @@ SoundLabGUI {
 			modkey = modkey.replace("_96000","");
 			modkey.asSymbol;
 		};
-
-		kernels = kernels.asArray ++ [\no_correction];
-
+		kernels = kernels.asArray ++ [\no_correction]; // TODO replaced by \default?
 		sampleRates = [\SR44100, \SR48000, \SR96000];
-		pendingDecType = nil;
-		pendingOrder = nil;
-		pendingK = nil;
-		pendingInput = nil;
-		pendingSR = nil;
-		// defaults on startup - pulled from SoundLab state
-		curDecType = sl.decInfo.decType;
-		curOrder = sl.decInfo.ord;
-		curSR = (\SR ++ sl.sampleRate).asSymbol;
-		curK = sl.decInfo !? sl.decInfo.k;
-		curKernel = sl.curKernel;
-		stereoPending = nil;
+		this.initVars;
 
 		ampSpec = ControlSpec.new(-80, 12, -2, default: 0);
 
@@ -137,7 +122,7 @@ SoundLabGUI {
 		}).put(
 			\Update, {
 				|val|
-				var newDecInfo;
+				// var newDecInfo;
 				block { |break|
 					if( sl.usingSLHW,
 						{
@@ -156,16 +141,16 @@ SoundLabGUI {
 					pendingDecType = pendingDecType ?? curDecType;
 					pendingOrder = pendingOrder ?? curOrder;
 					pendingK = pendingK ?? curK; // quick fix, not a solution?
-					newDecInfo = sl.getDecoderInfo(pendingDecType, pendingOrder, pendingK);
+					/*newDecInfo = sl.getDecoderInfo(pendingDecType, pendingOrder, pendingK);
 					postln("returned from getDecoder to GUI: " ++ newDecInfo);
 
 					if( newDecInfo.notNil,
 						{
 							if( newDecInfo != sl.decInfo,
 								{
-									sl.switchDecoder( newDecInfo );
+									sl.startDecoder(newDecName: pendingDecType, order: pendingOrder );
 									this.setColor( \Update, \yellow );
-									this.status("Updating decoder to"++newDecInfo++".");
+									this.status("Updating decoder to "++pendingDecType++".");
 								},{
 									"Selected decoder already playing".postln;
 									this.status("No decoder updates.");
@@ -176,7 +161,11 @@ SoundLabGUI {
 							this.status("Decoder/Order not found.");
 							interfaceJS.value_( \Update, 0);
 						}
-					);
+					);*/
+
+					sl.startDecoder(newDecName: pendingDecType, order: pendingOrder );
+					this.setColor( \Update, \yellow );
+					this.status("Updating decoder to"++pendingDecType++".");
 
 					stereoPending !? {
 						switch( stereoPending,
@@ -362,13 +351,13 @@ SoundLabGUI {
 					)
 				},
 				\clipped, {
-					if( args[0] < sl.hwInCount,
+					if( args[0] < sl.numHardwareIns,
 						{
 							interfaceJS.value_(\I, 1);
 							this.status("Clipped IN " ++ args[0].asString);
 						},{
 							interfaceJS.value_(\O, 1);
-							this.status("Clipped OUT " ++ (args[0]-sl.hwInCount).asString);
+							this.status("Clipped OUT " ++ (args[0]-sl.numHardwareIns).asString);
 						}
 					)
 				},
@@ -802,23 +791,25 @@ SoundLabGUI {
 		this.recallValues;
 	}
 
-	recallValues {
+	initVars {
 		pendingDecType = nil;
 		pendingOrder = nil;
 		pendingK = nil;
 		pendingInput = nil;
 		pendingSR = nil;
 		// defaults on startup - pulled from SoundLab state
-		curDecType = sl.decInfo.decType;
-		curOrder = sl.decInfo.ord;
+		curDecType = sl.curDecoderPatch.decoderName; // not the same as synthdef name
+		curOrder = sl.curDecoderPatch.order;
+		curK = sl.curDecoderPatch.attributes.k;
 		curSR = (\SR ++ sl.sampleRate).asSymbol;
-		curK = sl.decInfo !? sl.decInfo.k;
 		curKernel = sl.curKernel;
 		stereoPending = nil;
+	}
 
-		interfaceJS.value_( \ampLevelLabel, sl.gAmp.ampdb.round(0.1).asString ); //0.1.wait;
-		// interfaceJS.value_(\ampSlider, ampSpec.unmap(sl.gAmp)); 0.1.wait;
-		interfaceJS.value_(\ampSlider, sl.gAmp);
+	recallValues {
+		this.initVars;
+		interfaceJS.value_( \ampLevelLabel, sl.globalAmp.ampdb.round(0.1).asString ); //0.1.wait;
+		interfaceJS.value_(\ampSlider, sl.globalAmp);
 		if(sl.stereoActive, {this.setCtlActive(\Stereo)});
 		if(sl.isMuted, {this.setCtlActive(\Mute)});
 		if(sl.isAttenuated, {this.setCtlActive(\Attenuate)});

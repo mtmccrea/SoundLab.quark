@@ -20,10 +20,11 @@ IdentityDictionary(know: true)
 .put(\numHardwareIns, 		32)
 .put(\numSatChans,			19)
 .put(\numSubChans, 			2)
-.put(\defaultDecoderName,	\Dodec_first_dual)
+.put(\defaultDecoderName,	\Dodec)
+.put(\defaultOrder,			1)
 .put(\defaultKernel,		\decor_700)
 .put(\stereoChanIndex,		[11, 1])
-// SoundLabHardware settings
+/* SoundLabHardware settings */
 .put(\useFireface, 			false) //true)
 .put(\midiPortName,			nil) //"External MIDI-MADIFXtest MIDI 1") // nil for no MIDI
 .put(\cardNameIncludes,		nil) //"RME") // nil for OSX
@@ -52,7 +53,7 @@ IdentityDictionary(know: true)
 		-0.52105263157895, 0.17894736842105, -0.52105263157895,
 		1.278947368421, -0.32105263157895, 0.87894736842104,
 		1.378947368421, 2.178947368421, -0.72105263157896,
-		-2.421052631579
+		-2.421052631579,
 		// subs
 		0, 0
 	]
@@ -87,15 +88,6 @@ IdentityDictionary(know: true)
 		3,9,9,3,
 		4,10,10,4,
 		5,11,11,5,
-
-		/*// dummy values
-		12,19,19,12,
-		13,18,18,13,
-		14,17,17,14,
-		15,16,16,15,
-		20,21,21,20,
-		22,23,23,22,*/
-
 		// subs
 		19, 20, 20, 19
 	])
@@ -105,7 +97,7 @@ IdentityDictionary(know: true)
 // decoderName, kind, order, k, dimensions, arrayOutIndices, numInChannels;
 // decoderName: unique name as it will show up on GUI (Symbol)
 // kind: diametric, discrete (Symbol)
-// order; first, second, etc.. (Symbol)
+// order; 1, 2, etc.. (Int)
 // k: dual (Symbol)
 // dimensions 2 or 3 (Int),
 // arrayOutIndices (Array of ints):
@@ -115,16 +107,16 @@ IdentityDictionary(know: true)
 .put(\decAttributeList,
 	[
 		/* --ambisonic decoders-- */
-		[\Dodec,	\diametric,	\first,	'dual',	2,	(0..5),		4	],
-		[\Hex,		\diametric,	\first,	'dual',	2,	[0,2,4],	4	],
-		[\Quad_Long,\diametric,	\first,	'dual',	2,	[11,1],		4	],
+		[\Dodec,			\diametric,	1,	'dual',		2,	(0..5),					4	],
+		[\Hex,				\diametric,	1,	'dual',		2,	[0,2,4],				4	],
+		[\Quad_Long,		\diametric,	1,	'dual',		2,	[11,1],					4	],
 
 		/* --discrete channel routing-- */
 		// thru routing assumes contiguous channels, starting at arrayOutIndices.first
-		[\Thru_All,			\discrete,	nil,	nil,	2,	(0..18),				24	],
-		[\Thru_Hex,			\discrete,	nil,	nil,	2,	Array.series(6, 0, 2),	6	],
-		[\Thru_Quad_Square,	\discrete,	nil,	nil,	2,	Array.series(4, 0, 3),	4	],
-		[\Thru_Quad_Rect,	\discrete,	nil,	nil,	2,	[11, 1, 4, 6],			4	]
+		[\Thru_All,			\discrete,	\NA,	\NA,	2,	(0..18),				24	],
+		[\Thru_Hex,			\discrete,	\NA,	\NA,	2,	Array.series(6, 0, 2),	6	],
+		[\Thru_Quad_Square,	\discrete,	\NA,	\NA,	2,	Array.series(4, 0, 3),	4	],
+		[\Thru_Quad_Rect,	\discrete,	\NA,	\NA,	2,	[11, 1, 4, 6],			4	]
 	]
 )
 ;

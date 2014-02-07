@@ -7,6 +7,7 @@ IdentityDictionary(know: true)
 .put(\numSatChans,			24)
 .put(\numSubChans, 			4)
 .put(\defaultDecoderName,	\Sphere_24ch_first_dual)
+.put(\defaultOrder,			1)
 .put(\defaultKernel,		\decor_700)
 .put(\stereoChanIndex,		[27, 28])
 // SoundLabHardware settings
@@ -109,8 +110,8 @@ IdentityDictionary(know: true)
 
 		/* --discrete channel routing-- */
 		// thru routing assumes contiguous channels, starting at arrayOutIndices.first
-		[\Thru_All,		\discrete,	nil,	nil,	2,	(0..23),	24	],
-		[\Thru_Hex,		\discrete,	nil,	nil,	2,	(9..11),	6	]
+		[\Thru_All,		\discrete,	\NA,	\NA,	2,	(0..23),	24	],
+		[\Thru_Hex,		\discrete,	\NA,	\NA,	2,	(9..11),	6	]
 	]
 )
 ;

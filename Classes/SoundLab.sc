@@ -9,7 +9,7 @@ SoundLab {
 	var <globalAmp, <numSatChans, <numSubChans, <totalArrayChans, <numKernelChans;
 	var <hwInCount, <hwInStart;
 	var <config;
-	var <numHardwareOuts, <numHardwareIns, <stereoChanIndex, <>defaultDecoderName, <>defaultKernel, <>kernelDirPath;
+	var <numHardwareOuts, <numHardwareIns, <stereoChanIndex, <>defaultDecoderName, <>defaultKernel, <>kernelDirPath, <>defaultOrder;
 
 	var <server, <gui, <curKernel, <stereoActive, <isMuted, <isAttenuated, <stateLoaded;
 	var <clipMonitoring, <curDecoderPatch, <nextDecoderPatch, rbtTryCnt;
@@ -43,6 +43,7 @@ SoundLab {
 		numHardwareOuts = config.numHardwareOuts;
 		numHardwareIns = config.numHardwareIns;
 		defaultDecoderName = config.defaultDecoderName;//\Sphere_24ch_first_dual;  // synthDef name
+		defaultOrder = config.defaultOrder;
 		defaultKernel = config.defaultKernel; //\decor_700;
 		stereoChanIndex = config.stereoChanIndex;
 		numSatChans = config.numSatChans;
@@ -207,6 +208,10 @@ SoundLab {
 						{curDecoderPatch.decoderName}, // carried over from reboot/sr change
 						{defaultDecoderName}
 					),
+					if(curDecoderPatch.notNil,
+						{curDecoderPatch.order}, // carried over from reboot/sr change
+						{defaultOrder}
+					),
 					if(usingKernels, {curKernel ?? {defaultKernel}},{nil}),
 					loadCondition
 				);
@@ -221,7 +226,7 @@ SoundLab {
 		});
 	}
 
-	startNewSignalChain { |deocderName, kernelName, completeCondition|
+	startNewSignalChain { |deocderName, decoderOrder, kernelName, completeCondition|
 		var cond;
 		cond = Condition(false);
 		fork {
@@ -280,14 +285,17 @@ SoundLab {
 			if( nextjconvolver.notNil or: 	// new jconvolver, so new outbus
 				deocderName.notNil,			// requested decoder change
 				{
-					var newDecName;
+					var newDecName, newOrder;
 					newDecName = deocderName ?? {
 						// if no decoderName given, create new decoder matching the current one
 						curDecoderPatch !? {curDecoderPatch.decoderName}
 					};
+					newOrder = decoderOrder ?? {
+						curDecoderPatch !? {curDecoderPatch.order}
+					};
 					"new decoder name: ".post; newDecName.postln;
 					if( newDecName.notNil, {
-						this.startDecoder(newDecName, cond)
+						this.startDecoder(newDecName, order: newOrder, completeCondition: cond)
 						},{ warn(
 							"No decoder name provided and no current decoder name found -
 							NO NEW DECODER STARTED");
@@ -333,12 +341,12 @@ SoundLab {
 		}
 	}
 
-	startDecoder  { |newDecSynthName, completeCondition|
+	startDecoder  { |newDecName, order, completeCondition|
 		var cond, newDecoderPatch, cur_decoutbus, new_decoutbus;
 		cond = Condition(false);
 		fork {
 			// debug
-			postf("Starting decoder: % \n", newDecSynthName);
+			postf("Starting decoder: % \n", newDecName);
 
 			// select which of the 3 out groups to send decoder/correction to
 			new_decoutbus = if(usingKernels, {
@@ -361,7 +369,8 @@ SoundLab {
 			"new_decoutbus: ".post; new_decoutbus.postln;
 
 			newDecoderPatch = SoundLabDecoderPatch(this,
-				decoderSynthDefName: newDecSynthName,
+				decoderName: newDecName,
+				order: order,
 				inbusnum: if( stereoActive, {hwInStart+2}, {hwInStart}), // decoder inbusnum
 				outbusnum: new_decoutbus,		// decoder outbusnum
 				loadCondition: cond				// finishCondition
@@ -378,7 +387,7 @@ SoundLab {
 				nextDecoderPatch = newDecoderPatch;
 				// TODO update changed \decoder message
 				this.changed(\decoder,
-					decAttributes.select({|attDict| attDict.synthdefName == newDecSynthName.asSymbol})
+					decAttributes.select({|attDict| attDict.synthdefName == newDecName.asSymbol})
 				);
 			};
 			completeCondition !? {completeCondition.test_(true).signal};
@@ -462,6 +471,11 @@ SoundLab {
 			};
 			completeCondition !? {completeCondition.test_(true).signal};
 		}
+	}
+
+	buildGUI {
+		"in buildGUI".postln;
+		gui ?? {gui = SoundLabGUI.new(this)};
 	}
 
 	// ------------------------------------------------------------------
@@ -592,6 +606,8 @@ SoundLab {
 		slhw !? {slhw.removeDependant(this)};
 		this.prClearServerSide; 			// frees jconvs
 		slhw !? {slhw.stopAudio};
+		reloadGUIListener.free;
+		if ( gui.notNil, {gui.cleanup} );
 	}
 
 	free { this.cleanup }
@@ -616,17 +632,19 @@ s.meter
 
 // testing decoder/kernel switching
 l.decoderLib.synthdefs.do{|sd|sd.name.postln}
-l.startNewSignalChain(\Sphere_24ch_first_dual)
-l.startNewSignalChain(\Sphere_12ch_first_dual)
-l.startNewSignalChain(\Sphere_12ch_first_dual, kernelName: \decor)
-l.startNewSignalChain(\Sphere_24ch_first_dual, kernelName: \decor_700)
+l.startNewSignalChain(\Sphere_24ch)
+l.startNewSignalChain(\Sphere_12ch)
+l.startNewSignalChain(\Sphere_12ch, kernelName: \decor)
+l.startNewSignalChain(\Sphere_24ch, kernelName: \decor_700)
 
 // testing sample rate change
 l = SoundLab(48000, useSLHW:false, useKernels:false)
 l.startNewSignalChain(\Sphere_12ch_first_dual)
-l.startNewSignalChain(\Dodec_first_dual)
-l.startNewSignalChain(\Quad_Long_first_dual)
-l.startNewSignalChain(\Hex_first_dual)
+l.startNewSignalChain(\Dodec)
+l.startNewSignalChain(\Quad_Long)
+l.startNewSignalChain(\Hex)
+l.startNewSignalChain(\Thru_All, \NA)
+l.decoderLib.dict.keys
 
 l.sampleRate_(44100)
 l.sampleRate_(96000)
@@ -634,6 +652,9 @@ l.sampleRate_(96000)
 
 // testing slhw
 l = SoundLab(48000, useSLHW:false, useKernels:false)
+
+// testing gui
+l = SoundLab(48000, loadGUI:true, useSLHW:false, useKernels:false)
 
 x = {Out.ar(0, 4.collect{PinkNoise.ar * SinOsc.kr(rrand(3.0, 5.0).reciprocal).range(0, 0.35)})}.play
 

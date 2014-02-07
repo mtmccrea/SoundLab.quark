@@ -82,8 +82,7 @@
 				\dimensions, attributes[4],
 				\arrayOutIndices, attributes[5],
 				\numInputChans, attributes[6],
-				\synthdefName,
-					attributes[0] ++ '_' ++ attributes[2].asSymbol ++ '_' ++ attributes[3].asSymbol
+				\synthdefName, (attributes[0] ++ '_order' ++ attributes[2]).asSymbol
 			])
 		});
 
@@ -257,7 +256,8 @@
 					gate, doneAction: 2 );
 				/* TODO no crossover added to discrete routing yet
 				- see commented-out code below for crossover scheme to be added */
-				Out.ar( decSpecs.arrayOutIndices.first, in * env );
+				// Out.ar( decSpecs.arrayOutIndices.first, in * env );
+				decSpecs.arrayOutIndices.do{ |outbus, i| Out.ar( outbus, in[i] * env ) };
 			})
 		);
 
