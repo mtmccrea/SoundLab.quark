@@ -1,25 +1,36 @@
-// setup
-"SETUP RAAAAAAAAAAAAAAAAAAAM".postln;
+/* Config for SoundLab */
+"CONFIG Loading".postln;
 
 IdentityDictionary(know: true)
-.put(\numHardwareOuts, 		32)
-.put(\numHardwareIns, 		32)
-.put(\numSatChans,			24)
-.put(\numSubChans, 			4)
-.put(\defaultDecoderName,	\Sphere_24ch_first_dual)
-.put(\defaultOrder,			1)
-.put(\defaultKernel,		\decor_700)
-.put(\stereoChanIndex,		[27, 28])
-// SoundLabHardware settings
-// SoundLabHardware settings
-.put(\useFireface, 			false) //true)
-.put(\midiPortName,			nil) //"External MIDI-MADIFXtest MIDI 1") // nil for no MIDI
-.put(\cardNameIncludes,		nil) //"RME") // nil for OSX
-.put(\jackPath,				"/usr/local/bin/jackdmp") //"/usr/bin/jackd") //"/usr/local/bin/jackdmp" for osx
-.put(\fixAudioInputGoingToTheDecoder, true)
+.putPairs([
+	\numHardwareOuts, 		32,
+	\numHardwareIns, 		32,
+	\numSatChans,			24,
+	\numSubChans, 			4,
+	\defaultDecoderName,	\Sphere_24ch,
+	\defaultOrder,			1,
+	\defaultKernel,			\decor_700,
+	\stereoChanIndex,		[27, 28],
 
-// speaker order is assumed to be satellites, subs, stereo (optional)
-// see prLoadSynthDefs for how channel mappings are used
+	/* SoundLabHardware settings */
+
+	\useFireface, 			false,
+	//\midiPortName,			"External MIDI-MADIFXtest MIDI 1",
+	\midiPortName,			nil, // nil for no MIDI
+	//\cardNameIncludes,		"RME",
+	\cardNameIncludes,		nil, // for OSX
+	//\jackPath,				"/usr/bin/jackd",
+	\jackPath,				"/usr/local/bin/jackdmp", // for osx
+	\fixAudioInputGoingToTheDecoder, true,
+	\hwPeriodSize, 			256,
+	\hwPeriodNum,			1,
+])
+
+/*
+speaker order is assumed to be satellites, subs, stereo (optional)
+Array size must equal \numSatChans + \numSubChans
+see prLoadSynthDefs for how channel mappings are used
+*/
 .put(\defaultSpkrDistances,
 	[
 		1.733, 1.774, 1.682,
@@ -65,8 +76,10 @@ IdentityDictionary(know: true)
 		0.0, 0.0, 0.0, 0.0;	// subs
 	].degrad
 )
-// each speaker channel and it's opposing channel, alternating
-// Array size must equal numDiametricPairsIncludingSubs * 2
+/*
+each speaker channel and it's opposing channel, alternating
+Array size must equal numDiametricPairsIncludingSubs * 2
+*/
 .put(\spkrOppDict,
 	IdentityDictionary.new(know:true).putPairs([
 			// each speaker channel and it's opposing channel, alternating
@@ -88,25 +101,27 @@ IdentityDictionary(know: true)
 		])
 )
 
-/* --decoder attributes-- */
-// decoderName, kind, order, k, dimensions, arrayOutIndices, numInChannels;
-// decoderName: unique name as it will show up on GUI (Symbol)
-// kind: diametric, discrete (Symbol)
-// order; first, second, etc.. (Symbol)
-// k: dual (Symbol)
-// dimensions 2 or 3 (Int),
-// arrayOutIndices (Array of ints):
-// 		for diametric: specify only the first half of out indexes
-// 		for discrete: specify all out indexes
-// numInChannels: number of input channels into the decoder/router (Int)
+/*
+--decoder attributes--
+decoderName, kind, order, k, dimensions, arrayOutIndices, numInChannels;
+decoderName: unique name as it will show up on GUI (Symbol)
+kind: diametric, discrete (Symbol)
+order; 1, 2, etc.. (Int)
+k: dual (Symbol)
+dimensions 2 or 3 (Int),
+arrayOutIndices (Array of ints):
+		for diametric: specify only the first half of out indexes
+		for discrete: specify all out indexes
+numInChannels: number of input channels into the decoder/router (Int)
+*/
 .put(\decAttributeList,
 	[
 		/* --ambisonic decoders-- */
-		[\Sphere_24ch,	\diametric,	\first,	'dual',	3,	(0..11),	4	],
-		[\Sphere_18ch,	\diametric,	\first,	'dual',	3,	(3..11),	4	],
-		[\Sphere_12ch,	\diametric,	\first,	'dual',	3,	(3..8),		4	],
-		[\Sphere_6ch,	\diametric,	\first,	'dual',	3,	[8, 9, 20],	4	],
-		[\Hex,			\diametric,	\first,	'dual',	2,	(9..11),	4	],
+		[\Sphere_24ch,	\diametric,	1,	'dual',	3,	(0..11),	4	],
+		[\Sphere_18ch,	\diametric,	1,	'dual',	3,	(3..11),	4	],
+		[\Sphere_12ch,	\diametric,	1,	'dual',	3,	(3..8),		4	],
+		[\Sphere_6ch,	\diametric,	1,	'dual',	3,	[8, 9, 20],	4	],
+		[\Hex,			\diametric,	1,	'dual',	2,	(9..11),	4	],
 
 		/* --discrete channel routing-- */
 		// thru routing assumes contiguous channels, starting at arrayOutIndices.first

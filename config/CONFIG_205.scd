@@ -1,41 +1,36 @@
-// setup - 205
-/* Rig Measurements
-// distances
-d = [3.111, 3.625, 3.38, 2.94, 3.308, 3.625, 3.045, 3.610, 3.482, 2.920, 3.335, 3.619, 4.107, 3.907, 3.150, 3.726, 3.382, 3.679, 2.65]
-d.size
-~delays = (d - d.minItem)/344
-
-// measured gains
-g = [ 79.4, 79.7, 77.8, 79.2, 78.1, 77.4, 78.8, 78.3, 77.2, 78.8, 78.1, 78.8, 77.0, 78.6, 77.4, 76.9, 76.1, 79, 80.7]
-// target the average gain
-~gains = (g - g.mean).neg // .neg for db gain applied
-[ -1.121052631579, -1.421052631579, 0.47894736842105, -0.92105263157896, 0.17894736842105, 0.87894736842104, -0.52105263157895, -0.021052631578954, 1.078947368421, -0.52105263157895, 0.17894736842105, -0.52105263157895, 1.278947368421, -0.32105263157895, 0.87894736842104, 1.378947368421, 2.178947368421, -0.72105263157896, -2.421052631579 ].neg
-
-*/
-
-"CONFIG Loaded".postln;
+/* Config for SoundLab */
+"CONFIG Loading".postln;
 
 IdentityDictionary(know: true)
-.put(\numHardwareOuts, 		32)
-.put(\numHardwareIns, 		32)
-.put(\numSatChans,			19)
-.put(\numSubChans, 			2)
-.put(\defaultDecoderName,	\Dodec)
-.put(\defaultOrder,			1)
-.put(\defaultKernel,		\decor_700)
-.put(\stereoChanIndex,		[11, 1])
-/* SoundLabHardware settings */
-.put(\useFireface, 			false) //true)
-.put(\midiPortName,			nil) //"External MIDI-MADIFXtest MIDI 1") // nil for no MIDI
-.put(\cardNameIncludes,		nil) //"RME") // nil for OSX
-.put(\jackPath,				"/usr/local/bin/jackdmp") //"/usr/bin/jackd") //"/usr/local/bin/jackdmp" for osx
-.put(\fixAudioInputGoingToTheDecoder, true)
-.put(\hwPeriodSize, 		256)
-.put(\hwPeriodNum,			1)
+.putPairs([
+	\numHardwareOuts, 		32,
+	\numHardwareIns, 		32,
+	\numSatChans,			19,
+	\numSubChans, 			2,
+	\defaultDecoderName,	\Dodec,
+	\defaultOrder,			1,
+	\defaultKernel,			\decor_700,
+	\stereoChanIndex,		[11, 1],
 
-// speaker order is assumed to be satellites, subs, stereo (optional)
-// Array size must equal \numSatChans + \numSubChans
-// see prLoadSynthDefs for how channel mappings are used
+	/* SoundLabHardware settings */
+
+	\useFireface, 			false,
+	//\midiPortName,			"External MIDI-MADIFXtest MIDI 1",
+	\midiPortName,			nil, // nil for no MIDI
+	//\cardNameIncludes,		"RME",
+	\cardNameIncludes,		nil, // for OSX
+	//\jackPath,				"/usr/bin/jackd",
+	\jackPath,				"/usr/local/bin/jackdmp", // for osx
+	\fixAudioInputGoingToTheDecoder, true,
+	\hwPeriodSize, 			256,
+	\hwPeriodNum,			1,
+])
+
+/*
+speaker order is assumed to be satellites, subs, stereo (optional)
+Array size must equal \numSatChans + \numSubChans
+see prLoadSynthDefs for how channel mappings are used
+*/
 .put(\defaultSpkrDistances,
 	[
 		3.111, 3.625, 3.38, 2.94, 3.308, 3.625,
@@ -78,8 +73,10 @@ IdentityDictionary(know: true)
 	++[0, 0]
 	).degrad
 )
-// each speaker channel and it's opposing channel, alternating
-// Array size must equal numDiametricPairsIncludingSubs * 2
+/*
+each speaker channel and it's opposing channel, alternating
+Array size must equal numDiametricPairsIncludingSubs * 2
+*/
 .put(\spkrOppDict,
 	IdentityDictionary.new(know:true).putPairs([
 		0, 6, 6, 0,
@@ -93,17 +90,19 @@ IdentityDictionary(know: true)
 	])
 )
 
-/* --decoder attributes-- */
-// decoderName, kind, order, k, dimensions, arrayOutIndices, numInChannels;
-// decoderName: unique name as it will show up on GUI (Symbol)
-// kind: diametric, discrete (Symbol)
-// order; 1, 2, etc.. (Int)
-// k: dual (Symbol)
-// dimensions 2 or 3 (Int),
-// arrayOutIndices (Array of ints):
-// 		for diametric: specify only the first half of out indexes
-// 		for discrete: specify all out indexes
-// numInChannels: number of input channels into the decoder/router (Int)
+/*
+--decoder attributes--
+decoderName, kind, order, k, dimensions, arrayOutIndices, numInChannels;
+decoderName: unique name as it will show up on GUI (Symbol)
+kind: diametric, discrete (Symbol)
+order; 1, 2, etc.. (Int)
+k: dual (Symbol)
+dimensions 2 or 3 (Int),
+arrayOutIndices (Array of ints):
+		for diametric: specify only the first half of out indexes
+		for discrete: specify all out indexes
+numInChannels: number of input channels into the decoder/router (Int)
+*/
 .put(\decAttributeList,
 	[
 		/* --ambisonic decoders-- */
@@ -120,3 +119,17 @@ IdentityDictionary(know: true)
 	]
 )
 ;
+
+/* Rig Measurements
+// distances
+d = [3.111, 3.625, 3.38, 2.94, 3.308, 3.625, 3.045, 3.610, 3.482, 2.920, 3.335, 3.619, 4.107, 3.907, 3.150, 3.726, 3.382, 3.679, 2.65]
+d.size
+~delays = (d - d.minItem)/344
+
+// measured gains
+g = [ 79.4, 79.7, 77.8, 79.2, 78.1, 77.4, 78.8, 78.3, 77.2, 78.8, 78.1, 78.8, 77.0, 78.6, 77.4, 76.9, 76.1, 79, 80.7]
+// target the average gain
+~gains = (g - g.mean).neg // .neg for db gain applied
+[ -1.121052631579, -1.421052631579, 0.47894736842105, -0.92105263157896, 0.17894736842105, 0.87894736842104, -0.52105263157895, -0.021052631578954, 1.078947368421, -0.52105263157895, 0.17894736842105, -0.52105263157895, 1.278947368421, -0.32105263157895, 0.87894736842104, 1.378947368421, 2.178947368421, -0.72105263157896, -2.421052631579 ].neg
+
+*/

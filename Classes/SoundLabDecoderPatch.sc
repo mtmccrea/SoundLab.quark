@@ -15,16 +15,27 @@ SoundLabDecoderPatch {
 				("initializing SoundLabDecoderPatch:"+synthdefName).postln;
 
 				soundlab.decoderLib[synthdefName] ?? {
-					warn(synthdefName++" decoder not found in decoderLib!!!"); break.()
+					break.(
+						warn( synthdefName ++" decoder not found in decoderLib!!!" );
+					)
 				};
 				// used for introspection by GUI
 				attributes = soundlab.decAttributes.select{|me| me.synthdefName == synthdefName};
+				(attributes.size >1).if({
+					break.(
+						warn("Found more than one decoder attribute list with that synthdefName: "++synthdefName)
+					)
+					},{
+						attributes = attributes[0]
+				});
+
 
 				server = soundlab.server;
 				group = CtkGroup.play(addAction: \before, target: soundlab.patcherGroup, server: server);
 				server.sync;
 
-				decodersynth = soundlab.decoderLib[synthdefName].note(addAction: \head, target: group)
+				decodersynth = soundlab.decoderLib[synthdefName].note(
+					addAction: \head, target: group)
 				.in_busnum_(inbusnum);
 				// discrete routing synthdefs have no out_busnum arg
 				order.isInteger.if{ decodersynth.out_busnum_(outbusnum) };

@@ -57,10 +57,10 @@ SoundLab {
 
 		globalAmp = 0.dbamp;
 		stereoActive = stereoActive ?? {true};
-		isMuted = false;
-		isAttenuated = false;
-		stateLoaded = false;
-		clipMonitoring = false;
+		isMuted = isMuted ?? {false};
+		isAttenuated = isAttenuated ?? {false};
+		stateLoaded = stateLoaded ?? {false};
+		clipMonitoring = clipMonitoring ?? {false};
 
 		this.prInitRigDimensions;
 		this.prInitDecoderAttributes;
@@ -226,6 +226,14 @@ SoundLab {
 		});
 	}
 
+	fakeMethod {
+		var test;
+		"before".postln;
+		test = this.changed(\nothing, 1234);
+		"after".postln;
+		test.postln;
+	}
+
 	startNewSignalChain { |deocderName, decoderOrder, kernelName, completeCondition|
 		var cond;
 		cond = Condition(false);
@@ -236,11 +244,12 @@ SoundLab {
 				"loading new jconvolver".postln;
 				this.loadJconvolver(kernelName, cond); // this sets nextjconvolver var
 			},{ cond.test_(true).signal });
-			cond.wait; "1 - Passed loading kernels".postln;
+			cond.wait;
+			"1 - Passed loading kernels".postln;
 			cond.test_(false); // reset the condition to hang when needed later
 
-			if( loadedDelDistGain.isNil // startup
-				or: nextjconvolver.notNil,  // kernel change
+			if( loadedDelDistGain.isNil		// startup
+				or: nextjconvolver.notNil,	// kernel change
 				{
 					// LOAD DELAYS AND GAINS
 					"loading new dels and gains".postln;
@@ -258,7 +267,7 @@ SoundLab {
 
 					// debug
 					"nextjconvolver: ".post; nextjconvolver.postln;
-					// debug
+
 					nextjconvolver.notNil.if{
 						if( loadedDelDistGain != ((nextjconvolver.kernelName++"_"++server.sampleRate).asSymbol),
 							{ warn("nextjconvolver kernel doesn't match the key that
@@ -275,7 +284,8 @@ SoundLab {
 					"loading synthdefs".postln;
 					this.prLoadSynthDefs(cond);
 
-					cond.wait; "2 - SynthDefs loaded".postln;
+					cond.wait;
+					"2 - SynthDefs loaded".postln;
 					cond.test_(false); // reset the condition to hang when needed later
 			});
 
@@ -295,7 +305,7 @@ SoundLab {
 					};
 					"new decoder name: ".post; newDecName.postln;
 					if( newDecName.notNil, {
-						this.startDecoder(newDecName, order: newOrder, completeCondition: cond)
+						this.startDecoder(newDecName, newOrder, cond)
 						},{ warn(
 							"No decoder name provided and no current decoder name found -
 							NO NEW DECODER STARTED");
@@ -313,13 +323,11 @@ SoundLab {
 				curKernel = jconvolver.kernelName;
 				jconvinbus = nextjconvinbus;
 				nextjconvolver = nil;
+				this.changed(\kernel, curKernel);
 			};
 			nextDecoderPatch !? {
-				//debug
-				"setting curDecoderPatch".postln;
-				nextDecoderPatch.postln;
-
-				curDecoderPatch = nextDecoderPatch
+				curDecoderPatch = nextDecoderPatch;
+				this.changed(\decoder, curDecoderPatch);
 			};
 
 			completeCondition !? {completeCondition.test_(true).signal};
@@ -385,20 +393,8 @@ SoundLab {
 				newDecoderPatch.play(xfade: xfade);
 				xfade.wait;
 				nextDecoderPatch = newDecoderPatch;
-				// TODO update changed \decoder message
-				this.changed(\decoder,
-					decAttributes.select({|attDict| attDict.synthdefName == newDecName.asSymbol})
-				);
 			};
 			completeCondition !? {completeCondition.test_(true).signal};
-
-			// TODO update decInfo variable with new decoder attributes
-			/*result = decAttributes.select({|item| item.defname == curDecoder.synthdefname });
-			decInfo = result[0];
-			debug.if{ postln("Updating decInfo variable with new decoder attributes:\n"++"\t"++decInfo.defname);
-			decInfo.keysValuesDo({|k,v|postln("\t\t"++k++" "++v)})
-			};
-			*/
 		}
 	}
 
@@ -474,7 +470,6 @@ SoundLab {
 	}
 
 	buildGUI {
-		"in buildGUI".postln;
 		gui ?? {gui = SoundLabGUI.new(this)};
 	}
 
