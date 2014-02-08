@@ -1,9 +1,9 @@
 SoundLabGUI {
 	// copyArgs
 	var <sl, <wwwPort;
-	var <slhw, <deviceAddr, <listeners, <interfaceJS;
-	var <decoders, <orders, <sampleRates, <ks, <kernels, <stereoPending;
-	var <curDecType, <curOrder, <curSR, <curK, <curKernel, <pendingDecType, <pendingInput, <pendingOrder, <pendingK, <pendingSR, <pendingKernel;
+	var <slhw, <deviceAddr, <interfaceJS; //<listeners
+	var <decoders, <orders, <sampleRates, <kernels, <stereoPending;
+	var <curDecType, <curOrder, <curSR, <curKernel, <pendingDecType, <pendingInput, <pendingOrder, <pendingSR, <pendingKernel;
 	var numCols, butheight, vpad, hpad, h1, h2, h3,h4, buth, butw, inLabel;
 	var <ampSpec, <oscFuncDict, buildList;
 
@@ -26,27 +26,19 @@ SoundLabGUI {
 
 			postf("returned from interfaceJS: %\n", interfaceJS);
 
-			listeners = [];
+			// listeners = [];
 			decoders = [];
 			orders = [];
-			ks = [];
 
 			sl.decAttributeList.do({ |attset|
 				if(decoders.includes(attset[0]).not,
 					{decoders = decoders.add(attset[0])})
 			});
 			sl.decAttributeList.do({ |attset|
-				if( orders.includes(attset[2]).not,
-					{orders = orders.add(attset[2])}
+				if( orders.includes(attset[2].asSymbol).not,	// cast to symbol for button name
+					{orders = orders.add(attset[2].asSymbol)}	// cast to symbol for button name
 				)
 			});
-			sl.decAttributeList.do({ |attset|
-				if( ks.includes(attset[3]).not,
-					{ks = ks.add(attset[3])}
-				)
-			});
-
-			[decoders, orders, ks].do(_.postln);
 
 			kernels = sl.compDict.delays.keys.select({ |name|
 				name.asString.contains(sl.sampleRate.asString)
@@ -60,16 +52,11 @@ SoundLabGUI {
 				modkey = modkey.replace("_96000","");
 				modkey.asSymbol;
 			};
-			kernels = kernels.asArray ++ [\no_correction]; // TODO replaced by \default?
-			kernels.postln;
-
+			kernels = kernels.asArray ++ [\basic_balance]; // TODO replaced by \default?
+			ampSpec = ControlSpec.new(-80, 12, -2, default: 0);
 			sampleRates = [\SR44100, \SR48000, \SR96000];
-
-			"initializing variables".postln;
 			this.initVars(cond);
 			cond.wait;
-			"tick".postln;
-			ampSpec = ControlSpec.new(-80, 12, -2, default: 0);
 
 			numCols = 4;
 			vpad = 1/64;
@@ -79,18 +66,13 @@ SoundLabGUI {
 			h2 = 20/32;
 			h3 = 4/32;
 			h4 = 4/32;
-			"tick2".postln;
+
 			interfaceJS.clear;	// clear everything, just in case
-			"tick3".postln;
 			0.5.wait; 			// see if it helps
-			"tick4".postln;
 			interfaceJS.background_(nil, Color.rand(0, 0.2)); // set page background
-			"tick5".postln;
-			"advancing to buildListeners".postln;
+
 			this.buildListeners;
-			"advancing to buildControls".postln;
 			this.buildControls;	// changed order - build Listeners defines functions
-			"tick6".postln;
 		}
 	}
 
@@ -164,6 +146,10 @@ SoundLabGUI {
 							{this.status("No updates."); interfaceJS.value_( \Update, 0); break.()}
 						);
 
+						// TODO check here if there's a SR change, if so set state current vars
+						// of soundlab then change sample rate straight away,
+						// no need to update signal chain twice
+
 						this.setColor( \Update, \yellow );
 						updateCond = Condition(false);
 
@@ -174,8 +160,6 @@ SoundLabGUI {
 							{
 								pendingDecType = pendingDecType ?? curDecType;
 								pendingOrder = pendingOrder ?? curOrder;
-								// TODO: Should PendingK be used? get rid of K as a variable...
-								pendingK = pendingK ?? curK; // quick fix, not a solution?
 								this.status("Updating decoder to "++pendingDecType++" order "++pendingOrder);
 
 
@@ -189,11 +173,10 @@ SoundLabGUI {
 							},{ updateCond.test_(true).signal }
 						);
 
+						updateCond.wait; // wait for new signal chain to play
+
 						/* Update Stereo routing */
 						stereoPending !? {
-							"waiting on decoder to set stereo".postln;
-							updateCond.wait;
-							this.status("Updating stereo routing to: "++stereoPending);
 							switch( stereoPending,
 								\on, {sl.stereoRouting_(true)},
 								\off, {sl.stereoRouting_(false)}
@@ -218,36 +201,30 @@ SoundLabGUI {
 		// listeners = listeners.add( OSCFunc(func, tag, nil) )
 		// });
 
-		// TODO: NEED THIS??
-		// oscFuncDict.keysValuesDo({ |tag,func|	interfaceJS.function_(tag, func)});
-
-		// buildList order is important
-		buildList = [decoders, orders, sampleRates, ks, kernels];
+		// buildList order defines indexing in switch statements below
+		buildList = [decoders, orders, sampleRates, kernels];
 		buildList.do({ |controls, i|
-			controls !? { // sometimes kernels is nil if not used
+			controls !? {			// sometimes kernels is nil if not used
 				controls.do({
 					|selected|
-					// "selected - in controls: ".post; selected.postln;
-					// "i: ".post; i.postln;
-					// interfaceJS.function_(selected, {
 					oscFuncDict.put(selected, {
 						|val|
 						var current, pending;
-						"selected - in controls: %, i: %, val: % \n".postf(selected, i, val);
+						// get the current and pending settings for the selected category
 						current = switch( i,
 							0, {curDecType},
 							1, {curOrder},
 							2, {curSR},
-							3, {curK},
-							4, {curKernel}
+							3, {curKernel}
 						);
 						pending = switch( i,
 							0, {pendingDecType},
 							1, {pendingOrder},
 							2, {pendingSR},
-							3, {pendingK},
-							4, {pendingKernel}
+							3, {pendingKernel}
 						);
+
+						postf("in the selected category, current control is: %, pending control is: %\n", current, pending);
 
 						case
 						// button ON
@@ -256,17 +233,25 @@ SoundLabGUI {
 								{
 									block { |break|
 										if( "(T|t)hru".matchRegexp(selected.asString),
-											{this.setThruControls(selected); break.()}
+											{	/*debug*/"selected is a thru decoder, setting thru controls".postln;
+												this.setThruControls(selected);
+												break.()
+											}
 										);
 										switch( i,
 											0, {pendingDecType = selected},
 											1, { if( "(T|t)hru".matchRegexp(pendingDecType.asString).not,
-												{pendingOrder = selected},
-												{this.setThruControls(pendingDecType); break.()}
+												{
+													/*debug*/("setting pending order: "++selected).postln;
+													pendingOrder = selected
+												},{
+													/*debug*/"pending decoder is a thru decoder, setting thru controls".postln;
+													this.setThruControls(pendingDecType);
+													break.()
+												}
 											)},
 											2, {pendingSR = selected},
-											3, {pendingK = selected},
-											4, {
+											3, {
 												// kernels only avail at 48000
 												if((
 													(pendingSR == \SR48000) or:
@@ -275,10 +260,9 @@ SoundLabGUI {
 														"\nsetting pending kernel normally\n".postln;
 														pendingKernel = selected;
 													},{
-														"\naborting pending kernel\n".postln;
+														this.status("cancelling pending kernel - not available at selected samplerate".postln);
 														pendingKernel = nil;
 														this.clearControls( controls, current, nil );
-														this.status("Kernel not available at this sample rate.");
 														break.();
 													}
 												)
@@ -288,9 +272,8 @@ SoundLabGUI {
 										this.setCtlPending( selected );
 									} // end of blocking function
 								},{
-									postf("Im in val == 1, current is %, i is %\n", current, i);
 									this.setColor(selected, \green);
-									this.status(selected ++ " is current.");
+									this.status((selected ++ " is current.").postln);
 							})
 						}
 						// button OFF
@@ -299,28 +282,26 @@ SoundLabGUI {
 							{ selected == pending } {
 								if( "(T|t)hru".matchRegexp(pendingDecType.asString) && (i==1),
 									{   // turn it back on if Thru routing chosen
-										this.setCtlPending(\Discrete);
-										interfaceJS.value_(\Discrete, 1);
+										this.setCtlPending(\NA);
+										interfaceJS.value_(\NA, 1);
 									},{ // otherwhise turn it off
 										switch( i,
 											0, {pendingDecType = nil},
 											1, {pendingOrder = nil},
 											2, {pendingSR = nil},
-											3, {pendingK = nil},
-											4, {pendingKernel = nil}
+											3, {pendingKernel = nil}
 										);
 										this.setColor(selected, \default);
-										this.status(selected ++ " removed.");
+										this.status((selected ++ " removed.").postln);
 									}
 								)
 							}
 							{ selected == current } {
-								"turning button back on".postln;
 								this.setCtlActive(selected);
-								this.status(selected ++ " is current.");
+								this.status((selected ++ " is current.").postln);
 							}
 						}
-						}	//, selected, nil);
+						}
 					)
 				})
 			}
@@ -390,19 +371,14 @@ SoundLabGUI {
 					decPatch = args[0];
 					curDecType = decPatch.decoderName;
 					curOrder = decPatch.order;
-					curK = decPatch.attributes.k;
-
 					pendingDecType = nil;
 					pendingOrder = nil;
-					pendingK = nil;
 
 					this.clearControls(decoders, curDecType, nil);
 					this.clearControls(orders, curOrder, nil);
-					this.clearControls(ks, curK, nil);
 					this.setCtlActive( curDecType );
 					this.setCtlActive( curOrder );
-					this.setCtlActive( curK );
-					this.status("Now decoding with: " ++ decPatch.decoderName);
+					this.status(("Now decoding with: " ++ decPatch.decoderName).postln);
 				},
 				\stereo,	{
 					var stereoActive;
@@ -410,13 +386,13 @@ SoundLabGUI {
 					if( stereoActive,
 						{
 							this.setCtlActive(\Stereo);
-							this.status("Stereo added to first two output channels.");
+							this.status(("Stereo added to first two output channels.").postln);
 							stereoPending = nil;
 
 						},{
 							this.setColor(\Stereo, \default);
 							interfaceJS.value_( \Stereo, 0);
-							this.status("Stereo cleared.");
+							this.status(("Stereo cleared.").postln);
 							stereoPending = nil;
 						}
 					)
@@ -427,14 +403,13 @@ SoundLabGUI {
 					k_name !? {k_name = k_name.asSymbol}; // don't convert nil to Symbol TODO: fix this
 					curKernel = k_name;
 					this.clearControls(kernels, k_name, nil);
-					k_name.notNil.if({this.setCtlActive(k_name)}, {this.setCtlActive(\no_correction)});
-					this.status("Kernel updated: "++k_name);
+					k_name.notNil.if({this.setCtlActive(k_name)}, {this.setCtlActive(\basic_balance)});
+					this.status(("Kernel updated: "++k_name).postln);
 					pendingKernel = nil;
 				},
 				\stateLoaded,	{
-					this.recallValues;		// TODO: check this
-					this.updateHwLabel;
-					this.updateSrButtons;	// TODO: check this
+					this.recallValues;
+					// this.updateSrButtons;	// TODO: check this
 				},
 				\reportError,	{ this.status(args[0]) },
 				\reportStatus,	{ this.status(args[0]) }
@@ -444,18 +419,12 @@ SoundLabGUI {
 			switch( what,
 				\audioIsRunning, {
 					if(args[0].not, {
-							this.status("Audio stopped. Cannot update at this time.")
-						},
-						/*{
-							this.recallValues;		// TODO: check this
-							this.updateHwLabel;
-							this.updateSrButtons;	// TODO: check this
-						}*/
+							this.status(("Audio stopped. Cannot update at this time.").postln)
+						}
 					);
 				},
-				\clients, {this.updateHwLabel},
 				\stoppingAudio, {
-					this.status("Audio is stopping - Standby.");
+					this.status(("Audio is stopping - Standby.").postln);
 				}
 			)
 		});
@@ -463,15 +432,14 @@ SoundLabGUI {
 
 	setCtlPending { |which|
 		this.setColor(which, \yellow);
-		this.status(which ++ " is pending.");
+		this.status((which ++ " is pending.").postln);
 	}
 
 	setCtlActive { |which|
 		this.setColor(which,
 			if( which == \Mute, {\red},
 				{ if( which == \Attenuate, {\purple},
-					/* otherwise, all else.. */
-					{\green}
+					{\green} /* otherwise, all else are green when active */
 				)}
 			);
 		);
@@ -488,7 +456,7 @@ SoundLabGUI {
 		})
 	}
 
-	updateSrButtons {
+/*	updateSrButtons {
 		sampleRates.do({|thisRate|
 			"thisRate: ".post; thisRate.postln;
 			if(thisRate.notNil, {
@@ -497,13 +465,14 @@ SoundLabGUI {
 			});
 		});
 		if(curSR.notNil, {
+			("curSR in udateSrButtons is: "++curSR).postln;
 			this.setColor(curSR, \green);
 			interfaceJS.value_(curSR, 1);
 			}, {
 				this.status("Warning: curSR is nil (in updateSrButtons)");
 				"curSR is nil (in updateSrButtons), you gotta be kiddin'...".warn;
 		});
-	}
+	}*/
 
 	// TODO Update this
 	setThruControls { |whichThruCtl|
@@ -516,31 +485,8 @@ SoundLabGUI {
 		this.clearControls( orders, curOrder, whichThruCtl );
 		this.setCtlPending( \NA );
 		interfaceJS.value_( \NA, 1);
-// TODO: remove
-		// update K controls
-		/*pendingK = \NA;
-		this.clearControls( ks, curK,  \NA);
-		this.setCtlPending( \NA );
-		interfaceJS.value_( \NA, 1);*/
 
-		this.status( "Thru: discrete only no BF decoder." );
-	}
-
-	updateHwLabel {
-		/* TEMP REMOVED
-		inLabel = "Connections: \t";
-		if( sl.usingSLHW,
-		{
-		slhw.clientsDictionary.keysValuesDo({|name, ioArray|
-		inLabel = inLabel++name++"\t"++ioArray[0]++" outs, "++ioArray[1]++" ins \t";
-		});
-		},{
-		inLabel = inLabel++" Local Hardware\t";
-		}
-		);
-		inLabel = inLabel ++" "++sl.sampleRate;
-		interfaceJS.value_(\Connections, inLabel);
-		*/
+		this.status( "Thru: direct outs, no BF decoder." );
 	}
 
 	status { |postString|
@@ -615,15 +561,11 @@ SoundLabGUI {
 				\kind, \button,
 				\controls, orders
 			]),
-			\K,
-			IdentityDictionary.new(know: true).putPairs([
-				\kind, \button,
-				\controls, ks
-			]),
 			\SETTINGS,
 			IdentityDictionary.new(know: true).putPairs([
 				\kind, \button,
-				\controls, [\Matrix, \Reload]
+				\controls, [\Matrix, \Reload],
+				\cSize, 2
 			]),
 			\CORRECTION,
 			IdentityDictionary.new(know: true).putPairs([
@@ -652,7 +594,7 @@ SoundLabGUI {
 		catHPad = 0.04;
 		cntrlHPad = 0.012;	// vertical pad between controls (buttons)
 		cntrlVPad = 0.02;
-		ncols = 3;			// number of columns of controls (excluding amp control)
+		ncols = 2.5;		// number of columns of controls (excluding amp control)
 		ncntrls_row = 2;	// number of controls per row
 		colW = (screenW - catHPad)/ncols - catHPad;
 		cntrlW = (colW / ncntrls_row) - ((ncntrls_row-1)*cntrlHPad/ncntrls_row);
@@ -670,7 +612,10 @@ SoundLabGUI {
 
 			("\n"++category_name++" control set").postln; cntrl_set.keysValuesDo{|k,v|"\t".post; [k,v].postln};
 
-			nrows = ((cntrl_set.cSize ?? cntrl_set.controls.size) / ncntrls_row).ceil;
+			nrows = cntrl_set.cSize.notNil.if(
+				{(cntrl_set.cSize / ncntrls_row) * (cntrl_set.controls.size)},
+				{cntrl_set.controls.size / ncntrls_row}
+			).ceil;
 
 			// check vertical height of this category of controls
 			cat_height = (
@@ -697,22 +642,34 @@ SoundLabGUI {
 						{colW},
 						{colW * (cntrl_set.cSize / ncntrls_row)}
 					);
-					h = (cntrlH * nrows) + (cntrlVPad*(nrows-1));
+					h = (cntrlH * (nrows/cntrl_set.controls.size)); // + (cntrlVPad*(nrows-1));
 				},{
 					w = cntrlW;
 					h = cntrlH;
 			});
 
-			//	TO DO: add case of Connections label
 			cntrl_set.controls.do({ |cntrl, i|
 				var row_cnt;
-				row_cnt = (i / ncntrls_row).floor;
-				col_cnt = i % (ncntrls_row);
+				if(cntrl_set.cSize.notNil,
+					{
+						row_cnt = (i * cntrl_set.cSize / ncntrls_row).floor;
+						col_cnt = (i * cntrl_set.cSize) % ncntrls_row;
+					},{
+						row_cnt = (i / ncntrls_row).floor;
+						col_cnt = i % ncntrls_row;
+					}
+				);
 
 				cntrl.postln;
 				("row/column:\t" ++ [row_cnt,col_cnt]).postln;
 
+/*				if((cntrl_set.controls.size == 1) and: (cntrl_set.cSize.notNil),
+					{ "setting special x".postln;
+						here.x = x_home + ((cntrlHPad+w)/2) }, // center controls with just 1 value
+					{ here.x = x_home + ((col_cnt)*(cntrlHPad+w)) }
+				);*/
 				here.x = x_home + ((col_cnt)*(cntrlHPad+w));
+
 				if(
 					((col_cnt==0) && (row_cnt>0)),
 					{ here.y = here.y + (cntrlVPad+h) } // advance y pointer for new row
@@ -724,17 +681,14 @@ SoundLabGUI {
 						interfaceJS.makeLabel(cntrl, Rect(here.x, here.y, colW, h), align: "left");
 					},
 					\button, {
-
-						// interfaceJS.makeButton(cntrl, here.x, here.y, w, h, function: oscFuncDict[\name]);
 						cntrl.class;
 						postf("making button for\t %, function %\n", cntrl, oscFuncDict[cntrl]);
 						interfaceJS.makeButton(
 							cntrl, Rect(here.x, here.y, w, h),
 							function: oscFuncDict[cntrl],
-							// controlSpec: [0, 1].asSpec.default_(0),
 							background: Color.fromHexString("#000000"),
 							fill: Color.fromHexString("#aaaaaa"),
-							stroke: Color.white, //Color.fromHexString("#555555"),
+							stroke: Color.white,
 							value: 0
 						);
 					}
@@ -746,7 +700,6 @@ SoundLabGUI {
 
 
 		/* amplitude control column */
-		// ampCtlW = 1 - screenW - catHPad;
 		ampCtlW = 1 - screenW;
 
 		// 'Amp' label
@@ -796,61 +749,71 @@ SoundLabGUI {
 				),
 				Color.fromHexString("#000000"),
 				Color.fromHexString("#aaaaaa"),
-				Color.white, // Color.fromHexString("#555555"),
+				Color.white,
 				value: 0,
 				function: oscFuncDict[name]
 			)
 		});
 
-		/*  turn on defaults  */
-		this.updateHwLabel;
-		[curDecType, curOrder, curSR, curK, curKernel].do({ |name|
-			("turning on" + name).postln;
-			if( name.notNil, {
-				// remove calls to non-existing controls
-				if(interfaceJS.guiObjects[name].notNil, {
-					this.setCtlActive(name)
-				})
-			},{"nil found when turning on controls".warn})
-		});
-
-		this.recallValues;
+		this.recallValues; /* this will turn on the defaults */
 	}
 
 	initVars { |loadCondition|
 		pendingDecType = nil;
 		pendingOrder = nil;
-		pendingK = nil;
 		pendingInput = nil;
 		pendingSR = nil;
 		// defaults on startup - pulled from SoundLab state
 		curDecType = sl.curDecoderPatch.decoderName; // not the same as synthdef name
 		curOrder = sl.curDecoderPatch.order.asSymbol;
-		curK = sl.curDecoderPatch.attributes.k;
 		curSR = (\SR ++ sl.sampleRate).asSymbol;
-		curKernel = sl.curKernel ?? {\no_correction};
+		curKernel = sl.curKernel ?? {\basic_balance};
 		stereoPending = nil;
 
 		"variables initialized".postln;
-		postf("curDecType: %, curOrder: %, curSR: %, curK: %, curKernel: %\n",
-			curDecType, curOrder, curSR, curK, curKernel);
+		postf("curDecType: %, curOrder: %, curSR: %, curKernel: %\n",
+			curDecType, curOrder, curSR, curKernel);
 			loadCondition !? {loadCondition.test_(true).signal}
 	}
 
 	recallValues {
-		this.initVars;
-		interfaceJS.value_( \ampLevelLabel, sl.globalAmp.ampdb.round(0.1).asString );
-		interfaceJS.value_(\ampSlider, sl.globalAmp);
-		if(sl.stereoActive, {this.setCtlActive(\Stereo)});
-		if(sl.isMuted, {this.setCtlActive(\Mute)});
-		if(sl.isAttenuated, {this.setCtlActive(\Attenuate)});
+		var cond;
+		fork {
+			cond = Condition(false);
+			this.initVars(cond);
+			cond.wait;
+
+			interfaceJS.value_( \ampLevelLabel, sl.globalAmp.ampdb.round(0.1).asString );
+			interfaceJS.value_(\ampSlider, sl.globalAmp);
+			if(sl.stereoActive, {this.setCtlActive(\Stereo)});
+			if(sl.isMuted, {this.setCtlActive(\Mute)});
+			if(sl.isAttenuated, {this.setCtlActive(\Attenuate)});
+
+			this.clearControls(sampleRates, curSR, nil); // TODO, why don't I have to clear the other categories?
+
+			/*  turn on defaults  */
+			[curDecType, curOrder, curSR, curKernel].do({ |name|
+				("turning on" + name).postln;
+				if( name.notNil, {
+					// remove calls to non-existing controls
+					if(interfaceJS.guiObjects[name].notNil, {
+						this.setCtlActive(name)
+					})
+				},{"nil found when turning on controls".warn})
+			});
+
+			interfaceJS.value_( \Update, 0);
+			this.setColor( \Update, \default );
+			/*0.2.wait;
+			interfaceJS.reloadPage;*/
+		}
 	}
 
 	cleanup {
 		sl.removeDependant( this );
 		slhw !? {slhw.removeDependant(this)};
 		interfaceJS.free;
-		listeners.do(_.free);
+		// listeners.do(_.free);
 	}
 
 }

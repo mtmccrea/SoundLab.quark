@@ -67,14 +67,14 @@ SoundLab {
 
 		rbtTryCnt = 0;
 
-		clipListener = OSCFunc({
+		OSCdef(\clipListener, {
 			|msg, time, addr, recvPort|
 			("CLIPPED channel" ++ msg[3]).postln;
 			this.changed(\clipped, msg[3]);
 			}, '/clip', nil
 		);
 
-		reloadGUIListener = OSCFunc({
+		OSCdef(\reloadGUI, {
 			|msg, time, addr, recvPort|
 			"reloading gui".postln;
 			this.buildGUI;
@@ -596,12 +596,11 @@ SoundLab {
 
 
 	cleanup  {
-		[clipListener, reloadGUIListener].do(_.free);
+		[OSCdef(\clipListener), OSCdef(\reloadGUI)].do(_.free);
 		gui !? {gui.cleanup};
 		slhw !? {slhw.removeDependant(this)};
 		this.prClearServerSide; 			// frees jconvs
 		slhw !? {slhw.stopAudio};
-		reloadGUIListener.free;
 		if ( gui.notNil, {gui.cleanup} );
 	}
 
