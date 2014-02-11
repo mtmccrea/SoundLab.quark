@@ -15,11 +15,11 @@ IdentityDictionary(know: true)
 	/* SoundLabHardware settings */
 
 	\useFireface, 			false,
-	//\midiPortName,			"External MIDI-MADIFXtest MIDI 1",
+	//\midiPortName,			"External MIDI-MADIFXtest MIDI 1", // 205
 	\midiPortName,			nil, // nil for no MIDI
-	//\cardNameIncludes,		"RME",
+	//\cardNameIncludes,		"RME", // 205
 	\cardNameIncludes,		nil, // for OSX
-	//\jackPath,				"/usr/bin/jackd",
+	//\jackPath,				"/usr/bin/jackd", // 205
 	\jackPath,				"/usr/local/bin/jackdmp", // for osx
 	\fixAudioInputGoingToTheDecoder, true,
 	\hwPeriodSize, 			256,
