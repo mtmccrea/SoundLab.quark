@@ -160,8 +160,16 @@ SoundLabGUI {
 							{
 								pendingDecType = pendingDecType ?? curDecType;
 								pendingOrder = pendingOrder ?? curOrder;
-								this.status("Updating decoder to "++pendingDecType++" order "++pendingOrder);
-
+								// catch invalid order
+								if(
+									("(T|t)hru".matchRegexp(pendingDecType.asString).not // ambi decoder pending
+									and: (pendingOrder == \NA) // ambi order not specified
+									),
+									{this.status("Invalid order."); interfaceJS.value_( \Update, 0); break.()}
+								);
+								this.status(
+									("Updating decoder to "++pendingDecType++" order "++pendingOrder).postln
+								);
 
 								if( pendingKernel.notNil,
 									{
@@ -820,7 +828,7 @@ SoundLabGUI {
 
 /* TESTING
 InterfaceJS.nodePath = "/usr/local/bin/node"
-l = SoundLab(48000, loadGUI:true, useSLHW: false, useKernels: true)
+l = SoundLab(48000, loadGUI:true, useSLHW: false, useKernels: false)
 l.cleanup
 l.curKernel
 l.kernelDict

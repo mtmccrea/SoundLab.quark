@@ -174,10 +174,10 @@ SoundLab {
 				hwInStart = server.options.numOutputBusChannels;
 
 				stereoPatcherSynths = 2.collect({|i|
-					patcherDef.note( target: patcherGroup )
+					// TAIL so avoid sending from stereo into satellite patcher synths (doubling the output)
+					patcherDef.note( addAction: \tail, target: patcherGroup )
 					.in_bus_(hwInStart+i)
 					.out_bus_(stereoChanIndex[i])
-					//.out_bus_(numSatChans+numSubChans+i) // atm stereo always goes to first set of outs
 					.play
 				});
 				server.sync;
@@ -224,14 +224,6 @@ SoundLab {
 				if(loadGUI, {this.buildGUI});
 			}
 		});
-	}
-
-	fakeMethod {
-		var test;
-		"before".postln;
-		test = this.changed(\nothing, 1234);
-		"after".postln;
-		test.postln;
 	}
 
 	startNewSignalChain { |deocderName, decoderOrder, kernelName, completeCondition|
