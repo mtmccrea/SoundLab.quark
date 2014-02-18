@@ -1,4 +1,4 @@
-/* Config for SoundLab */
+/* Config for SoundLab 205 */
 "CONFIG Loading".postln;
 
 IdentityDictionary(know: true)
@@ -15,12 +15,12 @@ IdentityDictionary(know: true)
 	/* SoundLabHardware settings */
 
 	\useFireface, 			false,
-	//\midiPortName,			"External MIDI-MADIFXtest MIDI 1", // 205
-	\midiPortName,			nil, // nil for no MIDI
-	//\cardNameIncludes,		"RME", // 205
-	\cardNameIncludes,		nil, // for OSX
-	//\jackPath,				"/usr/bin/jackd", // 205
-	\jackPath,				"/usr/local/bin/jackdmp", // for osx
+	\midiPortName,			"External MIDI-MADIFXtest MIDI 1", // 205
+	// \midiPortName,			nil, // nil for no MIDI
+	\cardNameIncludes,		"RME", // 205
+	// \cardNameIncludes,		nil, // for OSX
+	\jackPath,				"/usr/bin/jackd", // 205
+	// \jackPath,				"/usr/local/bin/jackdmp", // for osx
 	\fixAudioInputGoingToTheDecoder, true,
 	\hwPeriodSize, 			256,
 	\hwPeriodNum,			1,
@@ -41,16 +41,23 @@ see prLoadSynthDefs for how channel mappings are used
 	]
 )
 .put(\defaultSpkrGainsDB,
-	[
-		-1.121052631579, -1.421052631579, 0.47894736842105,
-		-0.92105263157896, 0.17894736842105, 0.87894736842104,
-		-0.52105263157895, -0.021052631578954, 1.078947368421,
-		-0.52105263157895, 0.17894736842105, -0.52105263157895,
-		1.278947368421, -0.32105263157895, 0.87894736842104,
-		1.378947368421, 2.178947368421, -0.72105263157896,
-		-2.421052631579,
-		// subs
-		0, 0
+	/*	[  // measured values, rescaled to target the average
+	-1.121052631579, -1.421052631579, 0.47894736842105,
+	-0.92105263157896, 0.17894736842105, 0.87894736842104,
+	-0.52105263157895, -0.021052631578954, 1.078947368421,
+	-0.52105263157895, 0.17894736842105, -0.52105263157895,
+	1.278947368421, -0.32105263157895, 0.87894736842104,
+	1.378947368421, 2.178947368421, -0.72105263157896,
+	-2.421052631579,
+	// subs
+	0, 0
+	]*/
+	// above vals normalized to 0db max
+	[	-3.3, -3.6, -1.7, -3.1, -2, -1.3,
+		-2.7, -2.2, -1.1, -2.7, -2, -2.7,
+		-0.9, -2.5, -1.3, -0.8, 0, -2.9,
+		-4.6,
+		-2.179, -2.179
 	]
 )
 .put(\spkrAzimuthsRad, (
