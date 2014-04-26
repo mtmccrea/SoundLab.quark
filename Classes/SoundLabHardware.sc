@@ -35,9 +35,10 @@ Changelog....?
 SoundLabHardware {
 	var useSupernova, fixAudioInputGoingToTheDecoder, <>useFireface;
 	var <midiPortName, <cardNameIncludes, jackPath;
-	var serverIns = 32, serverOuts = 128, numHwOutChToConnectTo = 32, numHwInChToConnectTo = 32;
+	var serverIns, serverOuts, numHwOutChToConnectTo, numHwInChToConnectTo;
+	var firefaceID;
+	var whichMadiInput, whichMadiOutput;
 	// var firstOutput = 66, firstInput = 66;//0 for 117, 64 for 205, at 96k!
-	var whichMadiInput = 2, whichMadiOutput = 2; //nil for regular MADI, 0-2 for MADIFX
 	var cardID, <sampleRate, /*<ins, <outs, */midiPort, <server;
 	// var getCardID, setSR, initMIDI, sendSysex, startJack, stopJack, initAll, prStartServer;
 	var <audioIsRunning, parametersSetting;//bools for status
@@ -49,18 +50,26 @@ SoundLabHardware {
 	var newJackName, newJackIns, newJackOuts, <jackPeriodSize;
 	var serverInputNameInJack;
 	var fixAudioIn;
-	var <dbusServerPid, <phantomState, firefaceID = "000a3500c1da0056"; //205: 000a3500c1da0056, 117: 000a35009caf3c69
+	var <dbusServerPid, <phantomState;
 
 	//remmeber to use update notification at some point!!!!
 
 
-	*new {arg useSupernova = false, fixAudioInputGoingToTheDecoder = true, useFireface = true,
+	*new {arg useSupernova = false,
+		fixAudioInputGoingToTheDecoder = true,
+		useFireface = true,
 		midiPortName = "External MIDI-MADIFXtest MIDI 1", // nil for no MIDI
 		cardNameIncludes = "RME", // nil for OSX
 		jackPath = "/usr/bin/jackd",
-		serverIns = 32, serverOuts = 128, numHwOutChToConnectTo = 32, numHwInChToConnectTo = 32;
+		serverIns = 32,
+		serverOuts = 128,
+		numHwOutChToConnectTo = 32,
+		numHwInChToConnectTo = 32,
+		firefaceID = "000a3500c1da0056",//117: 000a35009caf3c69, 205: 000a3500c1da0056
+		whichMadiInput = 2,
+		whichMadiOutput = 2;//nil for regular MADI, 0-2 for MADIFX
 		// ^super.newCopyArgs(shellCommand, receiveAction, exitAction, id).init(false);
-		^super.newCopyArgs(useSupernova, fixAudioInputGoingToTheDecoder, useFireface, midiPortName, cardNameIncludes, jackPath, serverIns, serverOuts, numHwOutChToConnectTo, numHwInChToConnectTo).init;
+		^super.newCopyArgs(useSupernova, fixAudioInputGoingToTheDecoder, useFireface, midiPortName, cardNameIncludes, jackPath, serverIns, serverOuts, numHwOutChToConnectTo, numHwInChToConnectTo, firefaceID, whichMadiInput, whichMadiOutput).init;
 	}
 
 	*killJack {

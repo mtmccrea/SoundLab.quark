@@ -314,31 +314,29 @@
 	}
 
 	prInitSLHW { |initSR|
-		var passArgs;
-		// for passing args to SLHW with keyword args
-		passArgs = [
-			config.fixAudioInputGoingToTheDecoder,
-			config.useFireface,
-			config.midiPortName,
-			config.cardNameIncludes,
-			config.jackPath,
-			config.hwPeriodSize,
-			config.hwPeriodNum
-		];
 		//for linux
 		slhw = SoundLabHardware.new(
-			fixAudioInputGoingToTheDecoder: passArgs[0],
-			useFireface: passArgs[1],
-			midiPortName: passArgs[2],
-			cardNameIncludes: passArgs[3],
-			jackPath: passArgs[4],
-			serverIns: numHardwareIns, serverOuts: numHardwareOuts * 3,
-			numHwOutChToConnectTo: numHardwareOuts, numHwInChToConnectTo: numHardwareIns
+			false, //useSupernova
+			config.fixAudioInputGoingToTheDecoder, //fixAudioInputGoingToTheDecoder
+			config.useFireface, //useFireface
+			config.midiPortName, //midiPortName
+			config.cardNameIncludes, //cardNameIncludes
+			config.jackPath, //jackPath
+			numHardwareIns, //serverIns
+			numHardwareOuts * 3, //serverOuts
+			numHardwareOuts, //numHwOutChToConnectTo
+			numHardwareIns, //numHwInChToConnectTo
+			config.firefaceID, //firefaceID
+			config.whichMadiInput, //whichMadiInput
+			config.whichMadiOutput //whichMadiOutput
 		);
-		//for osx
-		// slhw = SoundLabHardware.new(false,true,false,nil,nil,"/usr/local/bin/jackdmp",32,128);
+		// slhw = SoundLabHardware.new(false,true,false,nil,nil,"/usr/local/bin/jackdmp",32,128); //for osx
 		slhw.postln;
-		slhw.startAudio(initSR, periodSize: passArgs[5], periodNum:passArgs[6]);
+		slhw.startAudio(
+			initSR, //newSR
+			config.hwPeriodSize, //periodSize
+			config.hwPeriodNum, //periodNum
+		);
 		slhw.addDependant(this);
 	}
 

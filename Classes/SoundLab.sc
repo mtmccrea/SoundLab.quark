@@ -3,7 +3,7 @@ SoundLab {
 	// classvar <>numHardwareOuts, <>numHardwareIns, <>defaultDecoderName, <>defaultKernel, <>kernelDirPath;
 
 	// copyArgs
-	var <initSR, <loadGUI, <usingSLHW, <>usingKernels;
+	var <initSR, <loadGUI, <usingSLHW, <>usingKernels, <configFileName;
 
 	var <>xfade = 0.2,  <>debug=true;
 	var <globalAmp, <numSatChans, <numSubChans, <totalArrayChans, <numKernelChans;
@@ -24,8 +24,8 @@ SoundLab {
 	var <decoderLib, <synthLib, <loadedDelDistGain;
 	var <slhw;
 
-	*new { |initSR=96000, loadGUI=false, useSLHW=true, useKernels=true|
-		^super.newCopyArgs(initSR, loadGUI, useSLHW, useKernels).init;
+	*new { |initSR=96000, loadGUI=true, useSLHW=true, useKernels=true, configFileName="CONFIG_205.scd"|
+		^super.newCopyArgs(initSR, loadGUI, useSLHW, useKernels, configFileName).init;
 	}
 
 	// NOTE: Jack will create numHarwareOuts * 3 for routing to
@@ -35,7 +35,7 @@ SoundLab {
 	// Thus SC will boot with s.option.numOutputBusChannels = numHarwareOuts * 3.
 	init {
 
-		File.use( File.realpath(this.class.filenameSymbol).dirname ++ "/CONFIG.scd", "r", { |f|
+		File.use( File.realpath(this.class.filenameSymbol).dirname ++ "/" ++ configFileName, "r", { |f|
 			config = f.readAllString.interpret;
 		});
 		// config = thisProcess.interpreter.executeFile(File.realpath(this.class.filenameSymbol).dirname ++ "/CONFIG.scd");
@@ -87,7 +87,7 @@ SoundLab {
 		);
 	}
 
-	// this happens after hardware is intitialized abd server is booted
+	// this happens after hardware is intitialized and server is booted
 	prLoadServerSide { |argServer|
 		var loadCondition;
 		loadCondition = Condition(false);
