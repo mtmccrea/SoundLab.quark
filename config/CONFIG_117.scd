@@ -41,7 +41,8 @@ see prLoadSynthDefs for how channel mappings are used
 		2.324, 2.763, 2.784, 2.101, 2.774, 2.790,
 		2.869, 2.940, 3.210, 2.950, 2.915, 3.051,
 		2.244, 2.294, 2.296,
-		3.048, 3.038, 3.046, 3.049 // subs
+		// 3.048, 3.038, 3.046, 3.049 // subs
+		2.415, 3.575, 2.309, 3.678 //subs, updated 2014.04.23
 	]
 )
 .put(\defaultSpkrGainsDB,
@@ -51,7 +52,8 @@ see prLoadSynthDefs for how channel mappings are used
 		3.2, 0.9, 0, 0.9, 0.3, 0.8,
 		1.2, 0.9, 0.4, 0.3, 0, 0.6,
 		1.9, 1.2, 1.3,
-		0, 6, 6, 5 // subs
+		// 0, 6, 6, 5 // subs
+		13, 8, 14, 10 //subs, updated 2014.04.23
 	].neg
 )
 .put(\spkrAzimuthsRad,
