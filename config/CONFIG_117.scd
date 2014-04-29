@@ -14,7 +14,7 @@ IdentityDictionary(know: true)
 
 	/* SoundLabHardware settings */
 
-	\useFireface, 			false,
+	\useFireface, 			true,
 	\midiPortName,			"External MIDI- MIDI 1",
 	// \midiPortName,			nil, // nil for no MIDI
 	\cardNameIncludes,		"RME",
