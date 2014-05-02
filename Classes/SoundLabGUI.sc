@@ -142,6 +142,7 @@ SoundLabGUI {
 						if( pendingDecType.isNil 	and:
 							pendingOrder.isNil		and:
 							pendingSR.isNil			and:
+							pendingKernel.isNil		and: // added 5/1/14
 							stereoPending.isNil,
 							{this.status("No updates."); interfaceJS.value_( \Update, 0); break.()}
 						);
@@ -153,9 +154,10 @@ SoundLabGUI {
 						this.setColor( \Update, \yellow );
 						updateCond = Condition(false);
 
-						/* Update Deocder/Order/Kernel */
+						/* Update Decoder/Order/Kernel */
 						if( pendingDecType.notNil 	or:
 							pendingOrder.notNil		or:
+							pendingKernel.notNil	or:
 							pendingSR.notNil,
 							{
 								pendingDecType = pendingDecType ?? curDecType;
@@ -408,7 +410,7 @@ SoundLabGUI {
 				\kernel,	{
 					var k_name;
 					k_name = args[0];
-					k_name !? {k_name = k_name.asSymbol}; // don't convert nil to Symbol TODO: fix this
+					k_name !? {k_name = k_name.asSymbol};
 					curKernel = k_name;
 					this.clearControls(kernels, k_name, nil);
 					k_name.notNil.if({this.setCtlActive(k_name)}, {this.setCtlActive(\basic_balance)});

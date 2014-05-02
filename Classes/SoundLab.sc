@@ -52,8 +52,11 @@ SoundLab {
 		numKernelChans = totalArrayChans; 	// TODO: confirm this approach
 
 		// kernelDirPath = PathName.new(Platform.resourceDir ++ "/sounds/SoundLabKernelsNew/");
+		// kernelDirPath = kernelDirPath ?? {
+		// PathName.new(File.realpath(this.class.filenameSymbol).dirname ++ "/SoundLabKernels/") };
 		kernelDirPath = kernelDirPath ?? {
-			PathName.new(File.realpath(this.class.filenameSymbol).dirname ++ "/SoundLabKernels/") };
+			PathName.new(File.realpath(this.class.filenameSymbol).dirname ++ "/" ++ config.kernelsPath) }; //expecting path relative the class, NOT starting with a slash
+		// "kernelDirPath: ".post; kernelDirPath.postln;
 
 		globalAmp = 0.dbamp;
 		stereoActive = stereoActive ?? {true};
@@ -230,18 +233,24 @@ SoundLab {
 		var cond;
 		cond = Condition(false);
 		fork {
+			"in startNewSignalChain, kernelName: %\n".postf(kernelName);
 			// LOAD JCONVOLVER
-			if( kernelName.notNil, {
-				usingKernels = true;
-				"loading new jconvolver".postln;
-				this.loadJconvolver(kernelName, cond); // this sets nextjconvolver var
-			},{ cond.test_(true).signal });
+			if( kernelName != \basic_balance,
+				{
+					usingKernels = true;
+					"loading new jconvolver".postln;
+					this.loadJconvolver(kernelName, cond); // this sets nextjconvolver var
+				},{
+					"starting new signal chain for basic_balance".postln;
+					cond.test_(true).signal
+			});
 			cond.wait;
 			"1 - Passed loading kernels".postln;
 			cond.test_(false); // reset the condition to hang when needed later
 
 			if( loadedDelDistGain.isNil		// startup
-				or: nextjconvolver.notNil,	// kernel change
+				or: nextjconvolver.notNil	// kernel change
+				or: (kernelName == \basic_balance),		// temp fix to account for switching TO basic_balance setting
 				{
 					// LOAD DELAYS AND GAINS
 					"loading new dels and gains".postln;
@@ -250,7 +259,7 @@ SoundLab {
 						// nextjconvolver var set in loadJconvolver method above
 						if( usingKernels and: nextjconvolver.notNil,
 							{nextjconvolver.kernelName},
-							{\default}
+							{"selecting default dist/gains".postln; \default}
 						),
 						cond
 					);
@@ -558,8 +567,7 @@ SoundLab {
 	sampleRate { if(usingSLHW, {^slhw.server.sampleRate}, {^server.sampleRate}) }
 
 	setNoKernel {
-		curKernel = \no_correction; //nil; // TODO rethink this
-		// nextKernel = false;
+		curKernel = \basic_balance;
 		usingKernels = false;
 		this.changed(\kernel, curKernel);
 		nextjconvolver !? {nextjconvolver.free; nextjconvolver = nil;}

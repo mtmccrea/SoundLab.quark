@@ -26,7 +26,10 @@ IdentityDictionary(know: true)
 	\hwPeriodNum,			1,
 	\firefaceID,            "000a3500c1da0056",
 	\whichMadiInput,        2,
-	\whichMadiOutput,       2
+	\whichMadiOutput,       2,
+
+	/* file paths */
+	\kernelsPath,           "../../SoundLabSupport/SoundLabKernelsNew/" //currently "../../SoundLabSupport/SoundLabKernelsNew/"
 ])
 
 /*
