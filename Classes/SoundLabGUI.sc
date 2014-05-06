@@ -169,9 +169,7 @@ SoundLabGUI {
 									),
 									{this.status("Invalid order."); interfaceJS.value_( \Update, 0); break.()}
 								);
-								this.status(
-									("Updating decoder to "++pendingDecType++" order "++pendingOrder).postln
-								);
+								this.status(("Updating decoder to "++pendingDecType++" order "++pendingOrder).postln);
 
 								if( pendingKernel.notNil,
 									{
@@ -616,11 +614,10 @@ SoundLabGUI {
 
 
 		catCntlArr.select{|item, i| i.even}.do({ |category_name|
-			// cntrlDict.keysValuesDo({ |category_name, cntrl|
 			var cntrl_set, cat_height, nrows, col_cnt, w, h;
 			cntrl_set = cntrlDict[category_name];
 
-			("\n"++category_name++" control set").postln; cntrl_set.keysValuesDo{|k,v|"\t".post; [k,v].postln};
+			("\n"++category_name++" control set").postln; //cntrl_set.keysValuesDo{|k,v|"\t".post; [k,v].postln};// debug
 
 			nrows = cntrl_set.cSize.notNil.if(
 				{(cntrl_set.cSize / ncntrls_row) * (cntrl_set.controls.size)},
@@ -640,11 +637,11 @@ SoundLabGUI {
 			});
 
 			/* category label */
-			("making cat label "++category_name++" at: " ++ [here.x, here.y, colW, catLabelH]).postln;
+			// ("making cat label "++category_name++" at: " ++ [here.x, here.y, colW, catLabelH]).postln; // debug
 			interfaceJS.makeLabel( category_name, Rect(here.x, here.y, colW, catLabelH), size: 14, align: "left");
 			here.y = here.y + catLabelH; // advance place holder
 
-			"making controls".postln;
+			// "making controls".postln; // debug
 			// check for controls with a size attribute
 			if(cntrl_set.cSize.notNil,
 				{
@@ -670,8 +667,8 @@ SoundLabGUI {
 					}
 				);
 
-				cntrl.postln;
-				("row/column:\t" ++ [row_cnt,col_cnt]).postln;
+				// cntrl.postln; // debug
+				// ("row/column:\t" ++ [row_cnt,col_cnt]).postln; // debug
 
 /*				if((cntrl_set.controls.size == 1) and: (cntrl_set.cSize.notNil),
 					{ "setting special x".postln;
@@ -692,7 +689,7 @@ SoundLabGUI {
 					},
 					\button, {
 						cntrl.class;
-						postf("making button for\t %, function %\n", cntrl, oscFuncDict[cntrl]);
+						// postf("making button for\t %, function %\n", cntrl, oscFuncDict[cntrl]);
 						interfaceJS.makeButton(
 							cntrl, Rect(here.x, here.y, w, h),
 							function: oscFuncDict[cntrl],

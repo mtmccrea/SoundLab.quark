@@ -15,20 +15,14 @@ SoundLabDecoderPatch {
 				("initializing SoundLabDecoderPatch:"+synthdefName).postln;
 
 				soundlab.decoderLib[synthdefName] ?? {
-					break.(
-						warn( synthdefName ++" decoder not found in decoderLib!!!" );
-					)
+					break.( warn( synthdefName ++" decoder not found in decoderLib!!!" ))
 				};
 				// used for introspection by GUI
 				attributes = soundlab.decAttributes.select{|me| me.synthdefName == synthdefName};
-				(attributes.size >1).if({
-					break.(
-						warn("Found more than one decoder attribute list with that synthdefName: "++synthdefName)
-					)
-					},{
-						attributes = attributes[0]
-				});
-
+				(attributes.size >1).if(
+					{ break.( warn("Found more than one decoder attribute list with that synthdefName: "++synthdefName))},
+					{ attributes = attributes[0] }
+				);
 
 				server = soundlab.server;
 				group = CtkGroup.play(addAction: \before, target: soundlab.patcherGroup, server: server);
@@ -38,7 +32,7 @@ SoundLabDecoderPatch {
 					addAction: \head, target: group)
 				.in_busnum_(inbusnum);
 				// discrete routing synthdefs have no out_busnum arg
-				order.isInteger.if{ decodersynth.out_busnum_(outbusnum) };
+				(order != \NA).if{ decodersynth.out_busnum_(outbusnum) }; //TODO: get rid of order
 
 				compsynth = soundlab.synthLib[\delay_gain_comp].note(
 					addAction: \tail, target: group)

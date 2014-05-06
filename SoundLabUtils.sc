@@ -114,15 +114,9 @@
 					key = \default;
 			});
 
-			// debug
-			("now setting del dist gains to key: "++key).postln;
-
 			spkrDists = compDict.distances.at(key);
 			spkrDels = compDict.delays.at(key);
 			spkrGains = compDict.gains.at(key);
-
-			// debug
-			("del dist gains have been set to to key: "++key).postln;
 
 			this.prCheckArrayData;
 			("delays, gains, distances loaded for:" ++ key).postln;
@@ -136,7 +130,7 @@
 		var matrix_dec_sat, matrix_dec_sub, decSynthDef;
 
 		// debug
-		"loading Diametric synthdef".postln;
+		// "loading Diametric synthdef".postln;
 
 		/* --satellites-- */
 		arrayOutIndices = decSpecs.arrayOutIndices;
@@ -153,7 +147,7 @@
 		matrix_dec_sat = FoaDecoderMatrix.newDiametric(satDirections, decSpecs.k);
 
 		// debug
-		matrix_dec_sat.postln;
+		// matrix_dec_sat.postln;
 
 		/* --subs-- */
 		subOutbusNums = (numSatChans..(numSatChans+numSubChans-1)); // always use all the subs
@@ -165,17 +159,17 @@
 			});
 
 			// debug
-			subDirections.postln;
+			// subDirections.postln;
 
 			matrix_dec_sub = (subDirections.size > 1).if(
-				{ "building diametric".postln; FoaDecoderMatrix.newDiametric(subDirections, decSpecs.k) },
+				{ FoaDecoderMatrix.newDiametric(subDirections, decSpecs.k) },
 				// stereo decoder for 2 subs, symmetrical across x axis, cardioid decode
-				{ "building stereo".postln; FoaDecoderMatrix.newStereo(subDirections[0], 0.5) }
+				{ FoaDecoderMatrix.newStereo(subDirections[0], 0.5) }
 			)
 		});
 
 		// debug
-		matrix_dec_sub.postln;
+		//matrix_dec_sub.postln;
 
 		// build the synthdef
 		decSynthDef = SynthDef( decSpecs.synthdefName, {
@@ -189,12 +183,12 @@
 				gate, doneAction: 2
 			);
 
-			// debug
+			/*// debug
 			postf("psycho shelf setup: %, %, %, %\n", matrix_dec_sat.shelfFreq.isNumber,
 				matrix_dec_sat.shelfFreq,
 				matrix_dec_sat.shelfK.at(0),
 				matrix_dec_sat.shelfK.at(1)
-			);
+			);*/
 
 			// include shelf filter?
 			if( matrix_dec_sat.shelfFreq.isNumber, {
@@ -243,9 +237,6 @@
 
 	prLoadDiscreteRoutingSynth { |decSpecs|
 
-		// debug
-		"loading discrete routing synthdef".postln;
-
 		decoderLib.add(
 			SynthDef( decSpecs.synthdefName, {
 				arg in_busnum, fadeTime = 0.3, subgain = 0, gate = 1;
@@ -268,17 +259,14 @@
 	// load every possible decoding SynthDef based on decAttList
 	prLoadSynthDefs { |finishLoadCondition|
 
-		// debug
-		"prLoadSynthDefs".postln;
-
 		decoderLib = CtkProtoNotes();
 
 		/* build and load decoders */
 		decAttributes.do{ |decSpecs|
 
 			// debug
-			"build and load decoders".postln;
-			decSpecs.postln;
+			"build and load decoder".postln;
+			// decSpecs.postln;
 
 			switch( decSpecs.kind,
 				\diametric,	{ this.prLoadDiametricDecoderSynth(decSpecs)},

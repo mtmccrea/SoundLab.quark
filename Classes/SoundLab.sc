@@ -12,7 +12,7 @@ SoundLab {
 	var <numHardwareOuts, <numHardwareIns, <stereoChanIndex, <>defaultDecoderName, <>defaultKernel, <>kernelDirPath, <>defaultOrder;
 
 	var <server, <gui, <curKernel, <stereoActive, <isMuted, <isAttenuated, <stateLoaded;
-	var <clipMonitoring, <curDecoderPatch, <nextDecoderPatch, rbtTryCnt;
+	var <clipMonitoring, <curDecoderPatch, rbtTryCnt;
 	var <clipListener, <reloadGUIListener, <clipMonDef, <patcherDef;
 	var <patcherGroup, <stereoPatcherSynths, <satPatcherSynths, <subPatcherSynths;
 	var <monitorGroup_ins, <monitorGroup_outs, <monitorSynths_outs, <monitorSynths_ins;
@@ -54,8 +54,9 @@ SoundLab {
 		// kernelDirPath = PathName.new(Platform.resourceDir ++ "/sounds/SoundLabKernelsNew/");
 		// kernelDirPath = kernelDirPath ?? {
 		// PathName.new(File.realpath(this.class.filenameSymbol).dirname ++ "/SoundLabKernels/") };
-		kernelDirPath = kernelDirPath ?? {
-			PathName.new(File.realpath(this.class.filenameSymbol).dirname ++ "/" ++ config.kernelsPath) }; //expecting path relative the class, NOT starting with a slash
+		// kernelDirPath = kernelDirPath ?? {
+		// PathName.new(File.realpath(this.class.filenameSymbol).dirname ++ "/" ++ config.kernelsPath) }; //expecting path relative the class, NOT starting with a slash
+		kernelDirPath = PathName.new(config.kernelsPath);
 		// "kernelDirPath: ".post; kernelDirPath.postln;
 
 		globalAmp = 0.dbamp;
@@ -234,38 +235,53 @@ SoundLab {
 		cond = Condition(false);
 		fork {
 			"in startNewSignalChain, kernelName: %\n".postf(kernelName);
+
 			// LOAD JCONVOLVER
-			if( kernelName != \basic_balance,
-				{
-					usingKernels = true;
-					"loading new jconvolver".postln;
-					this.loadJconvolver(kernelName, cond); // this sets nextjconvolver var
-				},{
-					"starting new signal chain for basic_balance".postln;
+			if( (kernelName == \basic_balance),
+				{	"changing to basic_balance, usingKernels = false".postln; // debug
+					this.setNoKernel;
 					cond.test_(true).signal
-			});
+				},{
+					if( kernelName.notNil, {
+						usingKernels = true;
+						"loading new jconvolver".postln; // debug
+						this.loadJconvolver(kernelName, cond); // this sets nextjconvolver var
+						// TODO: what happens below when loadJconvolver fails and
+						// nextjconvolver set to nil?
+						},{
+							"no new correction specified".postln;
+							cond.test_(true).signal
+						}
+					)
+				}
+			);
+
 			cond.wait;
-			"1 - Passed loading kernels".postln;
+			"1 - Passed loading jconvolver".postln;
 			cond.test_(false); // reset the condition to hang when needed later
 
-			if( loadedDelDistGain.isNil		// startup
-				or: nextjconvolver.notNil	// kernel change
-				or: (kernelName == \basic_balance),		// temp fix to account for switching TO basic_balance setting
+			// LOAD DELAYS AND GAINS
+
+			if( loadedDelDistGain.isNil				// startup
+				or: nextjconvolver.notNil			// kernel change
+				or: (kernelName == \basic_balance),	// switching to basic_balance
 				{
-					// LOAD DELAYS AND GAINS
-					"loading new dels and gains".postln;
+					//debug
+					postf("\nloadedDelDistGain.isNil - startup: %\n", loadedDelDistGain.isNil);
+					postf("nextjconvolver.notNil - kernel change: %\n", nextjconvolver.notNil);
+					postf("kernelName == \basic_balance -  switching to basic_balance: %\n\n", kernelName == \basic_balance);
+
 					this.prLoadDelDistGain(
-						// TODO: get rid of usingKernels var?
 						// nextjconvolver var set in loadJconvolver method above
-						if( usingKernels and: nextjconvolver.notNil,
+						if( nextjconvolver.notNil, // TODO what happens below when loadJconvolver fails?
 							{nextjconvolver.kernelName},
 							{"selecting default dist/gains".postln; \default}
 						),
 						cond
 					);
-					cond.wait; "advancing to load synthdefs".postln;
+					cond.wait;
+					"advancing to load synthdefs".postln; // debug
 					cond.test_(false);
-
 					// debug
 					"nextjconvolver: ".post; nextjconvolver.postln;
 
@@ -275,6 +291,7 @@ SoundLab {
 								sets the delays, distances and gains in the decoder synth");
 								nextjconvolver.free;
 								nextjconvolver = nil;
+								// TODO what happens below when loadJconvolver fails?
 							}
 						);
 					};
@@ -284,7 +301,6 @@ SoundLab {
 					NOTE: this needs to happen for every new kernel being loaded */
 					"loading synthdefs".postln;
 					this.prLoadSynthDefs(cond);
-
 					cond.wait;
 					"2 - SynthDefs loaded".postln;
 					cond.test_(false); // reset the condition to hang when needed later
@@ -293,6 +309,9 @@ SoundLab {
 			server.sync; // sync to let all the synths load
 
 			// START DECODER
+
+			// TODO get rid of order altogether
+			postf("nextjconvolver before starting decoder: %\n", nextjconvolver);
 			if( nextjconvolver.notNil or: 	// new jconvolver, so new outbus
 				deocderName.notNil,			// requested decoder change
 				{
@@ -304,7 +323,7 @@ SoundLab {
 					newOrder = decoderOrder ?? {
 						curDecoderPatch !? {curDecoderPatch.order}
 					};
-					"new decoder name: ".post; newDecName.postln;
+					"new decoder name: %, order: %\n".postf( newDecName, newOrder ); // debug
 					if( newDecName.notNil, {
 						this.startDecoder(newDecName, newOrder, cond)
 						},{ warn(
@@ -325,10 +344,6 @@ SoundLab {
 				jconvinbus = nextjconvinbus;
 				nextjconvolver = nil;
 				this.changed(\kernel, curKernel);
-			};
-			nextDecoderPatch !? {
-				curDecoderPatch = nextDecoderPatch;
-				this.changed(\decoder, curDecoderPatch);
 			};
 
 			completeCondition !? {completeCondition.test_(true).signal};
@@ -351,7 +366,7 @@ SoundLab {
 	}
 
 	startDecoder  { |newDecName, order, completeCondition|
-		var cond, newDecoderPatch, cur_decoutbus, new_decoutbus;
+		var cond, newDecoderPatch, cur_decoutbus, new_decoutbus, new_decinbus;
 		cond = Condition(false);
 		fork {
 			// debug
@@ -365,35 +380,38 @@ SoundLab {
 						// if there's a new jconvolver, jump to next set of outputs,
 						// always numHardwareOuts or (numHardwareOuts*2)
 						nextjconvolver !? {
-							cur_decoutbus = (cur_decoutbus + numHardwareOuts).wrap(1, numHardwareOuts*2)
+							cur_decoutbus = (cur_decoutbus + numHardwareOuts).wrap(1, numHardwareOuts*2);
 						};
 						cur_decoutbus;
 					},{
-						numHardwareOuts // first set of outputs routed to kernel
+						numHardwareOuts // startup: first set of outputs routed to kernel
 					}
 				);
 				},{0}	// 0 for no kernels
 			);
 
 			"new_decoutbus: ".post; new_decoutbus.postln;
+			new_decinbus = if( stereoActive, {hwInStart+2}, {hwInStart});
 
 			newDecoderPatch = SoundLabDecoderPatch(this,
 				decoderName: newDecName,
 				order: order,
-				inbusnum: if( stereoActive, {hwInStart+2}, {hwInStart}), // decoder inbusnum
-				outbusnum: new_decoutbus,		// decoder outbusnum
-				loadCondition: cond				// finishCondition
+				inbusnum: new_decinbus, 	// decoder inbusnum
+				outbusnum: new_decoutbus,	// decoder outbusnum
+				loadCondition: cond			// finishCondition
 			);
 			cond.wait;
 			// if initializing SoundLabDecoderPatch fails, decoderName won't be set
 			newDecoderPatch.decoderName !? {
 				// debug
 				postf("newDecoderPatch initialized, playing: % \n", newDecoderPatch.decoderName);
-
+				curDecoderPatch !? {postf("curDecoderPatch synth node ID being replaced: %\n", curDecoderPatch.decodersynth.node)};
 				curDecoderPatch !? {curDecoderPatch.free(xfade: xfade)};
 				newDecoderPatch.play(xfade: xfade);
 				xfade.wait;
-				nextDecoderPatch = newDecoderPatch;
+				curDecoderPatch = newDecoderPatch;
+				postf("new curDecoderPatch synth node ID: %\n", curDecoderPatch.decodersynth.node); // debug
+				this.changed(\decoder, curDecoderPatch);
 			};
 			completeCondition !? {completeCondition.test_(true).signal};
 		}
@@ -611,13 +629,18 @@ SoundLab {
 s.options.device_("JackRouter")
 s.options.numWireBufs_(64*8)
 // make sure Jack has at least 96 virtual ins and outs
-l = SoundLab(48000, useSLHW:false, useKernels:true)
+
+InterfaceJS.nodePath = "/usr/local/bin/node"
+
+//initSR=96000, loadGUI=true, useSLHW=true, useKernels=true, configFileName="CONFIG_205.scd"
+l = SoundLab(48000, useSLHW:false, useKernels:true, configFileName:"CONFIG_TEST.scd")
 s.scope(2)
 "~~~~~~".postln
 l.decoderLib.dict.keys
 
 l.free
 s.quit
+
 
 x = {Out.ar(l.curDecoderPatch.inbusnum, 4.collect{PinkNoise.ar * SinOsc.kr(rrand(3.0, 5.0).reciprocal).range(0.0, 0.15)})}.play
 x.free
