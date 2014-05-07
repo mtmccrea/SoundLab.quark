@@ -55,7 +55,15 @@ SoundLab {
 		// kernelDirPath = kernelDirPath ?? {
 		// PathName.new(File.realpath(this.class.filenameSymbol).dirname ++ "/SoundLabKernels/") };
 		kernelDirPath = kernelDirPath ?? {
-			PathName.new(File.realpath(this.class.filenameSymbol).dirname ++ "/" ++ config.kernelsPath)
+			if(config.kernelsPath[0] == "/", {//it's absolute path
+				PathName.new(config.kernelsPath);
+				}, {
+					if(config.kernelsPath[0] == "~", {//it's relative to home directory
+						PathName.new(config.kernelsPath.standardizePath);
+						}, {//it's relative to the class file
+							PathName.new(File.realpath(this.class.filenameSymbol).dirname ++ "/" ++ config.kernelsPath)
+					});
+			});
 		}; //expecting path relative the class, NOT starting with a slash
 		// kernelDirPath = PathName.new(config.kernelsPath);
 		// "kernelDirPath: ".post; kernelDirPath.postln;
