@@ -54,9 +54,10 @@ SoundLab {
 		// kernelDirPath = PathName.new(Platform.resourceDir ++ "/sounds/SoundLabKernelsNew/");
 		// kernelDirPath = kernelDirPath ?? {
 		// PathName.new(File.realpath(this.class.filenameSymbol).dirname ++ "/SoundLabKernels/") };
-		// kernelDirPath = kernelDirPath ?? {
-		// PathName.new(File.realpath(this.class.filenameSymbol).dirname ++ "/" ++ config.kernelsPath) }; //expecting path relative the class, NOT starting with a slash
-		kernelDirPath = PathName.new(config.kernelsPath);
+		kernelDirPath = kernelDirPath ?? {
+			PathName.new(File.realpath(this.class.filenameSymbol).dirname ++ "/" ++ config.kernelsPath)
+		}; //expecting path relative the class, NOT starting with a slash
+		// kernelDirPath = PathName.new(config.kernelsPath);
 		// "kernelDirPath: ".post; kernelDirPath.postln;
 
 		globalAmp = 0.dbamp;
@@ -374,15 +375,17 @@ SoundLab {
 
 			// select which of the 3 out groups to send decoder/correction to
 			new_decoutbus = if(usingKernels, {
-				if(curDecoderPatch.notNil,
-					{	// this is the outbus being replaced..
+				// jconvinbus set in loadJConvolver method
+				if(jconvinbus.notNil, //curDecoderPatch.notNil,
+					{	/*// this is the outbus being replaced..
 						cur_decoutbus = curDecoderPatch.outbusnum;
 						// if there's a new jconvolver, jump to next set of outputs,
 						// always numHardwareOuts or (numHardwareOuts*2)
 						nextjconvolver !? {
 							cur_decoutbus = (cur_decoutbus + numHardwareOuts).wrap(1, numHardwareOuts*2);
 						};
-						cur_decoutbus;
+						cur_decoutbus;*/
+						jconvinbus;
 					},{
 						numHardwareOuts // startup: first set of outputs routed to kernel
 					}
@@ -469,6 +472,8 @@ SoundLab {
 					maxKernelSize: k_size, matchFileName: "*.wav",
 					autoConnectToScChannels: nextjconvinbus, autoConnectToSoundcardChannels: 0
 				);
+
+				jconvinbus = nextjconvinbus;
 
 				newjconvolver = Jconvolver.newFromFolder(k_path);
 

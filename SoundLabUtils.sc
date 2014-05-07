@@ -175,13 +175,13 @@
 		decSynthDef = SynthDef( decSpecs.synthdefName, {
 			arg out_busnum=0, in_busnum, fadeTime = 0.2, subgain = 0, gate = 1;
 			var in, env, sat_out, sub_out;
-			// TODO infer numInputChans from decSpecs.ambiOrder
 
-			in = In.ar(in_busnum, decSpecs.numInputChans); // B-Format signal
 			env = EnvGen.ar(
 				Env( [0,1,0],[fadeTime, fadeTime],\sin, 1),
 				gate, doneAction: 2
 			);
+			// TODO infer numInputChans from decSpecs.ambiOrder
+			in = In.ar(in_busnum, decSpecs.numInputChans) * env; // B-Format signal
 
 			/*// debug
 			postf("psycho shelf setup: %, %, %, %\n", matrix_dec_sat.shelfFreq.isNumber,
