@@ -277,7 +277,7 @@ SoundLabHardware {
 		"ini here".postln;
 		// init MIDI
 		if(midiPortName.notNil, {
-			"now ini here".postln;
+			// "now ini here".postln;
 			MIDIClient.init;
 			// MIDIClient.destinations;
 			// MIDI INIT!!!!!! don't forget to connect.... blah
@@ -659,19 +659,20 @@ SoundLabHardware {
 		});
 	}
 
-	setFfMatrixGain {|inbus = 6 /*mic: 6-9*/, outbus = 12/*ADAT: 12-19(27)*/, gain = 1|
+	setFfMatrixGain {|inbus = 6 /*mic: 6-9*/, outbus = 12/*ADAT: 12-19(27)*/, gain = 1, post = true|
 		var dbusCmd, gainRaw;
 		if(useFireface, {
 			gainRaw = gain * 16384;
 			dbusCmd = "dbus-send --print-reply --dest=org.ffado.Control /org/ffado/Control/DeviceManager/" ++ firefaceID ++ "/Mixer/InputFaders org.ffado.Control.Element.MatrixMixer.setValue int32:" ++ outbus.asString ++ " int32:" ++ inbus.asString ++ " double:" ++ gainRaw.asString;
 			// dbusCmd.postln;
-			dbusCmd.unixCmd;
+			dbusCmd.unixCmd(postOutput: post);
 		});
 	}
 
 	setDefaultFfRouting {
 		var micRoutings;
 		if(useFireface, {
+			"Setting Fireface default routing".postln;
 			micRoutings = [
 				[6, 12],
 				[7, 13],
@@ -685,9 +686,9 @@ SoundLabHardware {
 			26.do({|inInc|
 				26.do({|outInc|
 					if(micRoutings.any({|item| item == [inInc, outInc]}), {
-						this.setFfMatrixGain(inInc, outInc, 1); //full gain for predefined routings
+						this.setFfMatrixGain(inInc, outInc, 1, false); //full gain for predefined routings
 						}, {
-							this.setFfMatrixGain(inInc, outInc, 0); //mute others
+							this.setFfMatrixGain(inInc, outInc, 0, false); //mute others
 					});
 				});
 			});
@@ -698,6 +699,7 @@ SoundLabHardware {
 		var phantomRawValue, rawValuesArray, dbusCmd;
 		if(useFireface, {
 			if(state.notNil, {
+				"Setting Fireface phantom".postln;
 				//store in the class
 				phantomState[channel] = state.asBoolean;
 
@@ -725,7 +727,7 @@ SoundLabHardware {
 				// phantomRawValue.postln;
 				dbusCmd = "dbus-send --print-reply --dest=org.ffado.Control /org/ffado/Control/DeviceManager/" ++ firefaceID ++ "/Control/Phantom org.ffado.Control.Element.Discrete.setValue int32:" ++ phantomRawValue.asString;
 				// dbusCmd.postln;
-				dbusCmd.unixCmd;
+				dbusCmd.unixCmd(postOutput: false);
 				^[channel, state];
 				}, {
 					^phantomState[channel];
@@ -746,22 +748,24 @@ SoundLabHardware {
 	setFfAutoSync {|val = true|
 		var dbusCmd;
 		if(useFireface, {
+			"Setting Fireface AutoSync".postln;
 			//method call sender=:1.88 -> dest=:1.89 serial=291689 path=/org/ffado/Control/DeviceManager/000a35009caf3c69/Control/Clock_mode; interface=org.ffado.Control.Element.Discrete; member=setValue
 			// int32 1
 			dbusCmd = "dbus-send --print-reply --dest=org.ffado.Control /org/ffado/Control/DeviceManager/" ++ firefaceID ++ "/Control/Clock_mode org.ffado.Control.Element.Discrete.setValue int32:" ++ val.asInteger.asString;
 			// dbusCmd.postln;
-			dbusCmd.unixCmd;
+			dbusCmd.unixCmd(postOutput: false);
 		});
 	}
 
 	setFfSampleRate {|sr = 48000|
 		var dbusCmd;
 		if(useFireface, {
+			"Setting Fireface samplerate".postln;
 			// cmd = "ffado-test SetSamplerate " ++ sr.asString;
 			// cmd.unixCmd; //now using dbus
 			dbusCmd = "dbus-send --print-reply --dest=org.ffado.Control /org/ffado/Control/DeviceManager/" ++ firefaceID ++ "/Control/sysclock_freq org.ffado.Control.Element.Discrete.setValue int32:" ++ sr.asInteger.asString;
 			// dbusCmd.postln;
-			dbusCmd.unixCmd;
+			dbusCmd.unixCmd(postOutput: false);
 		});
 	}
 }
