@@ -29,7 +29,7 @@ IdentityDictionary(know: true)
 	\whichMadiOutput,       2,
 
 	/* file paths */
-	\kernelsPath,           "../../SoundLabSupport/SoundLabKernelsNew/" //currently "../../SoundLabSupport/SoundLabKernelsNew/"
+	\kernelsPath,           "../../SoundLabSupport/SoundLabKernels/" //currently "../../SoundLabSupport/SoundLabKernels/"
 ])
 
 /*
@@ -63,7 +63,8 @@ see prLoadSynthDefs for how channel mappings are used
 		-2.7, -2.2, -1.1, -2.7, -2, -2.7,
 		-0.9, -2.5, -1.3, -0.8, 0, -2.9,
 		-4.6,
-		-2.179, -2.179
+		/*-2.179, -2.179*/
+		-22.179, -22.179 //subs mod by Marcin 2014.05.05 by ear
 	]
 )
 .put(\spkrAzimuthsRad, (
