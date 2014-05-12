@@ -52,7 +52,7 @@ SoundLabGUI {
 				modkey = modkey.replace("_96000","");
 				modkey.asSymbol;
 			};
-			kernels = kernels.asArray ++ [\basic_balance]; // TODO replaced by \default?
+			kernels = kernels.asArray ++ [\basic_balance];
 			ampSpec = ControlSpec.new(-80, 12, -2, default: 0);
 			sampleRates = [\SR44100, \SR48000, \SR96000];
 			this.initVars(cond);
@@ -142,7 +142,7 @@ SoundLabGUI {
 						if( pendingDecType.isNil 	and:
 							pendingOrder.isNil		and:
 							pendingSR.isNil			and:
-							pendingKernel.isNil		and: // added 5/1/14
+							pendingKernel.isNil		and:
 							stereoPending.isNil,
 							{this.status("No updates."); interfaceJS.value_( \Update, 0); break.()}
 						);
@@ -212,7 +212,7 @@ SoundLabGUI {
 		// buildList order defines indexing in switch statements below
 		buildList = [decoders, orders, sampleRates, kernels];
 		buildList.do({ |controls, i|
-			controls !? {			// sometimes kernels is nil if not used
+			controls !? {	// sometimes kernels is nil if not used
 				controls.do({
 					|selected|
 					oscFuncDict.put(selected, {
@@ -417,7 +417,6 @@ SoundLabGUI {
 				},
 				\stateLoaded,	{
 					this.recallValues;
-					// this.updateSrButtons;	// TODO: check this
 				},
 				\reportError,	{ this.status(args[0]) },
 				\reportStatus,	{ this.status(args[0]) }
