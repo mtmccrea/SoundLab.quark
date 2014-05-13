@@ -45,7 +45,7 @@ see prLoadSynthDefs for how channel mappings are used
 		2.034, 2.652, 2.689, 1.928, 2.704, 2.716, // mid
 		2.830, 2.876, 3.149, 2.907, 2.894, 3.029, // upper
 		2.227, 2.282, 2.295, // ceiling
-		2.351, 3.546, 2.248, 3.625 //subs, updated 2014.04.23
+		2.351, 3.546, 2.248, 3.625 //subs
 	]
 )
 .put(\defaultSpkrGainsDB,
@@ -55,7 +55,6 @@ see prLoadSynthDefs for how channel mappings are used
 		3.2, 0.9, 0, 0.9, 0.3, 0.8,
 		1.2, 0.9, 0.4, 0.3, 0, 0.6,
 		1.9, 1.2, 1.3,
-		// 0, 6, 6, 5 // subs
 		13, 8, 14, 10 //subs, updated 2014.04.23
 	].neg
 )
@@ -65,7 +64,7 @@ see prLoadSynthDefs for how channel mappings are used
 		36, 324, 270, 220, 140, 90,	// lower
 		0, 300, 240, 180, 120, 60,	// median
 		40, 320, 270, 216, 144, 90,	// upper
-		0, 138, 122,				// ceiling
+		0, 238, 122,				// ceiling
 		0, 270, 180, 90           	// subs
 	].degrad
 )
@@ -151,5 +150,5 @@ Detailed satellite info:
 [-35,-33,-28],[-35,-33,-28],[-35,-33,-28],[-35,-33,-28],[-35,-33,-28],[-35,-33,-28], // low (floor)
 [4,1,-4],[-3,-0.5,3],[3,0.5,-3],[-4,-1,4],[3,0.5,-3],[-3,-0.5,3] // mid
 [35,33,30],[35,33,29],[34,32,29],[35,33,30],[35,33,30],[34,32,29] // upper
-[53,nil,56],[52,nil,55],[52,nil,55] // ceiling]
+[53,nil,56],[52,nil,55],[52,nil,55] // ceiling
 */
