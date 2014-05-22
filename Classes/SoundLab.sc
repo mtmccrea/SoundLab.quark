@@ -639,14 +639,24 @@ SoundLab {
 }
 
 /* ------ TESTING ---------
-s.options.device_("JackRouter")
-s.options.numWireBufs_(64*8)
-// make sure Jack has at least 96 virtual ins and outs
+(
+s.options.numOutputBusChannels_(32);
+s.options.device_("JackRouter");
+s.options.numWireBufs_(64*8);
+// make sure Jack has at least [3x the number of your hardware output busses] virtual ins and outs
+// if using the convolution system and you intend to switch between kernel sets
+// and default (no convolution) settings
 
-InterfaceJS.nodePath = "/usr/local/bin/node"
+InterfaceJS.nodePath = "/usr/local/bin/node";
 
 //initSR=96000, loadGUI=true, useSLHW=true, useKernels=true, configFileName="CONFIG_205.scd"
-l = SoundLab(48000, useSLHW:false, useKernels:true, configFileName:"CONFIG_TEST.scd")
+l = SoundLab(48000, loadGUI:true, useSLHW:false, useKernels:false, configFileName:"CONFIG_TEST.scd")
+)
+
+l.startNewSignalChain(\Dome_15ch)
+l.startNewSignalChain(\Dome_9ch)
+l.startNewSignalChain(\Dome_11ch)
+
 s.scope(2)
 "~~~~~~".postln
 l.decoderLib.dict.keys

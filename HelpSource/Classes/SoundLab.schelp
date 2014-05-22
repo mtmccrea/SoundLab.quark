@@ -1,0 +1,47 @@
+TITLE:: SoundLab
+summary:: Automatic speaker array layout, routing and decoding
+categories:: Ambisonics
+related:: Classes/SoundLabHardware, Classes/SoundLabGUI
+
+DESCRIPTION::
+A configurable speaker array layout, routing and decoding system generated from a configuration file.
+
+CLASSMETHODS::
+
+METHOD:: new
+
+argument::initSR
+Initialize the routing system to this sample rate.
+
+argument::loadGUI
+Boolean.  True to load the web interface through InterfaceJS.
+
+argument::useSLHW
+Boolean.  True to use SoundLabHardware, specific to the RME interfaces used in DXARTS.  False to you built-in/default system audio I/O.
+
+argument::useKernels
+Boolean.
+True to use JConvolver to do convolution on your output signals to your speakers (room correction, crossover, etc).  This assumes Jconvolver is installed, JACK is your audio "device", and will use kernels stored in the path specified in your config file.  The file hierarchy and delay/gain/distance text files follow specific conventions (to be documented, along with JACK configurations)
+False to use no convolution and the built-in delay and gain compensation as calculated from the dimensions of your rig, specified in the config file.
+
+argument::configFileName
+A String naming the file which specifies your rig dimensions, the format of which is (to be documented).
+The location of this file is assumed to be in the same folder as this class file.
+
+returns::
+itself
+
+EXAMPLES::
+
+An example initialization you might include in your startup file for auto-start:
+code::
+s.options.device_("JackRouter");
+s.options.device_("JackRouter");
+s.options.numWireBufs_(64*8);
+// make sure Jack has at least 3x the number of your hardware output busses for its virtual ins and outs
+// if using the convolution system and you intend to switch between kernel sets
+// and default (no convolution) settings
+
+// this will boot the server for you
+l = SoundLab(initSR:48000, loadGUI:true, useSLHW:false, useKernels:true, configFileName:"CONFIG_TEST.scd")
+::

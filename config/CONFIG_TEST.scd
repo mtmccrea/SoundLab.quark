@@ -120,6 +120,7 @@ k: dual (Symbol)
 dimensions 2 or 3 (Int),
 arrayOutIndices (Array of ints):
 		for diametric: specify only the first half of out indexes
+		for dome: specify only the first half of out indexes for horizontal plane, followed by all upper dome out indices
 		for discrete: specify all out indexes
 numInChannels: number of input channels into the decoder/router (Int)
 */
@@ -131,6 +132,9 @@ numInChannels: number of input channels into the decoder/router (Int)
 		[\Sphere_12ch,	\diametric,	1,	'dual',	3,	(3..8),		4	],
 		[\Sphere_6ch,	\diametric,	1,	'dual',	3,	[8, 9, 20],	4	],
 		[\Hex,			\diametric,	1,	'dual',	2,	(9..11),	4	],
+		[\Dome_15ch,	\dome,		1,	'dual', 3,	(9..11)++(15..23), 4],
+		[\Dome_9ch,		\dome,		1,	'dual', 3,	(9..11)++(21..23), 4],
+		[\Dome_11ch,		\dome,		1,	'dual', 3,	[10,11]++[15,16]++[18,19]++(21..23), 4],
 
 		/* --discrete channel routing-- */
 		// thru routing assumes contiguous channels, starting at arrayOutIndices.first
