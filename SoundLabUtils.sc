@@ -161,7 +161,7 @@
 
 		// build the synthdef
 		decSynthDef = SynthDef( decSpecs.synthdefName, {
-			arg out_busnum=0, in_busnum, fadeTime = 0.2, subgain = 0, gate = 1;
+			arg out_busnum=0, in_busnum, fadeTime=0.2, subgain=0, rotate=0, gate=1;
 			var in, env, sat_out, sub_out;
 
 			env = EnvGen.ar(
@@ -170,6 +170,9 @@
 			);
 			// TODO infer numInputChans from decSpecs.ambiOrder
 			in = In.ar(in_busnum, decSpecs.numInputChans) * env; // B-Format signal
+
+			// rotate the direction the listener should face
+			in = FoaTransform.ar(in, 'rotate', rotate);
 
 			// include shelf filter?
 			if( matrix_dec_sat.shelfFreq.isNumber, {
@@ -280,7 +283,7 @@
 
 		// build the synthdef
 		decSynthDef = SynthDef( decSpecs.synthdefName, {
-			arg out_busnum=0, in_busnum, fadeTime = 0.2, subgain = 0, gate = 1;
+			arg out_busnum=0, in_busnum, fadeTime=0.2, subgain=0, rotate=0, gate=1;
 			var in, env, sat_out, sub_out;
 
 			env = EnvGen.ar(
@@ -289,6 +292,9 @@
 			);
 			// TODO infer numInputChans from decSpecs.ambiOrder
 			in = In.ar(in_busnum, decSpecs.numInputChans) * env; // B-Format signal
+
+			// rotate the direction the listener should face
+			in = FoaTransform.ar(in, 'rotate', rotate);
 
 			// include shelf filter on inpput or not. inferred from sphere FoaDecoderMatrix
 			// because domeDecoderMatrix is actually just a Matrix object (no .shelfFreq)

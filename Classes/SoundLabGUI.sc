@@ -2,7 +2,7 @@ SoundLabGUI {
 	// copyArgs
 	var <sl, <wwwPort;
 	var <slhw, <deviceAddr, <interfaceJS; //<listeners
-	var <decoders, <orders, <sampleRates, <kernels, <stereoPending;
+	var <decoders, <orders, <sampleRates, <kernels, <stereoPending, <rotatePending;
 	var <curDecType, <curOrder, <curSR, <curKernel, <pendingDecType, <pendingInput, <pendingOrder, <pendingSR, <pendingKernel;
 	var numCols, butheight, vpad, hpad, h1, h2, h3,h4, buth, butw, inLabel;
 	var <ampSpec, <oscFuncDict, buildList;
@@ -79,28 +79,23 @@ SoundLabGUI {
 	buildListeners {
 		// building individual responders for specific widgets
 		oscFuncDict = IdentityDictionary( know: true ).put(
-			\ampSlider, {
-				|val|
+			\ampSlider, { |val|
 				sl.amp_( val );
 		}).put(
-			\Attenuate, {
-				|val|
+			\Attenuate, { |val|
 				case
 				{val == 0} {sl.attenuate(false)}
 				{val == 1} {sl.attenuate(true)}
 				;
 		}).put(
-			\Mute, {
-				|val|
+			\Mute, { |val|
 				case
 				{val == 0} {sl.mute(false)}
 				{val == 1} {sl.mute(true)}
 				;
 		}).put(
-			\Stereo, {
-				|val|
-				{
-					case
+			\Stereo, { |val|
+				{ case
 					{val == 0} {
 						if(sl.stereoActive,
 							{
@@ -120,8 +115,28 @@ SoundLabGUI {
 				}.fork
 				;
 		}).put(
-			\Update, {
-				|val|
+			\Rotate, { |val|
+				{ case
+					{val == 0} {
+						if(sl.rotated,
+							{
+								rotatePending = \off;
+								this.setColor(\Rotate, \yellow);
+								interfaceJS.value_(\Rotate, 1);
+							},{
+								rotatePending = nil;
+								this.setColor(\Rotate, \default);
+							}
+						)
+					}
+					{val == 1} {
+						rotatePending = \on;
+						this.setColor(\Rotate, \yellow);
+					}
+				}.fork
+				;
+		}).put(
+			\Update, { |val|
 				fork {
 					block { |break|
 						var updateCond;
@@ -143,7 +158,8 @@ SoundLabGUI {
 							pendingOrder.isNil		and:
 							pendingSR.isNil			and:
 							pendingKernel.isNil		and:
-							stereoPending.isNil,
+							stereoPending.isNil		and:
+							rotatePending.isNil,
 							{this.status("No updates."); interfaceJS.value_( \Update, 0); break.()}
 						);
 
@@ -188,6 +204,14 @@ SoundLabGUI {
 							switch( stereoPending,
 								\on, {sl.stereoRouting_(true)},
 								\off, {sl.stereoRouting_(false)}
+							)
+						};
+
+						/* Update listening position rotation */
+						rotatePending !? {
+							switch( rotatePending,
+								\on, {sl.rotate_(true)},
+								\off, {sl.rotate_(false)}
 							)
 						};
 
@@ -405,6 +429,23 @@ SoundLabGUI {
 						}
 					)
 				},
+				\rotate,	{
+					var rotated;
+					rotated = args[0];
+					if( rotated,
+						{
+							this.setCtlActive(\Rotate);
+							this.status(("Soundfield rotated.").postln);
+							rotatePending = nil;
+
+						},{
+							this.setColor(\Rotate, \default);
+							interfaceJS.value_( \Rotate, 0);
+							this.status(("Rotation cleared.").postln);
+							rotatePending = nil;
+						}
+					)
+				},
 				\kernel,	{
 					var k_name;
 					k_name = args[0];
@@ -553,11 +594,6 @@ SoundLabGUI {
 				\kind, \button,
 				\controls, sampleRates
 			]),
-			\STEREO,
-			IdentityDictionary.new(know: true).putPairs([
-				\kind, \button,
-				\controls, [\Stereo]
-			]),
 			\DECODER,
 			IdentityDictionary.new(know: true).putPairs([
 				\kind, \button,
@@ -568,6 +604,16 @@ SoundLabGUI {
 				\kind, \button,
 				\controls, orders
 			]),
+			'STEREO & ROTATION',
+			IdentityDictionary.new(know: true).putPairs([
+				\kind, \button,
+				\controls, [\Stereo, \Rotate]
+			]),
+			// \ROTATION,
+			// IdentityDictionary.new(know: true).putPairs([
+			// 	\kind, \button,
+			// 	\controls, [\Rotate]
+			// ]),
 			\SETTINGS,
 			IdentityDictionary.new(know: true).putPairs([
 				\kind, \button,
@@ -775,6 +821,7 @@ SoundLabGUI {
 		curSR = (\SR ++ sl.sampleRate).asSymbol;
 		curKernel = sl.curKernel ?? {\basic_balance};
 		stereoPending = nil;
+		rotatePending = nil;
 
 		"variables initialized".postln;
 		postf("curDecType: %, curOrder: %, curSR: %, curKernel: %\n",
@@ -792,6 +839,7 @@ SoundLabGUI {
 			interfaceJS.value_( \ampLevelLabel, sl.globalAmp.ampdb.round(0.1).asString );
 			interfaceJS.value_(\ampSlider, sl.globalAmp);
 			if(sl.stereoActive, {this.setCtlActive(\Stereo)});
+			if(sl.rotated, {this.setCtlActive(\Rotate)});
 			if(sl.isMuted, {this.setCtlActive(\Mute)});
 			if(sl.isAttenuated, {this.setCtlActive(\Attenuate)});
 

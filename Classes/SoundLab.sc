@@ -1,24 +1,21 @@
 SoundLab {
-	// defaults set from SETUP.scd
-	// classvar <>numHardwareOuts, <>numHardwareIns, <>defaultDecoderName, <>defaultKernel, <>kernelDirPath;
-
 	// copyArgs
 	var <initSR, <loadGUI, <usingSLHW, <>usingKernels, <configFileName;
 
 	var <>xfade = 0.2,  <>debug=true;
-	var <globalAmp, <numSatChans, <numSubChans, <totalArrayChans, <numKernelChans;
+	var <globalAmp, <numSatChans, <numSubChans, <totalArrayChans, <numKernelChans, <>rotateDegree;
 	var <hwInCount, <hwInStart;
 	var <config;
 	var <numHardwareOuts, <numHardwareIns, <stereoChanIndex, <>defaultDecoderName, <>defaultKernel, <>kernelDirPath, <>defaultOrder;
 
-	var <server, <gui, <curKernel, <stereoActive, <isMuted, <isAttenuated, <stateLoaded;
+	var <server, <gui, <curKernel, <stereoActive, <isMuted, <isAttenuated, <stateLoaded, <rotated;
 	var <clipMonitoring, <curDecoderPatch, rbtTryCnt;
 	var <clipListener, <reloadGUIListener, <clipMonDef, <patcherDef;
 	var <patcherGroup, <stereoPatcherSynths, <satPatcherSynths, <subPatcherSynths;
 	var <monitorGroup_ins, <monitorGroup_outs, <monitorSynths_outs, <monitorSynths_ins;
 	var <jconvolver, <nextjconvolver, <jconvinbus, <nextjconvinbus; //, <nextKernel;
 
-	// SoundLabUtils (SoundLab extension)
+	// SoundLabUtils
 	var <compDict, <decAttributes, <decAttributeList;
 	var <spkrAzims, <spkrElevs, <spkrDirs, <spkrOppDict, <spkrDels, <spkrGains, <spkrDists;
 	var <decoderLib, <synthLib, <loadedDelDistGain;
@@ -42,14 +39,15 @@ SoundLab {
 		// defaults
 		numHardwareOuts = config.numHardwareOuts;
 		numHardwareIns = config.numHardwareIns;
-		defaultDecoderName = config.defaultDecoderName;//\Sphere_24ch_first_dual;  // synthDef name
+		defaultDecoderName = config.defaultDecoderName;// synthDef name
 		defaultOrder = config.defaultOrder;
-		defaultKernel = config.defaultKernel; //\decor_700;
+		defaultKernel = config.defaultKernel;
 		stereoChanIndex = config.stereoChanIndex;
 		numSatChans = config.numSatChans;
 		numSubChans = config.numSubChans;
 		totalArrayChans = numSatChans+numSubChans;	// stereo not included
 		numKernelChans = totalArrayChans; 	// TODO: confirm this approach
+		rotateDegree = config.rotateDegree ?? {-90}; // default rotation to the right
 
 		// kernelDirPath = PathName.new(Platform.resourceDir ++ "/sounds/SoundLabKernelsNew/");
 		// kernelDirPath = kernelDirPath ?? {
@@ -74,6 +72,7 @@ SoundLab {
 		isAttenuated = isAttenuated ?? {false};
 		stateLoaded = stateLoaded ?? {false};
 		clipMonitoring = clipMonitoring ?? {false};
+		rotated = rotated ?? {false};
 
 		this.prInitRigDimensions;
 		this.prInitDecoderAttributes;
@@ -383,25 +382,13 @@ SoundLab {
 
 			// select which of the 3 out groups to send decoder/correction to
 			new_decoutbus = if(usingKernels, {
-				// jconvinbus set in loadJConvolver method
-				if(jconvinbus.notNil, //curDecoderPatch.notNil,
-					{	/*// this is the outbus being replaced..
-						cur_decoutbus = curDecoderPatch.outbusnum;
-						// if there's a new jconvolver, jump to next set of outputs,
-						// always numHardwareOuts or (numHardwareOuts*2)
-						nextjconvolver !? {
-							cur_decoutbus = (cur_decoutbus + numHardwareOuts).wrap(1, numHardwareOuts*2);
-						};
-						cur_decoutbus;*/
-						jconvinbus;
-					},{
-						numHardwareOuts // startup: first set of outputs routed to kernel
-					}
+				if(jconvinbus.notNil, // jconvinbus set in loadJConvolver method
+					{ jconvinbus },
+					{ numHardwareOuts } // startup: first set of outputs routed to kernel
 				);
 				},{0}	// 0 for no kernels
 			);
 
-			"new_decoutbus: ".post; new_decoutbus.postln;
 			new_decinbus = if( stereoActive, {hwInStart+2}, {hwInStart});
 
 			newDecoderPatch = SoundLabDecoderPatch(this,
@@ -415,8 +402,10 @@ SoundLab {
 			// if initializing SoundLabDecoderPatch fails, decoderName won't be set
 			newDecoderPatch.decoderName !? {
 				// debug
-				postf("newDecoderPatch initialized, playing: % \n", newDecoderPatch.decoderName);
-				curDecoderPatch !? {postf("curDecoderPatch synth node ID being replaced: %\n", curDecoderPatch.decodersynth.node)};
+				postf("newDecoderPatch initialized, playing: % \n",
+					newDecoderPatch.decoderName);
+				curDecoderPatch !? {postf("curDecoderPatch synth node ID being replaced: %\n",
+					curDecoderPatch.decodersynth.node)};
 				curDecoderPatch !? {curDecoderPatch.free(xfade: xfade)};
 				newDecoderPatch.play(xfade: xfade);
 				xfade.wait;
@@ -569,6 +558,25 @@ SoundLab {
 		)
 	}
 
+	rotate_ { |bool|
+		block({ |break|
+			(rotated == bool).if{ break.("rotation setting already current".warn) };
+			(curDecoderPatch.order == \NA).if{
+				this.changed(\reportStatus, "routing is discrete, no rotation");
+				break.("routing is discrete, no rotation".warn);
+			};
+			if( bool,
+				{
+					curDecoderPatch.decodersynth.rotate_(rotateDegree.degrad);
+					rotated = true;
+				},{
+					curDecoderPatch.decodersynth.rotate_(0);
+					rotated = false;
+			});
+			this.changed(\rotate, bool);
+		});
+	}
+
 	amp_ { |amp_dB|
 		var ampnorm;
 		ampnorm = amp_dB.dbamp;
@@ -652,6 +660,9 @@ InterfaceJS.nodePath = "/usr/local/bin/node";
 //initSR=96000, loadGUI=true, useSLHW=true, useKernels=true, configFileName="CONFIG_205.scd"
 l = SoundLab(48000, loadGUI:true, useSLHW:false, useKernels:false, configFileName:"CONFIG_TEST.scd")
 )
+
+l.rotated
+l.rotateDegree
 
 l.startNewSignalChain(\Dome_15ch)
 l.startNewSignalChain(\Dome_9ch)

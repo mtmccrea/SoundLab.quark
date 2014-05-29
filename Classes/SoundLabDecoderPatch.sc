@@ -31,8 +31,8 @@ SoundLabDecoderPatch {
 				decodersynth = soundlab.decoderLib[synthdefName].note(
 					addAction: \head, target: group)
 				.in_busnum_(inbusnum);
-				// discrete routing synthdefs have no out_busnum arg
-				(order != \NA).if{ decodersynth.out_busnum_(outbusnum) }; //TODO: get rid of order
+				// discrete routing synthdefs have no out_busnum or rotation arg
+				(order != \NA).if{ decodersynth.out_busnum_(outbusnum).rotate_(soundlab.rotateDegree.degrad) }; //TODO: get rid of order
 
 				compsynth = soundlab.synthLib[\delay_gain_comp].note(
 					addAction: \tail, target: group)
