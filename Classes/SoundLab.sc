@@ -194,9 +194,6 @@ SoundLab {
 				});
 				server.sync;
 
-				// debug
-				// stereoPatcherSynths.do({|synth|synth.isPlaying.postln});
-				// stereoPatcherSynths.do({|synth|synth.node.postln});
 				while(	{stereoPatcherSynths.collect({|synth|synth.isPlaying}).includes(false)},
 					{"waiting on stereo patchers".postln; 0.02.wait;}
 				);
@@ -231,6 +228,7 @@ SoundLab {
 				loadCondition.test_(false);
 
 				clipMonitoring.if{this.clipMonitor_(true)};
+				rotated.if{this.rotate_(true)};
 				stateLoaded = true;
 				this.changed(\stateLoaded);
 				if(loadGUI, {this.buildGUI});
