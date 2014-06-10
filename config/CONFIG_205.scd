@@ -11,6 +11,7 @@ IdentityDictionary(know: true)
 	\defaultOrder,			1,
 	\defaultKernel,			\decor_700,
 	\stereoChanIndex,		[11, 1],
+	\rotateDegree,			-90, // option to rotate the listening position to this angle
 
 	/* SoundLabHardware settings */
 
@@ -123,6 +124,10 @@ numInChannels: number of input channels into the decoder/router (Int)
 		[\Dodec,			\diametric,	1,	'dual',		2,	(0..5),					4	],
 		[\Hex,				\diametric,	1,	'dual',		2,	[0,2,4],				4	],
 		[\Quad_Long,		\diametric,	1,	'dual',		2,	[11,1],					4	],
+
+		// domes - half of horizontal speakers plus all dome speakers
+		[\Dome_19ch_12x6x1,	\dome,		1,	'dual', 	3,	(0..5)++(12..18), 		4	],
+		[\Dome_13ch_6x6x1,	\dome,		1,	'dual', 	3,	[0, 2, 4]++(12..18), 	4	],
 
 		/* --discrete channel routing-- */
 		// thru routing assumes contiguous channels, starting at arrayOutIndices.first
