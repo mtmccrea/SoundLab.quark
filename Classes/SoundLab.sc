@@ -6,7 +6,7 @@ SoundLab {
 	var <globalAmp, <numSatChans, <numSubChans, <totalArrayChans, <numKernelChans, <>rotateDegree;
 	var <hwInCount, <hwInStart;
 	var <config;
-	var <numHardwareOuts, <numHardwareIns, <stereoChanIndex, <>defaultDecoderName, <>defaultKernel, <>kernelDirPath, <>defaultOrder;
+	var <numHardwareOuts, <numHardwareIns, <stereoChanIndex, <>defaultDecoderName, <>defaultKernel, <>kernelDirPath;
 
 	var <server, <gui, <curKernel, <stereoActive, <isMuted, <isAttenuated, <stateLoaded, <rotated;
 	var <clipMonitoring, <curDecoderPatch, rbtTryCnt;
@@ -40,7 +40,6 @@ SoundLab {
 		numHardwareOuts = config.numHardwareOuts;
 		numHardwareIns = config.numHardwareIns;
 		defaultDecoderName = config.defaultDecoderName;// synthDef name
-		defaultOrder = config.defaultOrder;
 		defaultKernel = config.defaultKernel;
 		stereoChanIndex = config.stereoChanIndex;
 		numSatChans = config.numSatChans;
@@ -217,10 +216,6 @@ SoundLab {
 						{curDecoderPatch.decoderName}, // carried over from reboot/sr change
 						{defaultDecoderName}
 					),
-					if(curDecoderPatch.notNil,
-						{curDecoderPatch.order}, // carried over from reboot/sr change
-						{defaultOrder}
-					),
 					if(usingKernels, {curKernel ?? {defaultKernel}},{nil}),
 					loadCondition
 				);
@@ -236,7 +231,7 @@ SoundLab {
 		});
 	}
 
-	startNewSignalChain { |deocderName, decoderOrder, kernelName, completeCondition|
+	startNewSignalChain { |deocderName, kernelName, completeCondition|
 		var cond;
 		cond = Condition(false);
 		fork {
@@ -316,22 +311,18 @@ SoundLab {
 
 			// START DECODER
 
-			// TODO get rid of order altogether
 			postf("nextjconvolver before starting decoder: %\n", nextjconvolver);
 			if( nextjconvolver.notNil or: 	// new jconvolver, so new outbus
 				deocderName.notNil,			// requested decoder change
 				{
-					var newDecName, newOrder;
+					var newDecName;
 					newDecName = deocderName ?? {
 						// if no decoderName given, create new decoder matching the current one
 						curDecoderPatch !? {curDecoderPatch.decoderName}
 					};
-					newOrder = decoderOrder ?? {
-						curDecoderPatch !? {curDecoderPatch.order}
-					};
-					"new decoder name: %, order: %\n".postf( newDecName, newOrder ); // debug
+					"new decoder name: %\n".postf( newDecName ); // debug
 					if( newDecName.notNil, {
-						this.startDecoder(newDecName, newOrder, cond)
+						this.startDecoder(newDecName, cond)
 						},{ warn(
 							"No decoder name provided and no current decoder name found -
 							NO NEW DECODER STARTED");
@@ -371,7 +362,7 @@ SoundLab {
 		}
 	}
 
-	startDecoder  { |newDecName, order, completeCondition|
+	startDecoder  { |newDecName, completeCondition|
 		var cond, newDecoderPatch, cur_decoutbus, new_decoutbus, new_decinbus;
 		cond = Condition(false);
 		fork {
@@ -391,7 +382,6 @@ SoundLab {
 
 			newDecoderPatch = SoundLabDecoderPatch(this,
 				decoderName: newDecName,
-				order: order,
 				inbusnum: new_decinbus, 	// decoder inbusnum
 				outbusnum: new_decoutbus,	// decoder outbusnum
 				loadCondition: cond			// finishCondition
@@ -402,13 +392,11 @@ SoundLab {
 				// debug
 				postf("newDecoderPatch initialized, playing: % \n",
 					newDecoderPatch.decoderName);
-				curDecoderPatch !? {postf("curDecoderPatch synth node ID being replaced: %\n",
-					curDecoderPatch.decodersynth.node)};
+
 				curDecoderPatch !? {curDecoderPatch.free(xfade: xfade)};
 				newDecoderPatch.play(xfade: xfade);
 				xfade.wait;
 				curDecoderPatch = newDecoderPatch;
-				postf("new curDecoderPatch synth node ID: %\n", curDecoderPatch.decodersynth.node); // debug
 				this.changed(\decoder, curDecoderPatch);
 			};
 			completeCondition !? {completeCondition.test_(true).signal};
@@ -559,7 +547,7 @@ SoundLab {
 	rotate_ { |bool|
 		block({ |break|
 			(rotated == bool).if{ break.("rotation setting already current".warn) };
-			(curDecoderPatch.order == \NA).if{
+			(curDecoderPatch.attributes.kind == \discrete).if{
 				this.changed(\reportStatus, "routing is discrete, no rotation");
 				break.("routing is discrete, no rotation".warn);
 			};

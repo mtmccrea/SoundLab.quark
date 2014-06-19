@@ -77,12 +77,11 @@
 			IdentityDictionary(know: true).putPairs([
 				\decName, attributes[0],
 				\kind, attributes[1],
-				\ambiOrder, attributes[2], // don't use "order" as a keyword, it's a Dictionary method!
-				\k, attributes[3],
-				\dimensions, attributes[4],
-				\arrayOutIndices, attributes[5],
-				\numInputChans, attributes[6],
-				\synthdefName, (attributes[0] ++ '_order' ++ attributes[2]).asSymbol
+				\k, attributes[2],
+				\dimensions, attributes[3],
+				\arrayOutIndices, attributes[4],
+				\numInputChans, attributes[5],
+				\synthdefName, (attributes[0]).asSymbol
 			])
 		});
 
@@ -168,9 +167,7 @@
 				Env( [0,1,0],[fadeTime, fadeTime],\sin, 1),
 				gate, doneAction: 2
 			);
-			// TODO infer numInputChans from decSpecs.ambiOrder
 			in = In.ar(in_busnum, decSpecs.numInputChans) * env; // B-Format signal
-
 			// rotate the direction the listener should face
 			in = FoaTransform.ar(in, 'rotate', rotate);
 
@@ -290,9 +287,7 @@
 				Env( [0,1,0],[fadeTime, fadeTime],\sin, 1),
 				gate, doneAction: 2
 			);
-			// TODO infer numInputChans from decSpecs.ambiOrder
 			in = In.ar(in_busnum, decSpecs.numInputChans) * env; // B-Format signal
-
 			// rotate the direction the listener should face
 			in = FoaTransform.ar(in, 'rotate', rotate);
 
@@ -372,7 +367,7 @@
 		decAttributes.do{ |decSpecs|
 
 			// debug
-			"build and load decoder".postln;
+			"build and load decoder. kind: ".post; decSpecs.kind.postln;
 			// decSpecs.postln;
 
 			switch( decSpecs.kind,

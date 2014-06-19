@@ -8,7 +8,6 @@ IdentityDictionary(know: true)
 	\numSatChans,			19,
 	\numSubChans, 			2,
 	\defaultDecoderName,	\Dodec,
-	\defaultOrder,			1,
 	\defaultKernel,			\decor_700,
 	\stereoChanIndex,		[11, 1],
 	\rotateDegree,			-90, // option to rotate the listening position to this angle
@@ -107,10 +106,9 @@ Array size must equal numDiametricPairsIncludingSubs * 2
 
 /*
 --decoder attributes--
-decoderName, kind, order, k, dimensions, arrayOutIndices, numInChannels;
+decoderName, kind, k, dimensions, arrayOutIndices, numInChannels;
 decoderName: unique name as it will show up on GUI (Symbol)
 kind: diametric, discrete (Symbol)
-order; 1, 2, etc.. (Int)
 k: dual (Symbol)
 dimensions 2 or 3 (Int),
 arrayOutIndices (Array of ints):
@@ -121,20 +119,20 @@ numInChannels: number of input channels into the decoder/router (Int)
 .put(\decAttributeList,
 	[
 		/* --ambisonic decoders-- */
-		[\Dodec,			\diametric,	1,	'dual',		2,	(0..5),					4	],
-		[\Hex,				\diametric,	1,	'dual',		2,	[0,2,4],				4	],
-		[\Quad_Long,		\diametric,	1,	'dual',		2,	[11,1],					4	],
+		[\Dodec,			\diametric,	'dual',		2,	(0..5),					4	],
+		[\Hex,				\diametric,	'dual',		2,	[0,2,4],				4	],
+		[\Quad_Long,		\diametric,	'dual',		2,	[11,1],					4	],
 
 		// domes - half of horizontal speakers plus all dome speakers
-		[\Dome_19ch_12x6x1,	\dome,		1,	'dual', 	3,	(0..5)++(12..18), 		4	],
-		[\Dome_13ch_6x6x1,	\dome,		1,	'dual', 	3,	[0, 2, 4]++(12..18), 	4	],
+		[\Dome_19ch_12x6x1,	\dome,		'dual', 	3,	(0..5)++(12..18), 		4	],
+		[\Dome_13ch_6x6x1,	\dome,		'dual', 	3,	[0, 2, 4]++(12..18), 	4	],
 
 		/* --discrete channel routing-- */
 		// thru routing assumes contiguous channels, starting at arrayOutIndices.first
-		[\Thru_All,			\discrete,	\NA,	\NA,	2,	(0..18),				24	],
-		[\Thru_Hex,			\discrete,	\NA,	\NA,	2,	Array.series(6, 0, 2),	6	],
-		[\Thru_Quad_Square,	\discrete,	\NA,	\NA,	2,	Array.series(4, 0, 3),	4	],
-		[\Thru_Quad_Rect,	\discrete,	\NA,	\NA,	2,	[11, 1, 4, 6],			4	]
+		[\Thru_All,			\discrete,	\NA,	2,	(0..18),				24	],
+		[\Thru_Hex,			\discrete,	\NA,	2,	Array.series(6, 0, 2),	6	],
+		[\Thru_Quad_Square,	\discrete,	\NA,	2,	Array.series(4, 0, 3),	4	],
+		[\Thru_Quad_Rect,	\discrete,	\NA,	2,	[11, 1, 4, 6],			4	]
 	]
 )
 ;

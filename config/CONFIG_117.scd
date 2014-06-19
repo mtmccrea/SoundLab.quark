@@ -8,7 +8,6 @@ IdentityDictionary(know: true)
 	\numSatChans,			24,
 	\numSubChans, 			4,
 	\defaultDecoderName,	\Sph_18ch_6x6x6, // must match a name in \decAttributeList below
-	\defaultOrder,			1,
 	\defaultKernel,			\decor_700,
 	\stereoChanIndex,		[28, 29],
 	\rotateDegree,			-90, // option to rotate the listening position to this angle
@@ -114,10 +113,9 @@ Array size must equal numDiametricPairsIncludingSubs * 2
 
 /*
 --decoder attributes--
-decoderName, kind, order, k, dimensions, arrayOutIndices, numInChannels;
+decoderName, kind, k, dimensions, arrayOutIndices, numInChannels;
 decoderName: unique name as it will show up on GUI (Symbol)
 kind: diametric, discrete (Symbol)
-order; 1, 2, etc.. (Int)
 k: dual (Symbol)
 dimensions 2 or 3 (Int),
 arrayOutIndices (Array of ints):
@@ -130,30 +128,30 @@ numInChannels: number of input channels into the decoder/router (Int)
 	[
 		/* --ambisonic decoders-- */
 		// spheres - specify half of the array
-		[\Sph_24ch_all,		\diametric,	1,	'dual',	3,	(0..11),			4	],
-		[\Sph_18ch_6x6x6,	\diametric,	1,	'dual',	3,	(3..11),			4	],
-		[\Sph_14ch_HexInBox,\diametric,	1,	'dual',	3,	[3,4,6,7,9,10,11],	4	],
-		[\Sph_12ch_HexInSquare,\diametric,1,'dual',	3,	[5,9,10,11,17],		4	],
-		[\Sph_12ch_6x6,		\diametric,	1,	'dual',	3,	(3..8),				4	],
-		[\Sph_12ch_3x6x3,	\diametric,	1,	'dual',	3,	(0..2)++(9..11),	4	],
-		[\Sph_6ch_2x2x2,	\diametric,	1,	'dual',	3,	[8, 9, 20],			4	],
+		[\Sph_24ch_all,		\diametric,	'dual',	3,	(0..11),			4	],
+		[\Sph_18ch_6x6x6,	\diametric,	'dual',	3,	(3..11),			4	],
+		[\Sph_14ch_HexInBox,\diametric,	'dual',	3,	[3,4,6,7,9,10,11],	4	],
+		[\Sph_12ch_HexInSquare,\diametric,'dual',	3,	[5,9,10,11,17],		4	],
+		[\Sph_12ch_6x6,		\diametric,	'dual',	3,	(3..8),				4	],
+		[\Sph_12ch_3x6x3,	\diametric,	'dual',	3,	(0..2)++(9..11),	4	],
+		[\Sph_6ch_2x2x2,	\diametric,	'dual',	3,	[8, 9, 20],			4	],
 
 		// domes - half of horizontal speakers plus all dome speakers
-		[\Dome_15ch_6x6x3,	\dome,		1,	'dual', 3,	(9..11)++(15..23), 	4	],
-		[\Dome_13ch_6x4x3,	\dome,		1,	'dual', 3,	[10,11]++[15,16,18,19,21,22,23],4],
-		[\Dome_11ch_4x4x3,	\dome,		1,	'dual', 3,	[10,11]++[15,16,18,19,21,22,23], 4],
-		[\Dome_10ch_6x4,	\dome,		1,	'dual', 3,	[10,11]++[15,16,18,19],4],
-		[\Dome_9ch_6x3,		\dome,		1,	'dual', 3,	(9..11)++(21..23), 	4	],
+		[\Dome_15ch_6x6x3,	\dome,		'dual', 3,	(9..11)++(15..23), 	4	],
+		[\Dome_13ch_6x4x3,	\dome,		'dual', 3,	[10,11]++[15,16,18,19,21,22,23],4],
+		[\Dome_11ch_4x4x3,	\dome,		'dual', 3,	[10,11]++[15,16,18,19,21,22,23], 4],
+		[\Dome_10ch_6x4,	\dome,		'dual', 3,	[10,11]++[15,16,18,19],4],
+		[\Dome_9ch_6x3,		\dome,		'dual', 3,	(9..11)++(21..23), 	4	],
 
 		// horizontal-only
-		[\Quad_Rect,	\diametric,	1,	'dual',	2,	[10,11],	4	],
-		[\Hex,			\diametric,	1,	'dual',	2,	(9..11),	4	],
+		[\Quad_Rect,	\diametric,	'dual',	2,	[10,11],	4	],
+		[\Hex,			\diametric,	'dual',	2,	(9..11),	4	],
 
 
 		/* --discrete channel routing-- */
 		// thru routing assumes contiguous channels, starting at arrayOutIndices.first
-		[\Thru_All,		\discrete,	\NA,	\NA,	2,	(0..23),	24	],
-		[\Thru_Hex,		\discrete,	\NA,	\NA,	2,	(9..11),	6	]
+		[\Thru_All,		\discrete,	\NA,	2,	(0..23),	24	],
+		[\Thru_Hex,		\discrete,	\NA,	2,	(9..11),	6	]
 	]
 )
 ;

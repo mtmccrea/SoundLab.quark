@@ -8,7 +8,6 @@ IdentityDictionary(know: true)
 	\numSatChans,			10,
 	\numSubChans, 			2, //eek
 	\defaultDecoderName,	\Hex,
-	\defaultOrder,			1,
 	\defaultKernel,			\basic_balance,
 	\stereoChanIndex,		[0, 1],
 
@@ -88,10 +87,9 @@ Array size must equal numDiametricPairsIncludingSubs * 2
 
 /*
 --decoder attributes--
-decoderName, kind, order, k, dimensions, arrayOutIndices, numInChannels;
+decoderName, kind, k, dimensions, arrayOutIndices, numInChannels;
 decoderName: unique name as it will show up on GUI (Symbol)
 kind: diametric, discrete (Symbol)
-order; 1, 2, etc.. (Int)
 k: dual (Symbol)
 dimensions 2 or 3 (Int),
 arrayOutIndices (Array of ints):
@@ -102,11 +100,11 @@ numInChannels: number of input channels into the decoder/router (Int)
 .put(\decAttributeList,
 	[
 		/* --ambisonic decoders-- */
-		[\Hex, \diametric, 1, 'dual', 2, (0..2), 4],
+		[\Hex, \diametric, 'dual', 2, (0..2), 4],
 
 		/* --discrete channel routing-- */
 		// thru routing assumes contiguous channels, starting at arrayOutIndices.first
-		[\Thru_All, \discrete, \NA, \NA, 2, (0..4), 10]
+		[\Thru_All, \discrete, \NA, 2, (0..4), 10]
 	]
 )
 ;

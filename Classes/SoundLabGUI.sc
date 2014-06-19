@@ -2,8 +2,8 @@ SoundLabGUI {
 	// copyArgs
 	var <sl, <wwwPort;
 	var <slhw, <deviceAddr, <interfaceJS; //<listeners
-	var <decoders, <orders, <sampleRates, <kernels, <stereoPending, <rotatePending;
-	var <curDecType, <curOrder, <curSR, <curKernel, <pendingDecType, <pendingInput, <pendingOrder, <pendingSR, <pendingKernel;
+	var <decoders, <sampleRates, <kernels, <stereoPending, <rotatePending;
+	var <curDecType, <curSR, <curKernel, <pendingDecType, <pendingInput, <pendingSR, <pendingKernel;
 	var numCols, butheight, vpad, hpad, h1, h2, h3,h4, buth, butw, inLabel;
 	var <ampSpec, <oscFuncDict, buildList;
 
@@ -21,23 +21,13 @@ SoundLabGUI {
 				slhw = sl.slhw.addDependant(this)
 			});
 
-			" ---------- \n creating new instance of node JS \n------------".postln;
+			" ---------- \n creating new instance of interfaceJS \n------------".postln;
 			interfaceJS = InterfaceJS.new(wwwPort);
 
-			postf("returned from interfaceJS: %\n", interfaceJS);
-
-			// listeners = [];
 			decoders = [];
-			orders = [];
-
 			sl.decAttributeList.do({ |attset|
 				if(decoders.includes(attset[0]).not,
 					{decoders = decoders.add(attset[0])})
-			});
-			sl.decAttributeList.do({ |attset|
-				if( orders.includes(attset[2].asSymbol).not,	// cast to symbol for button name
-					{orders = orders.add(attset[2].asSymbol)}	// cast to symbol for button name
-				)
 			});
 
 			kernels = sl.compDict.delays.keys.select({ |name|
@@ -155,7 +145,6 @@ SoundLabGUI {
 						);
 						// Anything to update?
 						if( pendingDecType.isNil 	and:
-							pendingOrder.isNil		and:
 							pendingSR.isNil			and:
 							pendingKernel.isNil		and:
 							stereoPending.isNil		and:
@@ -170,30 +159,18 @@ SoundLabGUI {
 						this.setColor( \Update, \yellow );
 						updateCond = Condition(false);
 
-						/* Update Decoder/Order/Kernel */
+						/* Update Decoder/Kernel */
 						if( pendingDecType.notNil 	or:
-							pendingOrder.notNil		or:
 							pendingKernel.notNil	or:
 							pendingSR.notNil,
 							{
 								pendingDecType = pendingDecType ?? curDecType;
-								pendingOrder = pendingOrder ?? curOrder;
-								// catch invalid order
-								if(
-									("(T|t)hru".matchRegexp(pendingDecType.asString).not // ambi decoder pending
-									and: (pendingOrder == \NA) // ambi order not specified
-									),
-									{this.status("Invalid order."); interfaceJS.value_( \Update, 0); break.()}
-								);
-								this.status(("Updating decoder to "++pendingDecType++" order "++pendingOrder).postln);
+								this.status(("Updating decoder to "++pendingDecType).postln);
 
 								if( pendingKernel.notNil,
-									{
-										sl.startNewSignalChain(pendingDecType, pendingOrder, pendingKernel, updateCond);
-									},{
-										"before: ".post; updateCond.postln;
-										sl.startNewSignalChain(pendingDecType, pendingOrder, completeCondition: updateCond);
-								});
+									{ sl.startNewSignalChain(pendingDecType, pendingKernel, updateCond) },
+									{ sl.startNewSignalChain(pendingDecType, completeCondition: updateCond) }
+								);
 							},{ updateCond.test_(true).signal }
 						);
 
@@ -210,8 +187,16 @@ SoundLabGUI {
 						/* Update listening position rotation */
 						rotatePending !? {
 							switch( rotatePending,
-								\on, {sl.rotate_(true)},
-								\off, {sl.rotate_(false)}
+								\on, {
+									if(sl.curDecoderPatch.attributes.kind == \discrete, {
+										this.status("Rotation not available for discrete routing".warn);
+										interfaceJS.value_( \Rotate, 0);
+									},{ sl.rotate_(true) }
+									)
+								},
+								\off, {
+									sl.rotate_(false)
+								}
 							)
 						};
 
@@ -234,7 +219,7 @@ SoundLabGUI {
 		// });
 
 		// buildList order defines indexing in switch statements below
-		buildList = [decoders, orders, sampleRates, kernels];
+		buildList = [decoders, sampleRates, kernels];
 		buildList.do({ |controls, i|
 			controls !? {	// sometimes kernels is nil if not used
 				controls.do({
@@ -245,15 +230,13 @@ SoundLabGUI {
 						// get the current and pending settings for the selected category
 						current = switch( i,
 							0, {curDecType},
-							1, {curOrder},
-							2, {curSR},
-							3, {curKernel}
+							1, {curSR},
+							2, {curKernel}
 						);
 						pending = switch( i,
 							0, {pendingDecType},
-							1, {pendingOrder},
-							2, {pendingSR},
-							3, {pendingKernel}
+							1, {pendingSR},
+							2, {pendingKernel}
 						);
 
 						postf("in the selected category, current control is: %, pending control is: %\n", current, pending);
@@ -272,18 +255,8 @@ SoundLabGUI {
 										);
 										switch( i,
 											0, {pendingDecType = selected},
-											1, { if( "(T|t)hru".matchRegexp(pendingDecType.asString).not,
-												{
-													/*debug*/("setting pending order: "++selected).postln;
-													pendingOrder = selected
-												},{
-													/*debug*/"pending decoder is a thru decoder, setting thru controls".postln;
-													this.setThruControls(pendingDecType);
-													break.()
-												}
-											)},
-											2, {pendingSR = selected},
-											3, {
+											1, {pendingSR = selected},
+											2, {
 												// kernels only avail at 48000
 												if((
 													(pendingSR == \SR48000) or:
@@ -319,9 +292,8 @@ SoundLabGUI {
 									},{ // otherwhise turn it off
 										switch( i,
 											0, {pendingDecType = nil},
-											1, {pendingOrder = nil},
-											2, {pendingSR = nil},
-											3, {pendingKernel = nil}
+											1, {pendingSR = nil},
+											2, {pendingKernel = nil}
 										);
 										this.setColor(selected, \default);
 										this.status((selected ++ " removed.").postln);
@@ -402,14 +374,17 @@ SoundLabGUI {
 					var decPatch;
 					decPatch = args[0];
 					curDecType = decPatch.decoderName;
-					curOrder = decPatch.order;
 					pendingDecType = nil;
-					pendingOrder = nil;
 
 					this.clearControls(decoders, curDecType, nil);
-					this.clearControls(orders, curOrder, nil);
 					this.setCtlActive( curDecType );
-					this.setCtlActive( curOrder );
+					if(decPatch.attributes.kind == \discrete,
+						{ interfaceJS.value_( \Rotate, 0)},
+						{ if( sl.rotated,
+							{ this.setCtlActive( \Rotate ) },
+							{ interfaceJS.value_( \Rotate, 0) }
+						)}
+					);
 					this.status(("Now decoding with: " ++ decPatch.decoderName).postln);
 				},
 				\stereo,	{
@@ -528,12 +503,6 @@ SoundLabGUI {
 		pendingDecType = whichThruCtl;
 		this.clearControls( decoders, curDecType, whichThruCtl );
 		this.setCtlPending( whichThruCtl );
-		// update order controls
-		pendingOrder = \NA;
-		this.clearControls( orders, curOrder, whichThruCtl );
-		this.setCtlPending( \NA );
-		interfaceJS.value_( \NA, 1);
-
 		this.status( "Thru: direct outs, no BF decoder." );
 	}
 
@@ -598,11 +567,6 @@ SoundLabGUI {
 			IdentityDictionary.new(know: true).putPairs([
 				\kind, \button,
 				\controls, decoders
-			]),
-			\ORDER,
-			IdentityDictionary.new(know: true).putPairs([
-				\kind, \button,
-				\controls, orders
 			]),
 			'STEREO & ROTATION',
 			IdentityDictionary.new(know: true).putPairs([
@@ -812,20 +776,18 @@ SoundLabGUI {
 
 	initVars { |loadCondition|
 		pendingDecType = nil;
-		pendingOrder = nil;
 		pendingInput = nil;
 		pendingSR = nil;
 		// defaults on startup - pulled from SoundLab state
 		curDecType = sl.curDecoderPatch.decoderName; // not the same as synthdef name
-		curOrder = sl.curDecoderPatch.order.asSymbol;
 		curSR = (\SR ++ sl.sampleRate).asSymbol;
 		curKernel = sl.curKernel ?? {\basic_balance};
 		stereoPending = nil;
 		rotatePending = nil;
 
 		"variables initialized".postln;
-		postf("curDecType: %, curOrder: %, curSR: %, curKernel: %\n",
-			curDecType, curOrder, curSR, curKernel);
+		postf("curDecType: %, curSR: %, curKernel: %\n",
+			curDecType, curSR, curKernel);
 			loadCondition !? {loadCondition.test_(true).signal}
 	}
 
@@ -846,7 +808,7 @@ SoundLabGUI {
 			this.clearControls(sampleRates, curSR, nil); // TODO, why don't I have to clear the other categories?
 
 			/*  turn on defaults  */
-			[curDecType, curOrder, curSR, curKernel].do({ |name|
+			[curDecType, curSR, curKernel].do({ |name|
 				("turning on" + name).postln;
 				if( name.notNil, {
 					// remove calls to non-existing controls

@@ -1,17 +1,17 @@
 SoundLabDecoderPatch {
 	// copyArgs
-	var <soundlab, <decoderName, <order, <inbusnum, <outbusnum, <loadCondition;
+	var <soundlab, <decoderName, <inbusnum, <outbusnum, <loadCondition;
 	var <server, <group, <decodersynth, <compsynth, <attributes;
 
-	*new { |soundlab, decoderName, order, inbusnum, outbusnum, loadCondition|
-		^super.newCopyArgs(soundlab, decoderName, order, inbusnum, outbusnum, loadCondition).init;
+	*new { |soundlab, decoderName, inbusnum, outbusnum, loadCondition|
+		^super.newCopyArgs(soundlab, decoderName, inbusnum, outbusnum, loadCondition).init;
 	}
 
 	init {
 		fork {
 			block { |break|
 				var synthdefName;
-				synthdefName = (decoderName ++'_order'++ order).asSymbol;
+				synthdefName = decoderName.asSymbol;
 				("initializing SoundLabDecoderPatch:"+synthdefName).postln;
 
 				soundlab.decoderLib[synthdefName] ?? {
@@ -32,8 +32,7 @@ SoundLabDecoderPatch {
 					addAction: \head, target: group)
 				.in_busnum_(inbusnum);
 				// discrete routing synthdefs have no out_busnum or rotation arg
-				// TODO: get rid of order
-				(order != \NA).if{
+				(attributes[\kind] != \discrete).if{
 					decodersynth.out_busnum_(outbusnum)
 					.rotate_(if(soundlab.rotated, {soundlab.rotateDegree.degrad},{0}))
 				};
