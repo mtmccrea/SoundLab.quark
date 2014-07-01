@@ -6,7 +6,7 @@ SoundLabGUI {
 	var <sampleRates, <kernels, <stereoPending, <rotatePending;
 	var <gainTxt, <gainSl, <muteButton, <attButton, <srMenu, <decMenus, <horizMenu, <sphereMenu, <domeMenu, <discreteMenu, <stereoMenu, <rotateMenu, <correctionMenu, <applyButton, <stateTxt, <postTxt;
 	var <curDecType, <curSR, <curKernel, <pendingDecType, <pendingInput, <pendingSR, <pendingKernel;
-	var numCols, butheight, vpad, hpad, h1, h2, h3,h4, buth, butw, inLabel;
+	// var numCols, butheight, vpad, hpad, h1, h2, h3,h4, buth, butw, inLabel;
 	var <ampSpec, <oscFuncDict, buildList;
 	var <>maxPostLines;
 
@@ -69,14 +69,14 @@ SoundLabGUI {
 			this.initVars(cond);
 			cond.wait;
 
-			numCols = 4;
-			vpad = 1/64;
-			hpad = 1/24;
-			// height of the 4 sections of the layout
-			h1 = 4/32;
-			h2 = 20/32;
-			h3 = 4/32;
-			h4 = 4/32;
+			// numCols = 4;
+			// vpad = 1/64;
+			// hpad = 1/24;
+			// // height of the 4 sections of the layout
+			// h1 = 4/32;
+			// h2 = 20/32;
+			// h3 = 4/32;
+			// h4 = 4/32;
 
 			interfaceJS.clear;	// clear everything, just in case
 			0.5.wait; 			// see if it helps
@@ -90,7 +90,7 @@ SoundLabGUI {
 	initControls {
 		// GAIN
 		gainTxt = WsStaticText.init(wsGUI)
-		.string_()
+		.string_("Digital Gain: ")
 		;
 		gainSl = WsEZSlider.init(wsGUI)
 		.controlSpec_(ampSpec) //only in EZSlider;
@@ -129,7 +129,7 @@ SoundLabGUI {
 			(mn.value==0).if(
 				{pendingSR = nil},{
 					(mn.item == curSR.asSymbol).if(
-						{	this.status("Selected sample rate is already " ++ curSR.asSymbol);
+						{	this.status_("Selected sample rate is already " ++ curSR.asSymbol);
 							mn.valueAction_(0); // set back to '-'
 						},
 						{	pendingSR = mn.item.asInt; }
@@ -215,12 +215,12 @@ SoundLabGUI {
 					if( sl.usingSLHW,
 						{
 							if( slhw.audioIsRunning.not, {
-								this.status("Warning: Audio is stopped in Hardware");
+								this.status_("Warning: Audio is stopped in Hardware");
 								break.("Audio is currently stopped in the Hardware.".warn)
 							});
 						},{
 							if( sl.server.serverRunning.not, {
-								this.status("Warning: Server is stopped");
+								this.status_("Warning: Server is stopped");
 								break.("Server is currently stopped.".warn)
 							});
 						}
@@ -231,14 +231,14 @@ SoundLabGUI {
 						pendingKernel.isNil		and:
 						stereoPending.isNil		and:
 						rotatePending.isNil,
-						{this.status("No updates."); break.()}
+						{this.status_("No updates."); break.()}
 					);
 
 					// TODO check here if there's a SR change, if so set state current vars
 					// of soundlab then change sample rate straight away,
 					// no need to update signal chain twice
 
-					this.status( "Updating..." );
+					this.status_( "Updating..." );
 					updateCond = Condition(false);
 
 					/* Update Decoder/Kernel */
@@ -247,7 +247,7 @@ SoundLabGUI {
 						pendingSR.notNil,
 						{
 							pendingDecType = pendingDecType ?? curDecType;
-							this.status(("Updating decoder to "++pendingDecType).postln);
+							this.status_(("Updating decoder to "++pendingDecType).postln);
 
 							if( pendingKernel.notNil,
 								{ sl.startNewSignalChain(pendingDecType, pendingKernel, updateCond) },
@@ -255,7 +255,6 @@ SoundLabGUI {
 							);
 						},{ updateCond.test_(true).signal }
 					);
-
 					updateCond.wait; // wait for new signal chain to play
 
 					/* Update Stereo routing */
@@ -265,13 +264,12 @@ SoundLabGUI {
 							\off,	{sl.stereoRouting_(false)}
 						)
 					};
-
 					/* Update listening position rotation */
 					rotatePending !? {
 						switch( rotatePending,
 							\on, {
 								if( sl.curDecoderPatch.attributes.kind == \discrete, {
-									this.status("Rotation not available for discrete routing".warn);
+									this.status_("Rotation not available for discrete routing".warn);
 									rotateMenu.valueAction_(0);
 									},{ sl.rotate_(true) }
 								)
@@ -279,11 +277,10 @@ SoundLabGUI {
 							\off, { sl.rotate_(false) }
 						)
 					};
-
 					/* Update Samplerate */
 					if( pendingSR.notNil,
 						{ sl.sampleRate_( pendingSR ) },
-						{ this.status("... Update COMPLETE.") }
+						{ this.status_("... Update COMPLETE.") }
 					);
 				}
 			}
@@ -298,6 +295,313 @@ SoundLabGUI {
 		.string_( "Post")
 	}
 
+	// for updating the GUI when SoundLab model is changed
+	// this is impportant to see feedback as to the state of decoder communication
+	update {
+		| who, what ... args |
+		if( who == sl, {
+			switch ( what,
+				\amp,	{ var val;
+					val  = args[0].ampdb;
+					gainSl.value_(val);
+					gainTxt.string_(format("Digital Gain: % dB",val.asString));
+				},
+				\attenuate,	{
+					switch ( args[0],
+						0, {
+							attButton.value_(0);
+							if( sl.isMuted.not, {
+								this.status_("Amp restored.") },{ this.status_("Muted.")
+							});
+						},
+						1, {
+							attButton.value_(1);
+							if( sl.isMuted.not,
+								{ this.status_("Attenuated.") },
+								{ this.status_("Muted, attenuated.") }
+							);
+						}
+					)
+				},
+				\mute,	{
+					switch ( args[0],
+						0, {
+							muteButton.value_(0);
+							if( sl.isAttenuated.not,
+								{ this.status_("Amp restored.") },
+								{ this.status_("Attenuated.") }
+							);
+						},
+						1, {
+							muteButton.value_(1);
+							if( sl.isAttenuated.not,
+								{ this.status_("Muted.") },
+								{ this.status_("Muted, attenuated.") }
+							);
+						}
+					)
+				},
+				\clipped,	{
+					this.status_( (args[0] < sl.numHardwareIns).if(
+						{ "Clipped IN " ++ args[0].asString },
+						{ "Clipped OUT " ++ (args[0]-sl.numHardwareIns).asString }
+					));
+				},
+				\decoder,	{
+					curDecType = args[0].decoderName; // args[0] is the decoderpatch
+					this.clearDecSelections;
+					this.status_("Now decoding with: " ++ curDecType);
+				},
+				\stereo,	{
+					this.status_( args[0].if(
+						{"Stereo added to first two output channels."},{"Stereo cleared."}
+					));
+					stereoMenu.valueAction_(0);
+				},
+				\rotate,	{
+					var rotated;
+					rotated = args[0];
+					this.status_( rotated.if(
+						{"Soundfield rotated."},{"Rotation cleared."}
+					));
+					rotateMenu.valueAction_(0);
+				},
+				\kernel,	{
+					var k_name;
+					k_name = args[0];
+					curKernel = k_name !? {k_name.asSymbol};
+					correctionMenu.valueAction_(0);
+					this.status_("Kernel updated: " ++ curKernel);
+				},
+				\stateLoaded,	{
+					this.recallValues;
+				},
+				\reportError,	{ this.status_(args[0]) },
+				\reportStatus,	{ this.status_(args[0]) }
+			);
+			this.postState;
+		});
+		if( who == slhw, {
+			switch( what,
+				\audioIsRunning, { args[0].not.if(
+					{ this.status_("Audio stopped. Cannot update at this time.") }
+					);
+				},
+				\stoppingAudio, { this.status_("Audio is stopping - Standby.") }
+			)
+		});
+	}
+
+	status_ { |aString|
+		var newLines, curLines, numLines;
+		// add new status to post "buffer" and update the status text box
+		curLines = postString.split($\n);
+		newLines = ( Date.getDate.format("%a %m/%d %I:%M:%S\t") ++ aString).split($\n);
+		if((curLines.size + newLines.size) > maxPostLines, {
+			var stripNum;
+			stripNum = (curLines.size + newLines.size) - maxPostLines;
+			curLines = curLines.drop(stripNum);
+		});
+		newPost = "";
+		curLines.do{ |line| newPost = newPost ++ line ++ "\n" };
+		newLines.do{ |line| newPost = newPost ++ line ++ "\n"};
+
+		postTxt.string_(newPost);
+		postString = newPost;
+	}
+
+	postState {
+		// post info to the soundlab state text box:
+		// sample rate, decoder, correction, stereo, rotated
+		stateTxt.string_(
+			"SOUND LAB STATE " ++
+			"\nSample Rate: " ++ curSR ++
+			"\nDecoder / Router setting: " ++ curDecType ++
+			"\nCorrection: " ++ curKernel ++
+			"\nStereo channels first: " ++ sl.stereoActive ++
+			"\nSound field rotated: " ++ sl.rotated
+		);
+	}
+
+	clearDecSelections {|exceptThisKey|
+		decMenus.keysValuesDo{|k,v| if(k!=exceptThisKey,{v.valueAction_(0)}) };
+		pendingDecType = nil;
+	}
+
+		buildControls {
+	// do page layout
+		wsGUI.layout_(
+			WsVLayout( nil,
+				WsStaticText.init(wsGUI, Rect(0,0,1,0.1)).string_(
+					format("Sound Lab %\nRouting and Decoding System",sl.configFileName))
+				WsHLayout( nil,
+					// COLUMN 1
+					WsVLayout( Rect(0,0,0.4,1),
+						// gain
+						gainTxt,
+						gainSl,
+						WsHLayout(nil, muteButton, nil, attButton, nil, nil),
+						nil,
+						// decoder/rotation
+						WsStaticText.init(wsGUI).string_("Select an Ambisonic DECODER"),
+						WsHLayout( nil,
+							WsStaticText.init(wsGUI).string_("2-D Horizontal Only"),
+							horizMenu ),
+						WsHLayout( nil,
+							WsStaticText.init(wsGUI).string_("3-D Sphere"),
+							sphereMenu ),
+						WsHLayout( nil,
+							WsStaticText.init(wsGUI).string_("3-D Dome"),
+							domeMenu ),
+						WsHLayout( nil,
+							WsStaticText.init(wsGUI).string_(
+								format("Rotate the listening position % degrees?",sl.rotateDegree)),
+							rotateMenu ),
+						nil,
+						// discrete routing
+						WsStaticText.init(wsGUI).string_("Select a Discrete Routing Layout"),
+						WsHLayout( nil,
+							WsStaticText.init(wsGUI).string_("Which speakers?"),
+							discreteMenu ),
+						nil,
+						// stereo
+						WsHLayout( nil,
+							WsStaticText.init(wsGUI).string_("Insert stereo channels before decoder/router?"),
+							stereoMenu ),
+						nil,
+						// correction
+						WsHLayout( nil,
+							WsStaticText.init(wsGUI).string_("Room correction"),
+							correctionMenu ),
+						nil,
+						nil,
+						applyButton
+					),
+					// COLUMN 2
+					WsVLayout( Rect(0,0,0.2,1),
+						// picture
+					),
+					// COLUMN 3
+					WsVLayout( Rect(0,0,0.4,1),
+						WsStaticText.init(wsGUI).string_("Current System Settings:"),
+						stateTxt,
+						0.05,
+						WsStaticText.init(wsGUI).string_("Post:")
+						postTxt
+					)
+				)
+			);
+
+			this.recallValues; /* this will turn on the defaults */
+	}
+
+	initVars { |loadCondition|
+		pendingDecType = nil;
+		pendingInput = nil;
+		pendingSR = nil;
+		// defaults on startup - pulled from SoundLab state
+		curDecType = sl.curDecoderPatch.decoderName; // not the same as synthdef name
+		curSR = (\SR ++ sl.sampleRate).asSymbol;
+		curKernel = sl.curKernel ?? {\basic_balance};
+		stereoPending = nil;
+		rotatePending = nil;
+
+		"variables initialized".postln;
+		postf("curDecType: %, curSR: %, curKernel: %\n",
+			curDecType, curSR, curKernel);
+			loadCondition !? {loadCondition.test_(true).signal}
+	}
+
+	recallValues {
+		var cond;
+		fork {
+			cond = Condition(false);
+			this.initVars(cond);
+			cond.wait;
+
+			// TODO: post current settings to state window
+
+			gainSl.value_(sl.globalAmp.ampdb);
+			gainTxt.value_(sl.globalAmp.ampdb);
+			muteButton.value_( if(sl.isMuted, {1},{0}) );
+			attButton.value_( if(sl.isAttenuated, {1},{0}) );
+
+			this.postState;
+		}
+	}
+
+	cleanup {
+		sl.removeDependant( this );
+		slhw !? {slhw.removeDependant(this)};
+		wsGUI.free;
+		// listeners.do(_.free);
+	}
+
+}
+	// setCtlPending { |which|
+	// 	this.setColor(which, \yellow);
+	// 	this.status((which ++ " is pending.").postln);
+	// }
+	//
+	// setCtlActive { |which|
+	// 	this.setColor(which,
+	// 		if( which == \Mute, {\red},
+	// 			{ if( which == \Attenuate, {\purple},
+	// 				{\green} /* otherwise, all else are green when active */
+	// 			)}
+	// 		);
+	// 	);
+	// 	interfaceJS.value_( which, 1);
+	// }
+	//
+	// clearControls { |controlArr, current, selected|
+	// 	controlArr.do({ |name|
+	// 		if( ((name != current) && (name != selected)), {
+	// 			("turning off: " ++ name).postln;
+	// 			interfaceJS.value_( name.asSymbol, 0);
+	// 			this.setColor( name, \default);
+	// 		});
+	// 	})
+	// }
+	//
+	// // TODO Update this
+	// setThruControls { |whichThruCtl|
+	// 	// update decoder controls
+	// 	pendingDecType = whichThruCtl;
+	// 	this.clearControls( decoders, curDecType, whichThruCtl );
+	// 	this.setCtlPending( whichThruCtl );
+	// 	this.status( "Thru: direct outs, no BF decoder." );
+	// }
+	//
+	// setColor { |controlName, color|
+	// 	switch( color,
+	// 		\yellow, {
+	// 			interfaceJS.backgroundFillStroke_(controlName,
+	// 				Color.fromHexString("#000000"),
+	// 				Color.fromHexString("#FFCC00"),
+	// 		Color.white)},
+	// 		\purple, {
+	// 			interfaceJS.backgroundFillStroke_(controlName,
+	// 				Color.fromHexString("#000000"),
+	// 				Color.fromHexString("#CC0099"),
+	// 		Color.white)},
+	// 		\red, {
+	// 			interfaceJS.backgroundFillStroke_(controlName,
+	// 				Color.fromHexString("#000000"),
+	// 				Color.fromHexString("#FF0033"),
+	// 		Color.white)},
+	// 		\green, {
+	// 			interfaceJS.backgroundFillStroke_(controlName,
+	// 				Color.fromHexString("#000000"),
+	// 				Color.fromHexString("#66FF00"),
+	// 		Color.white)},
+	// 		\default, {
+	// 			interfaceJS.backgroundFillStroke_(controlName,
+	// 				Color.fromHexString("#000000"),
+	// 				Color.fromHexString("#aaaaaa"),
+	// 		Color.white)}
+	// 	)
+	// }
 	/* buildListeners {
 		// building individual responders for specific widgets
 		oscFuncDict = IdentityDictionary( know: true ).put(
@@ -544,206 +848,6 @@ SoundLabGUI {
 		});
 		"oscFuncDict in the end: ".post; oscFuncDict.postln;
 	}*/
-
-	// for updating the GUI when SoundLab model is changed
-	// this is impportant to see feedback as to the state of decoder communication
-	update {
-		| who, what ... args |
-		if( who == sl, {
-			switch ( what,
-				\amp,	{ var val;
-					val  = args[0].ampdb;
-					gainSl.value_(val);
-					gainTxt.string_(val.asString);
-				},
-				\attenuate,	{
-					switch ( args[0],
-						0, {
-							attButton.value_(0);
-							if( sl.isMuted.not, {
-								this.status("Amp restored.") },{ this.status("Muted.")
-							});
-						},
-						1, {
-							attButton.value_(1);
-							if( sl.isMuted.not,
-								{ this.status("Attenuated.") },
-								{ this.status("Muted, attenuated.") }
-							);
-						}
-					)
-				},
-				\mute,	{
-					switch ( args[0],
-						0, {
-							muteButton.value_(0);
-							if( sl.isAttenuated.not,
-								{ this.status("Amp restored.") },
-								{ this.status("Attenuated.") }
-							);
-						},
-						1, {
-							muteButton.value_(1);
-							if( sl.isAttenuated.not,
-								{ this.status("Muted.") },
-								{ this.status("Muted, attenuated.") }
-							);
-						}
-					)
-				},
-				\clipped,	{
-					this.status( (args[0] < sl.numHardwareIns).if(
-						{ "Clipped IN " ++ args[0].asString },
-						{ "Clipped OUT " ++ (args[0]-sl.numHardwareIns).asString }
-					));
-				},
-				\decoder,	{
-					curDecType = args[0].decoderName; // args[0] is the decoderpatch
-					this.clearDecSelections;
-					this.status("Now decoding with: " ++ curDecType);
-				},
-				\stereo,	{
-					this.status( args[0].if(
-						{"Stereo added to first two output channels."},{"Stereo cleared."}
-					));
-					stereoMenu.valueAction_(0);
-				},
-				\rotate,	{
-					var rotated;
-					rotated = args[0];
-					this.status( rotated.if(
-						{"Soundfield rotated."},{"Rotation cleared."}
-					));
-					rotateMenu.valueAction_(0);
-				},
-				\kernel,	{
-					var k_name;
-					k_name = args[0];
-					curKernel = k_name !? {k_name.asSymbol};
-					correctionMenu.valueAction_(0);
-					this.status("Kernel updated: " ++ curKernel);
-				},
-				\stateLoaded,	{
-					this.recallValues;
-				},
-				\reportError,	{ this.status(args[0]) },
-				\reportStatus,	{ this.status(args[0]) }
-			);
-			this.postState;
-		});
-		if( who == slhw, {
-			switch( what,
-				\audioIsRunning, { args[0].not.if(
-					{ this.status("Audio stopped. Cannot update at this time.") }
-					);
-				},
-				\stoppingAudio, { this.status("Audio is stopping - Standby.") }
-			)
-		});
-	}
-
-	status { |aString|
-		var newLines, curLines, numLines;
-		// add new status to post "buffer" and update the status text box
-		curLines = postString.split($\n);
-		newLines = aString.split($\n);
-		if((curLines.size + newLines.size) > maxPostLines, {
-			var stripNum;
-			stripNum = (curLines.size + newLines.size) - maxPostLines;
-			curLines = curLines.drop(stripNum);
-		});
-		newPost = "";
-		curLines.do{ |line| newPost = newPost ++ line ++ "\n" };
-		newLines.do{ |line| newPost = newPost ++ line ++ "\n"};
-
-		postTxt.string_(newPost);
-		postString = newPost;
-	}
-
-	postState {
-		// post info to the soundlab state text box:
-		// sample rate, decoder, correction, stereo, rotated
-		stateTxt.string_(
-			"SOUND LAB STATE " ++
-			"\nSample Rate: " ++ curSR ++
-			"\nDecoder / Router setting: " ++ curDecType ++
-			"\nCorrection: " ++ curKernel ++
-			"\nStereo channels first: " ++ sl.stereoActive ++
-			"\nSound field rotated: " ++ sl.rotated
-		);
-
-	}
-
-	clearDecSelections {|exceptThisKey|
-		decMenus.keysValuesDo{|k,v| if(k!=exceptThisKey,{v.valueAction_(0)}) };
-		pendingDecType = nil;
-	}
-
-	// setCtlPending { |which|
-	// 	this.setColor(which, \yellow);
-	// 	this.status((which ++ " is pending.").postln);
-	// }
-	//
-	// setCtlActive { |which|
-	// 	this.setColor(which,
-	// 		if( which == \Mute, {\red},
-	// 			{ if( which == \Attenuate, {\purple},
-	// 				{\green} /* otherwise, all else are green when active */
-	// 			)}
-	// 		);
-	// 	);
-	// 	interfaceJS.value_( which, 1);
-	// }
-	//
-	// clearControls { |controlArr, current, selected|
-	// 	controlArr.do({ |name|
-	// 		if( ((name != current) && (name != selected)), {
-	// 			("turning off: " ++ name).postln;
-	// 			interfaceJS.value_( name.asSymbol, 0);
-	// 			this.setColor( name, \default);
-	// 		});
-	// 	})
-	// }
-	//
-	// // TODO Update this
-	// setThruControls { |whichThruCtl|
-	// 	// update decoder controls
-	// 	pendingDecType = whichThruCtl;
-	// 	this.clearControls( decoders, curDecType, whichThruCtl );
-	// 	this.setCtlPending( whichThruCtl );
-	// 	this.status( "Thru: direct outs, no BF decoder." );
-	// }
-	//
-	// setColor { |controlName, color|
-	// 	switch( color,
-	// 		\yellow, {
-	// 			interfaceJS.backgroundFillStroke_(controlName,
-	// 				Color.fromHexString("#000000"),
-	// 				Color.fromHexString("#FFCC00"),
-	// 		Color.white)},
-	// 		\purple, {
-	// 			interfaceJS.backgroundFillStroke_(controlName,
-	// 				Color.fromHexString("#000000"),
-	// 				Color.fromHexString("#CC0099"),
-	// 		Color.white)},
-	// 		\red, {
-	// 			interfaceJS.backgroundFillStroke_(controlName,
-	// 				Color.fromHexString("#000000"),
-	// 				Color.fromHexString("#FF0033"),
-	// 		Color.white)},
-	// 		\green, {
-	// 			interfaceJS.backgroundFillStroke_(controlName,
-	// 				Color.fromHexString("#000000"),
-	// 				Color.fromHexString("#66FF00"),
-	// 		Color.white)},
-	// 		\default, {
-	// 			interfaceJS.backgroundFillStroke_(controlName,
-	// 				Color.fromHexString("#000000"),
-	// 				Color.fromHexString("#aaaaaa"),
-	// 		Color.white)}
-	// 	)
-	// }
-
 /*	buildControls {
 		var catCntlArr, ampCtlW, rowSize, cntrlDict;
 		var screenW, screenH, catVPad, catHPad, cntrlHPad, cntrlVPad, catLabelH;
@@ -977,54 +1081,6 @@ SoundLabGUI {
 
 		this.recallValues; /* this will turn on the defaults */
 	}*/
-
-	buildControls {
-	// do page layout
-	}
-
-	initVars { |loadCondition|
-		pendingDecType = nil;
-		pendingInput = nil;
-		pendingSR = nil;
-		// defaults on startup - pulled from SoundLab state
-		curDecType = sl.curDecoderPatch.decoderName; // not the same as synthdef name
-		curSR = (\SR ++ sl.sampleRate).asSymbol;
-		curKernel = sl.curKernel ?? {\basic_balance};
-		stereoPending = nil;
-		rotatePending = nil;
-
-		"variables initialized".postln;
-		postf("curDecType: %, curSR: %, curKernel: %\n",
-			curDecType, curSR, curKernel);
-			loadCondition !? {loadCondition.test_(true).signal}
-	}
-
-	recallValues {
-		var cond;
-		fork {
-			cond = Condition(false);
-			this.initVars(cond);
-			cond.wait;
-
-			// TODO: post current settings to state window
-
-			gainSl.value_(sl.globalAmp.ampdb);
-			gainTxt.value_(sl.globalAmp.ampdb);
-			muteButton.value_( if(sl.isMuted, {1},{0}) );
-			attButton.value_( if(sl.isAttenuated, {1},{0}) );
-
-			this.postState;
-		}
-	}
-
-	cleanup {
-		sl.removeDependant( this );
-		slhw !? {slhw.removeDependant(this)};
-		wsGUI.free;
-		// listeners.do(_.free);
-	}
-
-}
 
 /* TESTING
 InterfaceJS.nodePath = "/usr/local/bin/node"
