@@ -8,9 +8,9 @@ SoundLabGUI {
 	var <curDecType, <curSR, <curKernel, <pendingDecType, <pendingInput, <pendingSR, <pendingKernel;
 	// var numCols, butheight, vpad, hpad, h1, h2, h3,h4, buth, butw, inLabel;
 	var <ampSpec, <oscFuncDict, buildList;
-	var <>maxPostLines;
+	var <>maxPostLines, postString;
 
-	*new { |soundLabModel, webInterfacePort = 8080| //don't change web port unless you know how to change redirection in Apache web server
+	*new { |soundLabModel, webInterfacePort = 8000| //don't change web port unless you know how to change redirection in Apache web server
 		^super.newCopyArgs(soundLabModel, webInterfacePort).init;
 	}
 
@@ -24,8 +24,9 @@ SoundLabGUI {
 				slhw = sl.slhw.addDependant(this)
 			});
 
-			" ---------- \n creating new instance of interfaceJS \n------------".postln;
-			wsGUI = wsGUI.new(wwwPort);
+			" ---------- \n creating new instance of wsGUI \n------------".postln;
+			wsGUI = WsGUI.new(wwwPort);
+			3.wait; // TODO: add condition
 
 			// decoders = [];
 			// sl.decAttributeList.do({ |attset|
@@ -66,28 +67,17 @@ SoundLabGUI {
 			ampSpec = ControlSpec.new(-80, 12, -2, default: 0);
 			sampleRates = [44100, 48000, 96000];
 			maxPostLines = 12;
+			postString = "";
 			this.initVars(cond);
 			cond.wait;
 
-			// numCols = 4;
-			// vpad = 1/64;
-			// hpad = 1/24;
-			// // height of the 4 sections of the layout
-			// h1 = 4/32;
-			// h2 = 20/32;
-			// h3 = 4/32;
-			// h4 = 4/32;
-
-			interfaceJS.clear;	// clear everything, just in case
-			0.5.wait; 			// see if it helps
-			interfaceJS.background_(nil, Color.rand(0, 0.2)); // set page background
-
-			this.buildListeners;
+			this.initControls;
 			this.buildControls;	// changed order - build Listeners defines functions
 		}
 	}
 
 	initControls {
+		"initializing controls".postln;
 		// GAIN
 		gainTxt = WsStaticText.init(wsGUI)
 		.string_("Digital Gain: ")
@@ -96,25 +86,25 @@ SoundLabGUI {
 		.controlSpec_(ampSpec) //only in EZSlider;
 		.action_({|sl|
 			sl.amp_( sl.value );
-			postf("slider value: %\n", sl.value)}); // debug
+			postf("slider value: %\n", sl.value)}) // debug
 		;
 		// MUTE / ATTENUATE
 		muteButton = WsButton.init(wsGUI)
 		.states_([
 			["Mute", Color.black, Color.gray],
 			["Muted", Color.white, Color.red]
-		]);
+		])
 		.action_({ |but|
 			switch( but.value,
 				0, {sl.mute(false)}, 1, {sl.mute(true)}
 			)
 		})
 		;
-		muteButton = WsButton.init(wsGUI)
+		attButton = WsButton.init(wsGUI)
 		.states_([
 			["Att", Color.black, Color.gray],
 			["Att'd", Color.white, Color.magenta]
-		]);
+		])
 		.action_({ |but|
 			switch( but.value,
 				0, {sl.attenuate(false)}, 1, {sl.attenuate(true)}
@@ -123,7 +113,7 @@ SoundLabGUI {
 		;
 		// SAMPLE RATE
 		srMenu = WsPopUpMenu.init(wsGUI)
-		.items_(['-']++ sampleRates.collect(_.aSymbol))
+		.items_(['-']++ sampleRates.collect(_.asSymbol))
 		.action_({ |mn|
 			"menu val: ".post; mn.value.postln; "item: ".post;
 			(mn.value==0).if(
@@ -208,6 +198,7 @@ SoundLabGUI {
 
 		// APPLY
 		applyButton = WsSimpleButton.init(wsGUI)
+		.string_("Apply")
 		.action_({
 			fork {
 				block { |break|
@@ -293,6 +284,8 @@ SoundLabGUI {
 		// POST WINDOW
 		postTxt = WsStaticText.init(wsGUI)
 		.string_( "Post")
+		;
+		"controls initialized".postln;
 	}
 
 	// for updating the GUI when SoundLab model is changed
@@ -393,7 +386,7 @@ SoundLabGUI {
 	}
 
 	status_ { |aString|
-		var newLines, curLines, numLines;
+		var newLines, curLines, newPost;
 		// add new status to post "buffer" and update the status text box
 		curLines = postString.split($\n);
 		newLines = ( Date.getDate.format("%a %m/%d %I:%M:%S\t") ++ aString).split($\n);
@@ -428,17 +421,24 @@ SoundLabGUI {
 		pendingDecType = nil;
 	}
 
-		buildControls {
-	// do page layout
+	buildControls {
+		"begining page layout in buildControls".postln;
+		// do page layout
 		wsGUI.layout_(
-			WsVLayout( nil,
+			WsVLayout( Rect(0.05,0.05,0.9,0.9),
 				WsStaticText.init(wsGUI, Rect(0,0,1,0.1)).string_(
 					format("Sound Lab %\nRouting and Decoding System",sl.configFileName))
-				WsHLayout( nil,
+				.textAlign_(\center),
+				WsHLayout( Rect(0,0,1,0.9),
 					// COLUMN 1
 					WsVLayout( Rect(0,0,0.4,1),
-						// gain
-						gainTxt,
+						WsStaticText.init(wsGUI)
+						.string_("Change Settings")
+						.textAlign_(\center),
+						WsStaticText.init(wsGUI)
+						.string_("Sample Rate"),
+						srMenu,  // sample rate
+						gainTxt, // gain
 						gainSl,
 						WsHLayout(nil, muteButton, nil, attButton, nil, nil),
 						nil,
@@ -486,13 +486,14 @@ SoundLabGUI {
 						WsStaticText.init(wsGUI).string_("Current System Settings:"),
 						stateTxt,
 						0.05,
-						WsStaticText.init(wsGUI).string_("Post:")
+						WsStaticText.init(wsGUI).string_("Post:"),
 						postTxt
 					)
 				)
 			);
-
-			this.recallValues; /* this will turn on the defaults */
+		);
+		"finished page layout in buildControls".postln;
+		this.recallValues; /* this will turn on the defaults */
 	}
 
 	initVars { |loadCondition|
@@ -509,22 +510,22 @@ SoundLabGUI {
 		"variables initialized".postln;
 		postf("curDecType: %, curSR: %, curKernel: %\n",
 			curDecType, curSR, curKernel);
-			loadCondition !? {loadCondition.test_(true).signal}
+		loadCondition !? {loadCondition.test_(true).signal}
 	}
 
 	recallValues {
 		var cond;
+		"recalling values".postln;
 		fork {
-			cond = Condition(false);
-			this.initVars(cond);
-			cond.wait;
+			// cond = Condition(false);
+			// this.initVars(cond);
+			// cond.wait;
 
 			// TODO: post current settings to state window
-
-			gainSl.value_(sl.globalAmp.ampdb);
-			gainTxt.value_(sl.globalAmp.ampdb);
-			muteButton.value_( if(sl.isMuted, {1},{0}) );
-			attButton.value_( if(sl.isAttenuated, {1},{0}) );
+			gainSl.value_(sl.globalAmp.ampdb).postln;
+			gainTxt.string_(sl.globalAmp.ampdb.asString).postln;
+			muteButton.value_( if(sl.isMuted, {1},{0}) ).postln;
+			attButton.value_( if(sl.isAttenuated, {1},{0}) ).postln;
 
 			this.postState;
 		}
@@ -1083,9 +1084,16 @@ SoundLabGUI {
 	}*/
 
 /* TESTING
+l = SoundLab(48000, loadGUI:true, useSLHW: false, useKernels: false)
+
+l.cleanup
+s.quit
+
 InterfaceJS.nodePath = "/usr/local/bin/node"
 l = SoundLab(48000, loadGUI:true, useSLHW: false, useKernels: false)
-l.cleanup
+
+
+
 l.curKernel
 l.kernelDict
 l.kernelDict.keys
