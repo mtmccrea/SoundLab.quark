@@ -347,7 +347,7 @@ SoundLab {
 		}
 	}
 
-		// cleanup server objects to be reloaded after reboot
+	// cleanup server objects to be reloaded after reboot
 	prClearServerSide {
 		fork {
 			curDecoderPatch.free(xfade);
@@ -357,7 +357,6 @@ SoundLab {
 
 			jconvolver !? {jconvolver.free};
 			nextjconvolver !? {nextjconvolver.free}; // ...just in case
-
 			stateLoaded = false;
 		}
 	}
@@ -486,7 +485,10 @@ SoundLab {
 
 	stereoRouting_ { |bool|
 		block({ |break|
-			(stereoActive == bool).if{ break.("stereo setting already current".warn) };
+			(stereoActive == bool).if{
+				this.changed(\stereo, bool); // to reset the GUI
+				break.("stereo setting already current".warn)
+			};
 			if( bool,
 				{
 					postln("enabling stereo from stereoRouting");

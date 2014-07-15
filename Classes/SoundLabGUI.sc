@@ -34,21 +34,44 @@ SoundLabGUI {
 			// 	{decoders = decoders.add(attset[0])})
 			// });
 
-			decsHoriz = decsSphere = decsDome = discreteRouters = [];
+			decsHoriz = [];
+			decsSphere = [];
+			decsDome = [];
+			discreteRouters = [];
+
 			sl.decAttributeList.do{ |dAtts|
-				if( dAtts[1] == \dicrete, {
-					discreteRouters = discreteRouters.add(dAtts.first)
+				dAtts.postln;
+				if( dAtts[1] == \discrete, {
+					discreteRouters = discreteRouters.add(dAtts.first);
+					"adding discrete routing".postln;
+					discreteRouters.postln;
 					},{
 						switch( dAtts[3], // numDimensions
-							2, { decsHoriz = decsHoriz.add(dAtts.first)},
+							2, { decsHoriz = decsHoriz.add(dAtts.first);
+								"adding horiz routing".postln;
+								decsHoriz.postln;
+							},
 							3, { if(dAtts[1] == \dome,
-								{ decsDome = decsDome.add(dAtts.first)},
-								{ decsSphere = decsSphere.add(dAtts.first)}
+								{ decsDome = decsDome.add(dAtts.first);
+									"adding dome routing".postln;
+									decsDome.postln;
+								},
+								{ decsSphere = decsSphere.add(dAtts.first);
+									"adding sphere routing".postln;
+									decsSphere.postln;
+								}
 								)
 							}
 						)
 				});
 			};
+
+			postf(
+				"decsHoriz = %\n
+				decsSphere = %\n
+				decsDome = %\n
+				discreteRouters = %\n",
+				decsHoriz, decsSphere, decsDome, discreteRouters);
 
 			kernels = sl.compDict.delays.keys.select({ |name|
 				name.asString.contains(sl.sampleRate.asString)
@@ -66,7 +89,7 @@ SoundLabGUI {
 
 			ampSpec = ControlSpec.new(-80, 12, -2, default: 0);
 			sampleRates = [44100, 48000, 96000];
-			maxPostLines = 12;
+			maxPostLines = 9;
 			postString = "";
 			this.initVars(cond);
 			cond.wait;
@@ -80,12 +103,12 @@ SoundLabGUI {
 		"initializing controls".postln;
 		// GAIN
 		gainTxt = WsStaticText.init(wsGUI)
-		.string_("Digital Gain: ")
+		.string_("Gain: ")
 		;
 		gainSl = WsEZSlider.init(wsGUI)
 		.controlSpec_(ampSpec) //only in EZSlider;
-		.action_({|sl|
-			sl.amp_( sl.value );
+		.action_({|sldr|
+			sl.amp_( sldr.value );
 			postf("slider value: %\n", sl.value)}) // debug
 		;
 		// MUTE / ATTENUATE
@@ -103,7 +126,7 @@ SoundLabGUI {
 		attButton = WsButton.init(wsGUI)
 		.states_([
 			["Att", Color.black, Color.gray],
-			["Att'd", Color.white, Color.magenta]
+			["Attenuated", Color.white, Color.magenta]
 		])
 		.action_({ |but|
 			switch( but.value,
@@ -115,7 +138,6 @@ SoundLabGUI {
 		srMenu = WsPopUpMenu.init(wsGUI)
 		.items_(['-']++ sampleRates.collect(_.asSymbol))
 		.action_({ |mn|
-			"menu val: ".post; mn.value.postln; "item: ".post;
 			(mn.value==0).if(
 				{pendingSR = nil},{
 					(mn.item == curSR.asSymbol).if(
@@ -130,43 +152,32 @@ SoundLabGUI {
 		// DECODER
 		decMenus = Dictionary();
 
-		(decsHoriz.size > 0).if{ decMenus.put( \horiz,
-			horizMenu = WsPopUpMenu.init(wsGUI)
-			.items_(['-'] ++ decsHoriz)
-			.action_({|mn|
+		decMenus.put( \horiz,
+			horizMenu = WsPopUpMenu.init(wsGUI).items_(['-'] ++ decsHoriz)
+		);
+		decMenus.put( \sphere,
+			sphereMenu = WsPopUpMenu.init(wsGUI).items_(['-'] ++ decsSphere)
+		);
+		decMenus.put( \dome,
+			domeMenu = WsPopUpMenu.init(wsGUI).items_(['-'] ++ decsDome)
+		);
+
+		decMenus.keysValuesDo{|k,v|
+			decMenus[k].action_({|mn|
+				this.clearDecSelections(k); // sets pendingDecType to nil
+				discreteMenu.value_(0);		// reset discrete routing menu
 				pendingDecType = if(mn.item != '-', {mn.item},{nil});
-				this.clearDecSelections(\horiz);
-				discreteMenu.valueAction_(0);
+				postf("selected: %\npending decType: %\n", mn.item, pendingDecType); //debug
 			})
-			)
-		};
-		(decsSphere.size > 0).if{ decMenus.put( \sphere,
-			sphereMenu = WsPopUpMenu.init(wsGUI)
-			.items_(['-'] ++ decsSphere)
-			.action_({|mn|
-				pendingDecType = if(mn.item != '-', {mn.item},{nil});
-				this.clearDecSelections(\sphere);
-				discreteMenu.valueAction_(0);
-			})
-			)
-		};
-		(decsDome.size > 0).if{ decMenus.put( \dome,
-			domeMenu = WsPopUpMenu.init(wsGUI)
-			.items_(['-'] ++ decsDome)
-			.action_({|mn|
-				pendingDecType = if(mn.item != '-', {mn.item},{nil});
-				this.clearDecSelections(\dome);
-				discreteMenu.valueAction_(0);
-			})
-			)
 		};
 
 		// DISCRETE ROUTING
 		discreteMenu = WsPopUpMenu.init(wsGUI)
 		.items_(['-'] ++ discreteRouters)
 		.action_({|mn|
+			this.clearDecSelections(); // sets pendingDecType to nil
 			pendingDecType = if(mn.item != '-', {mn.item},{nil});
-			this.clearDecSelections();
+			postf("selected: %\npending decType: %\n", mn.item, pendingDecType); //debug
 		})
 		;
 		// STEREO / ROTATE
@@ -278,12 +289,10 @@ SoundLabGUI {
 		})
 		;
 		// STATE
-		stateTxt = WsStaticText.init(wsGUI)
-		.string_( "SOUND LAB STATE")
+		stateTxt = WsStaticText.init(wsGUI).string_( "SOUND LAB STATE")
 		;
 		// POST WINDOW
-		postTxt = WsStaticText.init(wsGUI)
-		.string_( "Post")
+		postTxt = WsStaticText.init(wsGUI).string_( "")
 		;
 		"controls initialized".postln;
 	}
@@ -297,7 +306,7 @@ SoundLabGUI {
 				\amp,	{ var val;
 					val  = args[0].ampdb;
 					gainSl.value_(val);
-					gainTxt.string_(format("Digital Gain: % dB",val.asString));
+					gainTxt.string_(format("Gain: % dB",val.round(0.01).asString));
 				},
 				\attenuate,	{
 					switch ( args[0],
@@ -342,7 +351,8 @@ SoundLabGUI {
 				},
 				\decoder,	{
 					curDecType = args[0].decoderName; // args[0] is the decoderpatch
-					this.clearDecSelections;
+					this.clearDecSelections;	// sets pending decoder to nil
+					discreteMenu.value_(0);		// reset discrete routing menu
 					this.status_("Now decoding with: " ++ curDecType);
 				},
 				\stereo,	{
@@ -367,8 +377,11 @@ SoundLabGUI {
 					this.status_("Kernel updated: " ++ curKernel);
 				},
 				\stateLoaded,	{
+					this.initVars;
 					this.recallValues;
+					status_("State reloaded. Check Current Settings window.")
 				},
+				\stoppingAudio, { this.status_("Audio is stopping - Standby.") },
 				\reportError,	{ this.status_(args[0]) },
 				\reportStatus,	{ this.status_(args[0]) }
 			);
@@ -386,19 +399,26 @@ SoundLabGUI {
 	}
 
 	status_ { |aString|
-		var newLines, curLines, newPost;
-		// add new status to post "buffer" and update the status text box
+		var newLines, curLines, curAndNewLines, newPost;
+		"updating status".postln; // debug
 		curLines = postString.split($\n);
-		newLines = ( Date.getDate.format("%a %m/%d %I:%M:%S\t") ++ aString).split($\n);
+		curLines.postln; // debug
+		newLines = ( Date.getDate.format("%a %m/%d %I:%M:%S")++"\t"++ aString).split($\n);
+		newLines.postln; // debug
+		curAndNewLines = (curLines ++ newLines);
 		if((curLines.size + newLines.size) > maxPostLines, {
 			var stripNum;
 			stripNum = (curLines.size + newLines.size) - maxPostLines;
-			curLines = curLines.drop(stripNum);
+			curAndNewLines = curAndNewLines.drop(stripNum);
+			curAndNewLines.postln; //debug
 		});
 		newPost = "";
-		curLines.do{ |line| newPost = newPost ++ line ++ "\n" };
-		newLines.do{ |line| newPost = newPost ++ line ++ "\n"};
-
+		curAndNewLines.do{ |line, i|
+			i.post;"  line: ".post; line.postln; // debug
+			newPost = newPost ++ line ++ "\n";
+		};
+		newPost.postln; // debug
+		newPost.class.postln;
 		postTxt.string_(newPost);
 		postString = newPost;
 	}
@@ -407,7 +427,6 @@ SoundLabGUI {
 		// post info to the soundlab state text box:
 		// sample rate, decoder, correction, stereo, rotated
 		stateTxt.string_(
-			"SOUND LAB STATE " ++
 			"\nSample Rate: " ++ curSR ++
 			"\nDecoder / Router setting: " ++ curDecType ++
 			"\nCorrection: " ++ curKernel ++
@@ -417,7 +436,8 @@ SoundLabGUI {
 	}
 
 	clearDecSelections {|exceptThisKey|
-		decMenus.keysValuesDo{|k,v| if(k!=exceptThisKey,{v.valueAction_(0)}) };
+		"clearing all decoder menus except for: ".post; exceptThisKey.postln; // debug
+		decMenus.keysValuesDo{|k,v| if(k!=exceptThisKey,{v.value_(0)}) };
 		pendingDecType = nil;
 	}
 
@@ -483,16 +503,17 @@ SoundLabGUI {
 					),
 					// COLUMN 3
 					WsVLayout( Rect(0,0,0.4,1),
-						WsStaticText.init(wsGUI).string_("Current System Settings:"),
+						WsStaticText.init(wsGUI, Rect(0,0,1,0.05)).string_(
+							"<strong>Current System Settings:</strong>"),
 						stateTxt,
 						0.05,
-						WsStaticText.init(wsGUI).string_("Post:"),
+						WsStaticText.init(wsGUI, Rect(0,0,1,0.05)).string_(
+							"<strong>Post:</strong>"),
 						postTxt
 					)
 				)
 			);
 		);
-		"finished page layout in buildControls".postln;
 		this.recallValues; /* this will turn on the defaults */
 	}
 
@@ -501,8 +522,9 @@ SoundLabGUI {
 		pendingInput = nil;
 		pendingSR = nil;
 		// defaults on startup - pulled from SoundLab state
+		// TODO: consider not storing 'cur' variables in gui class, refer to sl directly
 		curDecType = sl.curDecoderPatch.decoderName; // not the same as synthdef name
-		curSR = (\SR ++ sl.sampleRate).asSymbol;
+		curSR = sl.sampleRate;
 		curKernel = sl.curKernel ?? {\basic_balance};
 		stereoPending = nil;
 		rotatePending = nil;
@@ -522,11 +544,11 @@ SoundLabGUI {
 			// cond.wait;
 
 			// TODO: post current settings to state window
-			gainSl.value_(sl.globalAmp.ampdb).postln;
-			gainTxt.string_(sl.globalAmp.ampdb.asString).postln;
-			muteButton.value_( if(sl.isMuted, {1},{0}) ).postln;
-			attButton.value_( if(sl.isAttenuated, {1},{0}) ).postln;
-
+			gainSl.value_(sl.globalAmp.ampdb);
+			gainTxt.string_("Gain: "++ sl.globalAmp.ampdb.round(0.01).asString);
+			muteButton.value_( if(sl.isMuted, {1},{0}) );
+			attButton.value_( if(sl.isAttenuated, {1},{0}) );
+			(decMenus ++ [srMenu, discreteMenu, stereoMenu, rotateMenu, correctionMenu]).do{|menu| menu.value_(0)};
 			this.postState;
 		}
 	}
@@ -1084,7 +1106,7 @@ SoundLabGUI {
 	}*/
 
 /* TESTING
-l = SoundLab(48000, loadGUI:true, useSLHW: false, useKernels: false)
+l = SoundLab(48000, loadGUI:true, useSLHW: false, useKernels: false, configFileName: "CONFIG_205.scd")
 
 l.cleanup
 s.quit

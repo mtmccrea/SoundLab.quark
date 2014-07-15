@@ -437,7 +437,7 @@
 		"initializing default hardware".postln;
 
 		server = server ?? Server.default;
-		server !? { server.serverRunning.if{server.quit} };
+		server !? { server.serverRunning.if{this.changed(\stoppingAudio);server.quit} };
 		"REBOOTING".postln;
 
 		so = server.options;
