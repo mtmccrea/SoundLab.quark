@@ -94,6 +94,7 @@ k: dual (Symbol)
 dimensions 2 or 3 (Int),
 arrayOutIndices (Array of ints):
 		for diametric: specify only the first half of out indexes
+		for dome: specify only the first half of out indexes for horizontal plane, followed by all upper dome out indices
 		for discrete: specify all out indexes
 numInChannels: number of input channels into the decoder/router (Int)
 */
@@ -102,9 +103,12 @@ numInChannels: number of input channels into the decoder/router (Int)
 		/* --ambisonic decoders-- */
 		[\Hex, \diametric, 'dual', 2, (0..2), 4],
 
+		// domes - half of horizontal speakers plus all dome speakers
+		[\Dome_10ch_6x3x1,	\dome,	'dual', 3,	(0..2)++(6..9), 4	],
+
 		/* --discrete channel routing-- */
 		// thru routing assumes contiguous channels, starting at arrayOutIndices.first
-		[\Thru_All, \discrete, \NA, 2, (0..4), 10]
+		[\All, \discrete, \NA, 2, (0..4), 10]
 	]
 )
 ;

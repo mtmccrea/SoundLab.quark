@@ -225,8 +225,8 @@ SoundLab {
 				clipMonitoring.if{this.clipMonitor_(true)};
 				rotated.if{this.rotate_(true)};
 				stateLoaded = true;
-				this.changed(\stateLoaded);
 				if(loadGUI, {this.buildGUI});
+				this.changed(\stateLoaded);
 			}
 		});
 	}
@@ -587,7 +587,8 @@ SoundLab {
 	sampleRate_ { |newSR|
 		this.prClearServerSide;
 		if(usingSLHW,
-			{ slhw.startAudio(newSR) },{ this.prInitDefaultHW(newSR) }
+			{ slhw.startAudio(newSR) },
+			{ this.changed(\stoppingAudio); this.prInitDefaultHW(newSR) }
 		)
 	}
 

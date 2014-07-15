@@ -437,11 +437,11 @@
 		"initializing default hardware".postln;
 
 		server = server ?? Server.default;
-		server !? { server.serverRunning.if{this.changed(\stoppingAudio);server.quit} };
+		server !? { server.serverRunning.if{ server.quit} };
 		"REBOOTING".postln;
 
 		so = server.options;
-		so.sampleRate = initSR ?? 96000;
+		so.sampleRate = initSR ?? 48000;
 		so.memSize = 8192 * 16;
 		so.numWireBufs = 64*8;
 		so.device = "JackRouter";
@@ -450,15 +450,13 @@
 		so.numOutputBusChannels = numHardwareOuts * 3;
 		so.numInputBusChannels = numHardwareIns;
 
-		// TODO encapsulate this
 		// the following will otherwise be called from update: \audioIsRunning
 		server.waitForBoot({
 			rbtTryCnt = rbtTryCnt+1;
 			// in case sample rate isn't set correctly the first time (SC bug)
-			if( server.sampleRate == initSR,
-				{
-					rbtTryCnt = 0;
-					this.prLoadServerSide(server);
+			if( server.sampleRate == initSR, {
+				rbtTryCnt = 0;
+				this.prLoadServerSide(server);
 				},{
 					"reboot sample rate doesn't match requested, retrying...".postln;
 					if(rbtTryCnt < 3,

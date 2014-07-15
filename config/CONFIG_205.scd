@@ -129,10 +129,10 @@ numInChannels: number of input channels into the decoder/router (Int)
 
 		/* --discrete channel routing-- */
 		// thru routing assumes contiguous channels, starting at arrayOutIndices.first
-		[\Thru_All,			\discrete,	\NA,	2,	(0..18),				24	],
-		[\Thru_Hex,			\discrete,	\NA,	2,	Array.series(6, 0, 2),	6	],
-		[\Thru_Quad_Square,	\discrete,	\NA,	2,	Array.series(4, 0, 3),	4	],
-		[\Thru_Quad_Rect,	\discrete,	\NA,	2,	[11, 1, 4, 6],			4	]
+		[\All,			\discrete,	\NA,	2,	(0..18),				24	],
+		[\Hex,			\discrete,	\NA,	2,	Array.series(6, 0, 2),	6	],
+		[\Quad_Square,	\discrete,	\NA,	2,	Array.series(4, 0, 3),	4	],
+		[\Quad_Rect,	\discrete,	\NA,	2,	[11, 1, 4, 6],			4	]
 	]
 )
 ;

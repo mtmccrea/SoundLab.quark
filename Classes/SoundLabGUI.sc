@@ -26,7 +26,7 @@ SoundLabGUI {
 
 			" ---------- \n creating new instance of wsGUI \n------------".postln;
 			wsGUI = WsGUI.new(wwwPort);
-			3.wait; // TODO: add condition
+			1.5.wait; // TODO: add condition
 
 			// decoders = [];
 			// sl.decAttributeList.do({ |attset|
@@ -102,8 +102,7 @@ SoundLabGUI {
 	initControls {
 		"initializing controls".postln;
 		// GAIN
-		gainTxt = WsStaticText.init(wsGUI)
-		.string_("Gain: ")
+		gainTxt = WsStaticText.init(wsGUI, Rect(0,0,1,0.05)).string_("")
 		;
 		gainSl = WsEZSlider.init(wsGUI)
 		.controlSpec_(ampSpec) //only in EZSlider;
@@ -125,7 +124,7 @@ SoundLabGUI {
 		;
 		attButton = WsButton.init(wsGUI)
 		.states_([
-			["Att", Color.black, Color.gray],
+			["Attenuate", Color.black, Color.gray],
 			["Attenuated", Color.white, Color.magenta]
 		])
 		.action_({ |but|
@@ -139,14 +138,15 @@ SoundLabGUI {
 		.items_(['-']++ sampleRates.collect(_.asSymbol))
 		.action_({ |mn|
 			(mn.value==0).if(
-				{pendingSR = nil},{
-					(mn.item == curSR.asSymbol).if(
-						{	this.status_("Selected sample rate is already " ++ curSR.asSymbol);
-							mn.valueAction_(0); // set back to '-'
-						},
-						{	pendingSR = mn.item.asInt; }
+				{ pendingSR = nil },
+				{
+					(mn.item == curSR.asSymbol).if({
+						this.status_("Sample rate is already " ++ curSR.asString);
+						mn.valueAction_(0); // set back to '-'
+						},{	pendingSR = mn.item.asInt }
 					)
-			})
+				}
+			)
 		})
 		;
 		// DECODER
@@ -236,10 +236,6 @@ SoundLabGUI {
 						{this.status_("No updates."); break.()}
 					);
 
-					// TODO check here if there's a SR change, if so set state current vars
-					// of soundlab then change sample rate straight away,
-					// no need to update signal chain twice
-
 					this.status_( "Updating..." );
 					updateCond = Condition(false);
 
@@ -248,8 +244,12 @@ SoundLabGUI {
 						pendingKernel.notNil	or:
 						pendingSR.notNil,
 						{
+							// TODO check here if there's a SR change, if so set state current vars
+							// of soundlab then change sample rate straight away,
+							// no need to update signal chain twice
+
 							pendingDecType = pendingDecType ?? curDecType;
-							this.status_(("Updating decoder to "++pendingDecType).postln);
+							("Updating decoder to "++pendingDecType).postln;
 
 							if( pendingKernel.notNil,
 								{ sl.startNewSignalChain(pendingDecType, pendingKernel, updateCond) },
@@ -281,20 +281,21 @@ SoundLabGUI {
 					};
 					/* Update Samplerate */
 					if( pendingSR.notNil,
-						{ sl.sampleRate_( pendingSR ) },
-						{ this.status_("... Update COMPLETE.") }
+						{
+							this.status_(format("Changing the sample rate to %.\nAudio will stop for a time while the routing system reboots to the new sample rate.", pendingSR));
+							sl.sampleRate_( pendingSR ) },
+						{ this.status_("Update complete.") }
 					);
 				}
 			}
 		})
 		;
 		// STATE
-		stateTxt = WsStaticText.init(wsGUI).string_( "SOUND LAB STATE")
+		stateTxt = WsStaticText.init(wsGUI).string_("")
 		;
 		// POST WINDOW
-		postTxt = WsStaticText.init(wsGUI).string_( "")
+		postTxt = WsStaticText.init(wsGUI).string_("")
 		;
-		"controls initialized".postln;
 	}
 
 	// for updating the GUI when SoundLab model is changed
@@ -306,7 +307,7 @@ SoundLabGUI {
 				\amp,	{ var val;
 					val  = args[0].ampdb;
 					gainSl.value_(val);
-					gainTxt.string_(format("Gain: % dB",val.round(0.01).asString));
+					gainTxt.string_(format("<strong>Gain: </strong>% dB",val.round(0.01).asString));
 				},
 				\attenuate,	{
 					switch ( args[0],
@@ -379,7 +380,7 @@ SoundLabGUI {
 				\stateLoaded,	{
 					this.initVars;
 					this.recallValues;
-					status_("State reloaded. Check Current Settings window.")
+					this.status_("State reloaded. Check Current Settings window.")
 				},
 				\stoppingAudio, { this.status_("Audio is stopping - Standby.") },
 				\reportError,	{ this.status_(args[0]) },
@@ -400,114 +401,131 @@ SoundLabGUI {
 
 	status_ { |aString|
 		var newLines, curLines, curAndNewLines, newPost;
-		"updating status".postln; // debug
 		curLines = postString.split($\n);
-		curLines.postln; // debug
 		newLines = ( Date.getDate.format("%a %m/%d %I:%M:%S")++"\t"++ aString).split($\n);
-		newLines.postln; // debug
 		curAndNewLines = (curLines ++ newLines);
 		if((curLines.size + newLines.size) > maxPostLines, {
 			var stripNum;
 			stripNum = (curLines.size + newLines.size) - maxPostLines;
 			curAndNewLines = curAndNewLines.drop(stripNum);
-			curAndNewLines.postln; //debug
 		});
 		newPost = "";
 		curAndNewLines.do{ |line, i|
-			i.post;"  line: ".post; line.postln; // debug
 			newPost = newPost ++ line ++ "\n";
 		};
-		newPost.postln; // debug
-		newPost.class.postln;
 		postTxt.string_(newPost);
 		postString = newPost;
 	}
 
 	postState {
-		// post info to the soundlab state text box:
-		// sample rate, decoder, correction, stereo, rotated
-		stateTxt.string_(
-			"\nSample Rate: " ++ curSR ++
-			"\nDecoder / Router setting: " ++ curDecType ++
-			"\nCorrection: " ++ curKernel ++
-			"\nStereo channels first: " ++ sl.stereoActive ++
-			"\nSound field rotated: " ++ sl.rotated
+		stateTxt.string_("\n"
+			++ curSR ++ "\n"
+			++ curDecType ++ "\n"
+			++ curKernel ++ "\n"
+			++ sl.stereoActive ++ "\n"
+			++ sl.rotated
 		);
 	}
 
 	clearDecSelections {|exceptThisKey|
-		"clearing all decoder menus except for: ".post; exceptThisKey.postln; // debug
 		decMenus.keysValuesDo{|k,v| if(k!=exceptThisKey,{v.value_(0)}) };
 		pendingDecType = nil;
 	}
 
+
+	/* PAGE LAYOUT */
+
 	buildControls {
-		"begining page layout in buildControls".postln;
-		// do page layout
 		wsGUI.layout_(
-			WsVLayout( Rect(0.05,0.05,0.9,0.9),
+			WsVLayout( Rect(0.025,0.025,0.95,0.95),
 				WsStaticText.init(wsGUI, Rect(0,0,1,0.1)).string_(
 					format("Sound Lab %\nRouting and Decoding System",sl.configFileName))
 				.textAlign_(\center),
 				WsHLayout( Rect(0,0,1,0.9),
+
 					// COLUMN 1
-					WsVLayout( Rect(0,0,0.4,1),
-						WsStaticText.init(wsGUI)
-						.string_("Change Settings")
-						.textAlign_(\center),
-						WsStaticText.init(wsGUI)
-						.string_("Sample Rate"),
-						srMenu,  // sample rate
-						gainTxt, // gain
+					WsVLayout( Rect(0,0,0.45,1),
+						WsStaticText.init(wsGUI).string_(
+							"<strong>Change Settings</strong>").textAlign_(\center),
+						// sample rate
+						WsStaticText.init(wsGUI, Rect(0,0,1,0.05)).string_(
+							"<strong>Sample Rate</strong>"),
+						WsHLayout(Rect(0,0,1,0.05), srMenu, 2),
+						// gain
+						gainTxt,
 						gainSl,
-						WsHLayout(nil, muteButton, nil, attButton, nil, nil),
-						nil,
-						// decoder/rotation
-						WsStaticText.init(wsGUI).string_("Select an Ambisonic DECODER"),
-						WsHLayout( nil,
-							WsStaticText.init(wsGUI).string_("2-D Horizontal Only"),
-							horizMenu ),
-						WsHLayout( nil,
-							WsStaticText.init(wsGUI).string_("3-D Sphere"),
-							sphereMenu ),
-						WsHLayout( nil,
-							WsStaticText.init(wsGUI).string_("3-D Dome"),
-							domeMenu ),
-						WsHLayout( nil,
-							WsStaticText.init(wsGUI).string_(
-								format("Rotate the listening position % degrees?",sl.rotateDegree)),
-							rotateMenu ),
+						// mute / attenuate
+						WsHLayout(Rect(0,0,1,0.05), muteButton, 0.025, attButton, 1.25),
+						0.05,
+						// decoder
+						WsStaticText.init(wsGUI,Rect(0,0,1,0.08)).string_(
+							"<strong>Select an Ambisonic Decoder</strong>"),
+						WsHLayout(Rect(0,0,1,0.25),
+							WsVLayout(Rect(0,0,0.6, 1),
+								WsHLayout( nil,
+									WsStaticText.init(wsGUI).string_("2-D Horizontal"),
+									horizMenu ),
+								WsHLayout( nil,
+									WsStaticText.init(wsGUI).string_("3-D Sphere"),
+									sphereMenu ),
+								WsHLayout( nil,
+									WsStaticText.init(wsGUI).string_("3-D Dome"),
+									domeMenu )
+							),
+							0.1,
+							// rotation
+							WsHLayout( Rect(0,0,0.4, 1),
+								WsVLayout( Rect(0,0,0.8, 1),
+									1/4,
+									WsStaticText.init(wsGUI, Rect(0,0,0.7, 1)).string_(
+										format("<strong>Rotate</strong> listening position % degrees?",sl.rotateDegree)),
+									1/4),
+								WsVLayout( Rect(0,0,0.2, 1), 1/3, rotateMenu, 1/3)
+							)
+						),
 						nil,
 						// discrete routing
-						WsStaticText.init(wsGUI).string_("Select a Discrete Routing Layout"),
-						WsHLayout( nil,
-							WsStaticText.init(wsGUI).string_("Which speakers?"),
-							discreteMenu ),
+						WsStaticText.init(wsGUI, Rect(0,0,1,0.08)).string_(
+							"<strong>Select a Discrete Routing Layout</strong>"),
+						WsHLayout(Rect(0,0,1,0.1),
+							WsHLayout( Rect(0,0,0.7,1),
+								WsStaticText.init(wsGUI).string_("Which speakers?"),
+								discreteMenu ),
+							0.6
+						),
 						nil,
 						// stereo
-						WsHLayout( nil,
-							WsStaticText.init(wsGUI).string_("Insert stereo channels before decoder/router?"),
+						WsHLayout( Rect(0,0,1,0.12),
+							WsStaticText.init(wsGUI).string_("<strong>Insert STEREO channels before decoder/router?</strong>"),
 							stereoMenu ),
 						nil,
 						// correction
-						WsHLayout( nil,
-							WsStaticText.init(wsGUI).string_("Room correction"),
+						WsHLayout( Rect(0,0,1,0.12),
+							WsStaticText.init(wsGUI).string_("<strong>Room correction</strong>"),
 							correctionMenu ),
 						nil,
 						nil,
 						applyButton
 					),
+
 					// COLUMN 2
-					WsVLayout( Rect(0,0,0.2,1),
+					WsVLayout( Rect(0,0,0.1,1),
 						// picture
 					),
+
 					// COLUMN 3
-					WsVLayout( Rect(0,0,0.4,1),
-						WsStaticText.init(wsGUI, Rect(0,0,1,0.05)).string_(
-							"<strong>Current System Settings:</strong>"),
-						stateTxt,
-						0.05,
-						WsStaticText.init(wsGUI, Rect(0,0,1,0.05)).string_(
+					WsVLayout( Rect(0,0,0.45,1),
+						WsStaticText.init(wsGUI, Rect(0,0,1,0.025)).string_(
+							"<strong>Current System Settings</strong>").textAlign_(\center),
+						WsHLayout( nil,
+							WsStaticText.init(wsGUI).string_(
+								"\nSample Rate:  \nDecoder / Router:  \nCorrection:  \nStereo channels first:  \nSound field rotated:  "
+							).textAlign_(\right),
+							//0.025, //TODO: reimplement this, fix layouts of specified dimensions
+							stateTxt
+						),
+						0.1,
+						WsStaticText.init(wsGUI, Rect(0,0,1,0.025)).string_(
 							"<strong>Post:</strong>"),
 						postTxt
 					)
@@ -536,16 +554,9 @@ SoundLabGUI {
 	}
 
 	recallValues {
-		var cond;
-		"recalling values".postln;
 		fork {
-			// cond = Condition(false);
-			// this.initVars(cond);
-			// cond.wait;
-
-			// TODO: post current settings to state window
 			gainSl.value_(sl.globalAmp.ampdb);
-			gainTxt.string_("Gain: "++ sl.globalAmp.ampdb.round(0.01).asString);
+			gainTxt.string_( format("<strong>Gain: </strong>% dB",sl.globalAmp.ampdb.round(0.01)) );
 			muteButton.value_( if(sl.isMuted, {1},{0}) );
 			attButton.value_( if(sl.isAttenuated, {1},{0}) );
 			(decMenus ++ [srMenu, discreteMenu, stereoMenu, rotateMenu, correctionMenu]).do{|menu| menu.value_(0)};
@@ -557,553 +568,9 @@ SoundLabGUI {
 		sl.removeDependant( this );
 		slhw !? {slhw.removeDependant(this)};
 		wsGUI.free;
-		// listeners.do(_.free);
 	}
 
 }
-	// setCtlPending { |which|
-	// 	this.setColor(which, \yellow);
-	// 	this.status((which ++ " is pending.").postln);
-	// }
-	//
-	// setCtlActive { |which|
-	// 	this.setColor(which,
-	// 		if( which == \Mute, {\red},
-	// 			{ if( which == \Attenuate, {\purple},
-	// 				{\green} /* otherwise, all else are green when active */
-	// 			)}
-	// 		);
-	// 	);
-	// 	interfaceJS.value_( which, 1);
-	// }
-	//
-	// clearControls { |controlArr, current, selected|
-	// 	controlArr.do({ |name|
-	// 		if( ((name != current) && (name != selected)), {
-	// 			("turning off: " ++ name).postln;
-	// 			interfaceJS.value_( name.asSymbol, 0);
-	// 			this.setColor( name, \default);
-	// 		});
-	// 	})
-	// }
-	//
-	// // TODO Update this
-	// setThruControls { |whichThruCtl|
-	// 	// update decoder controls
-	// 	pendingDecType = whichThruCtl;
-	// 	this.clearControls( decoders, curDecType, whichThruCtl );
-	// 	this.setCtlPending( whichThruCtl );
-	// 	this.status( "Thru: direct outs, no BF decoder." );
-	// }
-	//
-	// setColor { |controlName, color|
-	// 	switch( color,
-	// 		\yellow, {
-	// 			interfaceJS.backgroundFillStroke_(controlName,
-	// 				Color.fromHexString("#000000"),
-	// 				Color.fromHexString("#FFCC00"),
-	// 		Color.white)},
-	// 		\purple, {
-	// 			interfaceJS.backgroundFillStroke_(controlName,
-	// 				Color.fromHexString("#000000"),
-	// 				Color.fromHexString("#CC0099"),
-	// 		Color.white)},
-	// 		\red, {
-	// 			interfaceJS.backgroundFillStroke_(controlName,
-	// 				Color.fromHexString("#000000"),
-	// 				Color.fromHexString("#FF0033"),
-	// 		Color.white)},
-	// 		\green, {
-	// 			interfaceJS.backgroundFillStroke_(controlName,
-	// 				Color.fromHexString("#000000"),
-	// 				Color.fromHexString("#66FF00"),
-	// 		Color.white)},
-	// 		\default, {
-	// 			interfaceJS.backgroundFillStroke_(controlName,
-	// 				Color.fromHexString("#000000"),
-	// 				Color.fromHexString("#aaaaaa"),
-	// 		Color.white)}
-	// 	)
-	// }
-	/* buildListeners {
-		// building individual responders for specific widgets
-		oscFuncDict = IdentityDictionary( know: true ).put(
-			\ampSlider, { |val|
-				sl.amp_( val );
-		}).put(
-			\Attenuate, { |val|
-				case
-				{val == 0} {sl.attenuate(false)}
-				{val == 1} {sl.attenuate(true)}
-				;
-		}).put(
-			\Mute, { |val|
-				case
-				{val == 0} {sl.mute(false)}
-				{val == 1} {sl.mute(true)}
-				;
-		}).put(
-			\Stereo, { |val|
-				{ case
-					{val == 0} {
-						if(sl.stereoActive,
-							{
-								stereoPending = \off;
-								this.setColor(\Stereo, \yellow);
-								interfaceJS.value_(\Stereo, 1);
-							},{
-								stereoPending = nil;
-								this.setColor(\Stereo, \default);
-							}
-						)
-					}
-					{val == 1} {
-						stereoPending = \on;
-						this.setColor(\Stereo, \yellow);
-					}
-				}.fork
-				;
-		}).put(
-			\Rotate, { |val|
-				{ case
-					{val == 0} {
-						if(sl.rotated,
-							{
-								rotatePending = \off;
-								this.setColor(\Rotate, \yellow);
-								interfaceJS.value_(\Rotate, 1);
-							},{
-								rotatePending = nil;
-								this.setColor(\Rotate, \default);
-							}
-						)
-					}
-					{val == 1} {
-						rotatePending = \on;
-						this.setColor(\Rotate, \yellow);
-					}
-				}.fork
-				;
-		}).put(
-			\Update, { |val|
-				fork {
-					block { |break|
-						var updateCond;
-						if( sl.usingSLHW,
-							{
-								if( slhw.audioIsRunning.not, {
-									this.status("Warning: Audio is stopped in Hardware");
-									break.("Audio is currently stopped in the Hardware.".warn)
-								});
-							},{
-								if( sl.server.serverRunning.not, {
-									this.status("Warning: Server is stopped");
-									break.("Server is currently stopped.".warn)
-								});
-							}
-						);
-						// Anything to update?
-						if( pendingDecType.isNil 	and:
-							pendingSR.isNil			and:
-							pendingKernel.isNil		and:
-							stereoPending.isNil		and:
-							rotatePending.isNil,
-							{this.status("No updates."); interfaceJS.value_( \Update, 0); break.()}
-						);
-
-						// TODO check here if there's a SR change, if so set state current vars
-						// of soundlab then change sample rate straight away,
-						// no need to update signal chain twice
-
-						this.setColor( \Update, \yellow );
-						updateCond = Condition(false);
-
-						/* Update Decoder/Kernel */
-						if( pendingDecType.notNil 	or:
-							pendingKernel.notNil	or:
-							pendingSR.notNil,
-							{
-								pendingDecType = pendingDecType ?? curDecType;
-								this.status(("Updating decoder to "++pendingDecType).postln);
-
-								if( pendingKernel.notNil,
-									{ sl.startNewSignalChain(pendingDecType, pendingKernel, updateCond) },
-									{ sl.startNewSignalChain(pendingDecType, completeCondition: updateCond) }
-								);
-							},{ updateCond.test_(true).signal }
-						);
-
-						updateCond.wait; // wait for new signal chain to play
-
-						/* Update Stereo routing */
-						stereoPending !? {
-							switch( stereoPending,
-								\on, {sl.stereoRouting_(true)},
-								\off, {sl.stereoRouting_(false)}
-							)
-						};
-
-						/* Update listening position rotation */
-						rotatePending !? {
-							switch( rotatePending,
-								\on, {
-									if(sl.curDecoderPatch.attributes.kind == \discrete, {
-										this.status("Rotation not available for discrete routing".warn);
-										interfaceJS.value_( \Rotate, 0);
-									},{ sl.rotate_(true) }
-									)
-								},
-								\off, {
-									sl.rotate_(false)
-								}
-							)
-						};
-
-						/* Update Samplerate */
-						if( pendingSR.notNil, {
-							sl.sampleRate_( pendingSR.asString.drop(2).asInt )
-							},{
-								interfaceJS.value_( \Update, 0);
-								this.setColor( \Update, \default );
-							}
-						);
-					}
-				}
-		});
-
-
-		// // collect listeners built above
-		// oscFuncDict.keysValuesDo({ |tag,func|
-		// listeners = listeners.add( OSCFunc(func, tag, nil) )
-		// });
-
-		// buildList order defines indexing in switch statements below
-		buildList = [decoders, sampleRates, kernels];
-		buildList.do({ |controls, i|
-			controls !? {	// sometimes kernels is nil if not used
-				controls.do({
-					|selected|
-					oscFuncDict.put(selected, {
-						|val|
-						var current, pending;
-						// get the current and pending settings for the selected category
-						current = switch( i,
-							0, {curDecType},
-							1, {curSR},
-							2, {curKernel}
-						);
-						pending = switch( i,
-							0, {pendingDecType},
-							1, {pendingSR},
-							2, {pendingKernel}
-						);
-
-						postf("in the selected category, current control is: %, pending control is: %\n", current, pending);
-
-						case
-						// button ON
-						{val == 1} {
-							(selected != current).if(
-								{
-									block { |break|
-										if( "(T|t)hru".matchRegexp(selected.asString),
-											{	/*debug*/"selected is a thru decoder, setting thru controls".postln;
-												this.setThruControls(selected);
-												break.()
-											}
-										);
-										switch( i,
-											0, {pendingDecType = selected},
-											1, {pendingSR = selected},
-											2, {
-												// kernels only avail at 48000
-												if((
-													(pendingSR == \SR48000) or:
-													((curSR == \SR48000) and: (pendingSR == nil))
-													),{
-														"\nsetting pending kernel normally\n".postln;
-														pendingKernel = selected;
-													},{
-														this.status("cancelling pending kernel - not available at selected samplerate".postln);
-														pendingKernel = nil;
-														this.clearControls( controls, current, nil );
-														break.();
-													}
-												)
-											}
-										);
-										this.clearControls( controls, current, selected );
-										this.setCtlPending( selected );
-									} // end of blocking function
-								},{
-									this.setColor(selected, \green);
-									this.status((selected ++ " is current.").postln);
-							})
-						}
-						// button OFF
-						{val == 0} {
-							case
-							{ selected == pending } {
-								if( "(T|t)hru".matchRegexp(pendingDecType.asString) && (i==1),
-									{   // turn it back on if Thru routing chosen
-										this.setCtlPending(\NA);
-										interfaceJS.value_(\NA, 1);
-									},{ // otherwhise turn it off
-										switch( i,
-											0, {pendingDecType = nil},
-											1, {pendingSR = nil},
-											2, {pendingKernel = nil}
-										);
-										this.setColor(selected, \default);
-										this.status((selected ++ " removed.").postln);
-									}
-								)
-							}
-							{ selected == current } {
-								this.setCtlActive(selected);
-								this.status((selected ++ " is current.").postln);
-							}
-						}
-						}
-					)
-				})
-			}
-		});
-		"oscFuncDict in the end: ".post; oscFuncDict.postln;
-	}*/
-/*	buildControls {
-		var catCntlArr, ampCtlW, rowSize, cntrlDict;
-		var screenW, screenH, catVPad, catHPad, cntrlHPad, cntrlVPad, catLabelH;
-		var ncols, ncntrls_row, colW, cntrlW, cntrlH , here, x_home;
-
-		rowSize = 3;
-		cntrlDict = IdentityDictionary.new(know: true);
-
-		// this order determines order of control layout
-		catCntlArr = [
-			/*
-			\HARDWARE,
-			IdentityDictionary.new(know: true) .putPairs([
-			\kind, \label,
-			\controls, [\Connections],
-			\cSize, 9 //coerce this control to be 9 buttons large
-			]),
-			*/
-			\SAMPLERATE,
-			IdentityDictionary.new(know: true).putPairs([
-				\kind, \button,
-				\controls, sampleRates
-			]),
-			\DECODER,
-			IdentityDictionary.new(know: true).putPairs([
-				\kind, \button,
-				\controls, decoders
-			]),
-			'STEREO & ROTATION',
-			IdentityDictionary.new(know: true).putPairs([
-				\kind, \button,
-				\controls, [\Stereo, \Rotate]
-			]),
-			// \ROTATION,
-			// IdentityDictionary.new(know: true).putPairs([
-			// 	\kind, \button,
-			// 	\controls, [\Rotate]
-			// ]),
-			\SETTINGS,
-			IdentityDictionary.new(know: true).putPairs([
-				\kind, \button,
-				\controls, [\Matrix, \Reload],
-				\cSize, 2
-			]),
-			\CORRECTION,
-			IdentityDictionary.new(know: true).putPairs([
-				\kind, \button,
-				\controls, kernels
-			]),
-			'UPDATE_Configuration',
-			IdentityDictionary.new(know: true).putPairs([
-				\kind, \button,
-				\controls, [\Update],
-				\cSize, 4
-			]),
-			\STATUS, // status "post" window
-			IdentityDictionary.new(know: true).putPairs([
-				\kind, \label,
-				\controls, [\Status],
-				\cSize, 4
-			]),
-		];
-		cntrlDict.putPairs(catCntlArr);
-
-		// screen dimensions are normalized to height and width of 1.0
-		screenW = 0.85;		// not 1.0 ... leave room for volume controls
-		screenH = 1.0;
-		catVPad = 0.035;		// vertical pad between categories, i.e. K, Stereo, etc
-		catHPad = 0.04;
-		cntrlHPad = 0.012;	// vertical pad between controls (buttons)
-		cntrlVPad = 0.02;
-		ncols = 2.5;		// number of columns of controls (excluding amp control)
-		ncntrls_row = 2;	// number of controls per row
-		colW = (screenW - catHPad)/ncols - catHPad;
-		cntrlW = (colW / ncntrls_row) - ((ncntrls_row-1)*cntrlHPad/ncntrls_row);
-		cntrlH = 0.045;
-		catLabelH = cntrlH * 1.0;
-
-		x_home = catHPad;
-		here = Point(x_home,catVPad);	// starting position of layout
-
-
-		catCntlArr.select{|item, i| i.even}.do({ |category_name|
-			var cntrl_set, cat_height, nrows, col_cnt, w, h;
-			cntrl_set = cntrlDict[category_name];
-
-			("\n"++category_name++" control set").postln; //cntrl_set.keysValuesDo{|k,v|"\t".post; [k,v].postln};// debug
-
-			nrows = cntrl_set.cSize.notNil.if(
-				{(cntrl_set.cSize / ncntrls_row) * (cntrl_set.controls.size)},
-				{cntrl_set.controls.size / ncntrls_row}
-			).ceil;
-
-			// check vertical height of this category of controls
-			cat_height = (
-				catLabelH +				// category label height
-				(nrows * cntrlH)		// control rows height
-				+ (nrows * cntrlVPad);  // padding btwn control rows
-			);
-			if( (cat_height+here.y) > screenH,{
-				here.x = here.x+colW+catHPad;
-				x_home = here.x;
-				here.y = catVPad;
-			});
-
-			/* category label */
-			// ("making cat label "++category_name++" at: " ++ [here.x, here.y, colW, catLabelH]).postln; // debug
-			interfaceJS.makeLabel( category_name, Rect(here.x, here.y, colW, catLabelH), size: 14, align: "left");
-			here.y = here.y + catLabelH; // advance place holder
-
-			// "making controls".postln; // debug
-			// check for controls with a size attribute
-			if(cntrl_set.cSize.notNil,
-				{
-					w = if(cntrl_set.cSize > ncntrls_row,
-						{colW},
-						{colW * (cntrl_set.cSize / ncntrls_row)}
-					);
-					h = (cntrlH * (nrows/cntrl_set.controls.size)); // + (cntrlVPad*(nrows-1));
-				},{
-					w = cntrlW;
-					h = cntrlH;
-			});
-
-			cntrl_set.controls.do({ |cntrl, i|
-				var row_cnt;
-				if(cntrl_set.cSize.notNil,
-					{
-						row_cnt = (i * cntrl_set.cSize / ncntrls_row).floor;
-						col_cnt = (i * cntrl_set.cSize) % ncntrls_row;
-					},{
-						row_cnt = (i / ncntrls_row).floor;
-						col_cnt = i % ncntrls_row;
-					}
-				);
-
-				// cntrl.postln; // debug
-				// ("row/column:\t" ++ [row_cnt,col_cnt]).postln; // debug
-
-/*				if((cntrl_set.controls.size == 1) and: (cntrl_set.cSize.notNil),
-					{ "setting special x".postln;
-						here.x = x_home + ((cntrlHPad+w)/2) }, // center controls with just 1 value
-					{ here.x = x_home + ((col_cnt)*(cntrlHPad+w)) }
-				);*/
-				here.x = x_home + ((col_cnt)*(cntrlHPad+w));
-
-				if(
-					((col_cnt==0) && (row_cnt>0)),
-					{ here.y = here.y + (cntrlVPad+h) } // advance y pointer for new row
-				);
-
-				switch( cntrl_set.kind,
-					\label, {
-						// allow labels to be double-wide so no wrapping - temp fix?
-						interfaceJS.makeLabel(cntrl, Rect(here.x, here.y, colW, h), align: "left");
-					},
-					\button, {
-						cntrl.class;
-						// postf("making button for\t %, function %\n", cntrl, oscFuncDict[cntrl]);
-						interfaceJS.makeButton(
-							cntrl, Rect(here.x, here.y, w, h),
-							function: oscFuncDict[cntrl],
-							background: Color.fromHexString("#000000"),
-							fill: Color.fromHexString("#aaaaaa"),
-							stroke: Color.white,
-							value: 0
-						);
-					}
-				);
-			});
-			here.y = here.y + (cntrlVPad+h) + catVPad;
-			here.x = x_home;
-		});
-
-
-		/* amplitude control column */
-		ampCtlW = 1 - screenW;
-
-		// 'Amp' label
-		interfaceJS.makeLabel( \AMP,
-			Rect(screenW, catVPad, ampCtlW, cntrlH)
-		);
-		// amp level label
-		interfaceJS.makeLabel( \ampLevelLabel,
-			Rect(
-				screenW,
-				catVPad + cntrlH + cntrlVPad,
-				ampCtlW,
-				cntrlH
-			),
-			labeltext: '0.0'
-		);
-		/*			// clip meters (buttons)
-		[\I, \O].do({ |name, i|
-		interfaceJS.makeButton( name,
-		screenW + catHPad + (ampCtlW*i/2),
-		2* (cntrlH - cntrlVPad),
-		cntrlH - cntrlVPad,
-		ampCtlW / 2,
-		'#FF0033'
-		)
-		});
-		*/
-		// Amp slider
-		interfaceJS.makeSlider( \ampSlider, // |name, xpos, ypos, height, width, vert = true|
-			Rect(
-				screenW, //xpos
-				0.16, //ypos
-				ampCtlW * 0.85, // width
-				0.6 //height
-			),
-			controlSpec: ampSpec,
-			function: oscFuncDict[\ampSlider]
-		);
-		// mute and attenuate button
-		[\Attenuate, \Mute].do({ |name, i|
-			interfaceJS.makeButton(name,
-				Rect(
-					screenW, //xpos
-					0.76 + (i * (cntrlH *2) + cntrlVPad),
-					ampCtlW * 0.85, // width
-					cntrlH * 2
-				),
-				Color.fromHexString("#000000"),
-				Color.fromHexString("#aaaaaa"),
-				Color.white,
-				value: 0,
-				function: oscFuncDict[name]
-			)
-		});
-
-		this.recallValues; /* this will turn on the defaults */
-	}*/
 
 /* TESTING
 l = SoundLab(48000, loadGUI:true, useSLHW: false, useKernels: false, configFileName: "CONFIG_205.scd")
