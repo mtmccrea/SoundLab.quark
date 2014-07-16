@@ -3,6 +3,7 @@
 
 IdentityDictionary(know: true)
 .putPairs([
+	\labName,				"Test Config",
 	\numHardwareOuts, 		32,
 	\numHardwareIns, 		32,
 	\numSatChans,			24,

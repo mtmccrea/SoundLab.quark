@@ -3,6 +3,7 @@
 
 IdentityDictionary(know: true)
 .putPairs([
+	\labName,				"Sound Lab 113",
 	\numHardwareOuts, 		16,
 	\numHardwareIns, 		16,
 	\numSatChans,			10,

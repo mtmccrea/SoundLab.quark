@@ -5,8 +5,7 @@ SoundLab {
 	var <>xfade = 0.2,  <>debug=true;
 	var <globalAmp, <numSatChans, <numSubChans, <totalArrayChans, <numKernelChans, <>rotateDegree;
 	var <hwInCount, <hwInStart;
-	var <config;
-	var <numHardwareOuts, <numHardwareIns, <stereoChanIndex, <>defaultDecoderName, <>defaultKernel, <>kernelDirPath;
+	var <config, <labName, <numHardwareOuts, <numHardwareIns, <stereoChanIndex, <>defaultDecoderName, <>defaultKernel, <>kernelDirPath;
 
 	var <server, <gui, <curKernel, <stereoActive, <isMuted, <isAttenuated, <stateLoaded, <rotated;
 	var <clipMonitoring, <curDecoderPatch, rbtTryCnt;
@@ -37,16 +36,17 @@ SoundLab {
 		});
 		// config = thisProcess.interpreter.executeFile(File.realpath(this.class.filenameSymbol).dirname ++ "/CONFIG.scd");
 		// defaults
-		numHardwareOuts = config.numHardwareOuts;
-		numHardwareIns = config.numHardwareIns;
-		defaultDecoderName = config.defaultDecoderName;// synthDef name
-		defaultKernel = config.defaultKernel;
-		stereoChanIndex = config.stereoChanIndex;
-		numSatChans = config.numSatChans;
-		numSubChans = config.numSubChans;
-		totalArrayChans = numSatChans+numSubChans;	// stereo not included
-		numKernelChans = totalArrayChans; 	// TODO: confirm this approach
-		rotateDegree = config.rotateDegree ?? {-90}; // default rotation to the right
+		labName				= config.labName ?? {""};
+		numHardwareOuts		= config.numHardwareOuts;
+		numHardwareIns		= config.numHardwareIns;
+		defaultDecoderName	= config.defaultDecoderName;// synthDef name
+		defaultKernel		= config.defaultKernel;
+		stereoChanIndex		= config.stereoChanIndex;
+		numSatChans			= config.numSatChans;
+		numSubChans			= config.numSubChans;
+		totalArrayChans		= numSatChans+numSubChans;	// stereo not included
+		numKernelChans		= totalArrayChans; 	// TODO: confirm this approach
+		rotateDegree		= config.rotateDegree ?? {-90}; // default rotation to the right
 
 		// kernelDirPath = PathName.new(Platform.resourceDir ++ "/sounds/SoundLabKernelsNew/");
 		kernelDirPath = kernelDirPath ?? {
@@ -98,8 +98,7 @@ SoundLab {
 	prLoadServerSide { |argServer|
 		var loadCondition;
 		loadCondition = Condition(false);
-		// debug
-		postln("Loading Server Side ... loading synths, intializing channel counts, groups, and busses.");
+		postln("Loading Server Side ... loading synths, intializing channel counts, groups, and busses."); // debug
 
 		server = argServer ?? {
 			"server defaulting because none provided -prLoadServerSide".warn;
@@ -147,9 +146,6 @@ SoundLab {
 				server.sync;
 				patcherGroup.play;
 				server.sync;
-				// debug
-				// postf("\tmonitorGroup_ins group: %\n\tmonitorGroup_out group: %\n\tpatcherGroup group: %\n",
-				// monitorGroup_ins.node, monitorGroup_outs.node, patcherGroup.node);
 
 				// PATCHERS
 				// patcherOutBus is only satellites + stereo, NO subs
@@ -277,7 +273,6 @@ SoundLab {
 						cond
 					);
 					cond.wait;
-					"advancing to load synthdefs".postln; // debug
 					cond.test_(false);
 					// debug
 					"nextjconvolver: ".post; nextjconvolver.postln;
@@ -362,8 +357,7 @@ SoundLab {
 		var cond, newDecoderPatch, cur_decoutbus, new_decoutbus, new_decinbus;
 		cond = Condition(false);
 		fork {
-			// debug
-			postf("Starting decoder: % \n", newDecName);
+			postf("Starting decoder: % \n", newDecName); // debug
 
 			// select which of the 3 out groups to send decoder/correction to
 			new_decoutbus = if(usingKernels, {
@@ -385,9 +379,8 @@ SoundLab {
 			cond.wait;
 			// if initializing SoundLabDecoderPatch fails, decoderName won't be set
 			newDecoderPatch.decoderName !? {
-				// debug
-				postf("newDecoderPatch initialized, playing: % \n",
-					newDecoderPatch.decoderName);
+
+				postf("newDecoderPatch initialized, playing: % \n", newDecoderPatch.decoderName); // debug
 
 				curDecoderPatch !? {curDecoderPatch.free(xfade: xfade)};
 				newDecoderPatch.play(xfade: xfade);

@@ -3,6 +3,7 @@
 
 IdentityDictionary(know: true)
 .putPairs([
+	\labName,				"Media Lab 205",
 	\numHardwareOuts, 		32,
 	\numHardwareIns, 		32,
 	\numSatChans,			19,
