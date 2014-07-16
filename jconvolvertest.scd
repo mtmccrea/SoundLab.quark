@@ -1,4 +1,3 @@
-
 //how to use Jconvolver class
 //1. create configuration file
 //2. create an instance (starts processing)
@@ -11,8 +10,8 @@
 //num ins and outs equals number of found kernels, also uses 1:1 matrix, assumes single channel kernels,
 
 // ~path = "~/Documents/SoundLabBrain/SoundLabKernelsNew/48000/decor".standardizePath;
-// ~path = "/Users/admin/Documents/Dropbox_old/117_upgrade/Decoder/117_Decoder_Testing/SoundLabKernelsNew/48000/decor/"
-~path = "/Library/jconvoler/config-files/"
+// ~path = "/Users/admin/Documents/Sound_Labs/117/Decoder/117_Decoder_Testing/48000/decor/"
+// ~path = "/Library/jconvoler/config-files/"
 
 // for osx
 Jconvolver.jackScOutNameDefault = "scsynth:out"

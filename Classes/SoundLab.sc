@@ -1,6 +1,6 @@
 SoundLab {
 	// copyArgs
-	var <initSR, <loadGUI, <usingSLHW, <>usingKernels, <configFileName;
+	var <initSR, <loadGUI, <usingSLHW, <>usingKernels, <configFileName, <osx;
 
 	var <>xfade = 0.2,  <>debug=true;
 	var <globalAmp, <numSatChans, <numSubChans, <totalArrayChans, <numKernelChans, <>rotateDegree;
@@ -21,8 +21,8 @@ SoundLab {
 	var <decoderLib, <synthLib, <loadedDelDistGain;
 	var <slhw;
 
-	*new { |initSR=96000, loadGUI=true, useSLHW=true, useKernels=true, configFileName="CONFIG_205.scd"|
-		^super.newCopyArgs(initSR, loadGUI, useSLHW, useKernels, configFileName).init;
+	*new { |initSR=96000, loadGUI=true, useSLHW=true, useKernels=true, configFileName="CONFIG_205.scd", usingOSX=false|
+		^super.newCopyArgs(initSR, loadGUI, useSLHW, useKernels, configFileName, usingOSX).init;
 	}
 
 	// NOTE: Jack will create numHarwareOuts * 3 for routing to
@@ -49,10 +49,8 @@ SoundLab {
 		rotateDegree = config.rotateDegree ?? {-90}; // default rotation to the right
 
 		// kernelDirPath = PathName.new(Platform.resourceDir ++ "/sounds/SoundLabKernelsNew/");
-		// kernelDirPath = kernelDirPath ?? {
-		// PathName.new(File.realpath(this.class.filenameSymbol).dirname ++ "/SoundLabKernels/") };
 		kernelDirPath = kernelDirPath ?? {
-			if(config.kernelsPath[0] == "/", {//it's absolute path
+			if(config.kernelsPath[0].asSymbol == '/', {//it's absolute path
 				PathName.new(config.kernelsPath);
 				}, {
 					if(config.kernelsPath[0] == "~", {//it's relative to home directory
@@ -62,8 +60,6 @@ SoundLab {
 					});
 			});
 		}; //expecting path relative the class, NOT starting with a slash
-		// kernelDirPath = PathName.new(config.kernelsPath);
-		// "kernelDirPath: ".post; kernelDirPath.postln;
 
 		globalAmp = 0.dbamp;
 		stereoActive = stereoActive ?? {true};
@@ -348,7 +344,7 @@ SoundLab {
 	}
 
 	// cleanup server objects to be reloaded after reboot
-	prClearServerSide {
+	prClearServerSide { |finishCondition|
 		fork {
 			curDecoderPatch.free(xfade);
 			// curDecoderPatch = nil; // removed so variable remains for reload/sr change
@@ -358,6 +354,7 @@ SoundLab {
 			jconvolver !? {jconvolver.free};
 			nextjconvolver !? {nextjconvolver.free}; // ...just in case
 			stateLoaded = false;
+			finishCondition !? {finishCondition.test_(true).signal}
 		}
 	}
 
@@ -440,9 +437,11 @@ SoundLab {
 				});
 
 				"Generating jconvolver configuration file...".postln;
-				// for osx
-				// Jconvolver.jackScOutNameDefault = "scsynth:out";
-				// Jconvolver.executablePath_("/usr/local/bin/jconvolver");
+
+				osx.if{ // for osx
+					Jconvolver.jackScOutNameDefault = "scsynth:out";
+					Jconvolver.executablePath_("/usr/local/bin/jconvolver");
+				};
 
 				nextjconvinbus = if( jconvinbus.notNil,
 					{(jconvinbus + numHardwareOuts).wrap(1, numHardwareOuts*2)}, // replacing another instance
@@ -585,7 +584,10 @@ SoundLab {
 	}
 
 	sampleRate_ { |newSR|
-		this.prClearServerSide;
+		var cond;
+		cond = Condition(false);
+		this.prClearServerSide(cond);
+		cond.wait;
 		if(usingSLHW,
 			{ slhw.startAudio(newSR) },
 			{ this.changed(\stoppingAudio); this.prInitDefaultHW(newSR) }

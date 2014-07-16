@@ -1,5 +1,5 @@
 /* Config for SoundLab */
-"CONFIG Loading".postln;
+"CONFIG v2.0 Loading".postln;
 
 IdentityDictionary(know: true)
 .putPairs([
@@ -9,12 +9,13 @@ IdentityDictionary(know: true)
 	\numSubChans, 			4,
 	\defaultDecoderName,	\Sph_18ch_6x6x6, // must match a name in \decAttributeList below
 	\defaultKernel,			\decor_700,
-	\stereoChanIndex,		[27, 28],
+	\stereoChanIndex,		[28, 29],
 	\rotateDegree,			-90, // option to rotate the listening position to this angle
 
 	/* SoundLabHardware settings */
 
-	\useFireface, 			true,
+	// \useFireface, 			true,
+	\useFireface, 			false, // for testing
 	// \midiPortName,			"External MIDI- MIDI 1",
 	\midiPortName,			nil, // nil for no MIDI
 	// \cardNameIncludes,		"RME",
@@ -29,60 +30,61 @@ IdentityDictionary(know: true)
 	\whichMadiOutput,       nil,
 
 	/* file paths */
-	// \kernelsPath,           "../../SoundLabSupport/SoundLabKernelsNewBROKED/" //currently "../../SoundLabSupport/SoundLabKernelsNew/"
-	\kernelsPath,           	"/Users/admin/Documents/Sound_Labs/117/Decoder/117_Decoder_Testing/SoundLabKernels/"
+	\kernelsPath,          	"/Users/admin/Documents/Sound_Labs/117/Decoder/117_Decoder_Testing/SoundLabKernels/"
 ])
 
 /*
-speaker order is assumed to be satellites, subs, stereo (optional)
+Speaker order is assumed to be satellites, subs, stereo (optional).
+Stereo not included in these arrays, as there isn't correction for them.
 Array size must equal \numSatChans + \numSubChans
 see prLoadSynthDefs for how channel mappings are used
 */
 .put(\defaultSpkrDistances,
 	[
-		1.733, 1.774, 1.682,
-		2.699, 2.755, 2.593, 2.568, 2.701, 2.553,
-		2.324, 2.763, 2.784, 2.101, 2.774, 2.790,
-		2.869, 2.940, 3.210, 2.950, 2.915, 3.051,
-		2.244, 2.294, 2.296,
-		// 3.048, 3.038, 3.046, 3.049 // subs
-		2.415, 3.575, 2.309, 3.678 //subs, updated 2014.04.23
+		1.425, 1.429, 1.41, // floor
+		2.380, 2.355, 2.278, 2.367, 2.376, 2.330, // low (floor)
+		2.034, 2.652, 2.689, 1.928, 2.704, 2.716, // mid
+		2.830, 2.876, 3.149, 2.907, 2.894, 3.029, // upper
+		2.227, 2.282, 2.295, // ceiling
+		2.351, 3.546, 2.248, 3.625 //subs
 	]
 )
 .put(\defaultSpkrGainsDB,
-	[
-		2.9, 3, 4.3,
-		2.1, 1.5, 2.1, 1.9, 2, 2.5,
-		3.2, 0.9, 0, 0.9, 0.3, 0.8,
-		1.2, 0.9, 0.4, 0.3, 0, 0.6,
-		1.9, 1.2, 1.3,
-		// 0, 6, 6, 5 // subs
-		13, 8, 14, 10 //subs, updated 2014.04.23
+	[	// update 2014.05.16
+		5, 5, 4,
+		3.5, 4, 3.9, 3.3, 3.3, 3.1,
+		2.9, 1.8, 0, 5.8, 2.9, 2.1,
+		1.2, 1, 1.8, 2.8, 2.9, 2.9,
+		2.8, 2.6, 1.7,
+		9, 10, 10.5, 10.5 // subs (0, 1, 1.5, 1.5) + 9
 	].neg
+
+	// BAK
+	// 2.9, 3, 4.3,
+	// 2.1, 1.5, 2.1, 1.9, 2, 2.5,
+	// 3.2, 0.9, 0, 0.9, 0.3, 0.8,
+	// 1.2, 0.9, 0.4, 0.3, 0, 0.6,
+	// 1.9, 1.2, 1.3,
+	// 13, 8, 14, 10 //subs, updated 2014.04.23
 )
 .put(\spkrAzimuthsRad,
 	[
-		60, 300, 180, 				// floor
-		37, 324, 270, 220, 141, 90,	// lower
+		58, 302, 180, 				// floor
+		36, 324, 270, 220, 140, 90,	// lower
 		0, 300, 240, 180, 120, 60,	// median
-		40, 321, 271, 217, 144, 91,	// upper
-		0, 240, 120,				// ceiling
+		40, 320, 270, 216, 144, 90,	// upper
+		0, 238, 122,				// ceiling
 		0, 270, 180, 90           	// subs
 	].degrad
 )
 .put(\spkrElevationsRad,
 	[
-		// [-51.9, -50.9, -54.8], // to LF driver
-		-53.7, -53.7, -53.7,
-		// [-28.7, -28.5, -29.2, -30.7, -29.2, -30.2],
-		-30.0, -30.0, -30.0, -30.0, -30.0, -30.0,
+		-53, -53, -55,
+		-32, -32, -32, -32, -32, -32,
 		0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-		// [ 31.3,  30.7,  30.2,  31.2,  31.4,  30.6],
-		30.0, 30.0, 30.0, 30.0, 30.0, 30.0,
-		// [ 53.8, 52.7, 52.7],
-		53.7, 53.7, 53.7,
-		// [-26.7, -26.9, -26.8, -26.4]
-		0.0, 0.0, 0.0, 0.0;	// subs
+		32, 32, 32, 32, 32, 32,
+		55, 53, 53,
+		0, 0, 0, 0	// subs
 	].degrad
 )
 /*
@@ -146,11 +148,30 @@ numInChannels: number of input channels into the decoder/router (Int)
 		[\Quad_Rect,	\diametric,	'dual',	2,	[10,11],	4	],
 		[\Hex,			\diametric,	'dual',	2,	(9..11),	4	],
 
-
 		/* --discrete channel routing-- */
 		// thru routing assumes contiguous channels, starting at arrayOutIndices.first
-		[\Thru_All,		\discrete,	\NA,	2,	(0..23),	24	],
-		[\Thru_Hex,		\discrete,	\NA,	2,	(9..11),	6	]
+		[\All,		\discrete,	\NA,	2,	(0..23),	24	],
+		[\Hex,		\discrete,	\NA,	2,	(9..11),	6	]
 	]
 )
 ;
+
+/*
+
+Detailed satellite info:
+// distance HF, MF, LF per speaker
+[
+[1.435, nil, 1.433],[1.437, nil, 1.435],[1.418, nil, 1.415] // floor
+[2.389,2.384,2.400],[2.360,2.358,2.376],[2.285,2.285,2.307],[2.375,2.371,2.391],[2.379,2.377,2.402],[2.335,2.332,2.354], // low (floor)
+[2.042,2.038,2.057],[2.660,2.656,2.673],[2.695,2.693,2.712],[1.931,1.931,1.950],[2.708,2.708,2.725],[2.722,2.720,2.738], // mid
+[2.840,2.834,2.850],[2.886,2.881,2.893],[3.157,3.153,3.168],[2.915,2.912,2.927],[2.901,2.897,2.915],[3.030,3.032,3.053] // upper
+[2.234,nil,2,239],[2.291,nil,2.294],[2.302,nil,2.306] // ceiling
+]
+// elevation HF, MF, LF per speaker
+[
+[-50,nil,-56],[-50,nil,-56],[-52,nil,-58] // floor
+[-35,-33,-28],[-35,-33,-28],[-35,-33,-28],[-35,-33,-28],[-35,-33,-28],[-35,-33,-28], // low (floor)
+[4,1,-4],[-3,-0.5,3],[3,0.5,-3],[-4,-1,4],[3,0.5,-3],[-3,-0.5,3] // mid
+[35,33,30],[35,33,29],[34,32,29],[35,33,30],[35,33,30],[34,32,29] // upper
+[53,nil,56],[52,nil,55],[52,nil,55] // ceiling
+*/

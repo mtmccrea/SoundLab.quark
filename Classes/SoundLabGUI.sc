@@ -547,7 +547,6 @@ SoundLabGUI {
 		stereoPending = nil;
 		rotatePending = nil;
 
-		"variables initialized".postln;
 		postf("curDecType: %, curSR: %, curKernel: %\n",
 			curDecType, curSR, curKernel);
 		loadCondition !? {loadCondition.test_(true).signal}
@@ -573,15 +572,21 @@ SoundLabGUI {
 }
 
 /* TESTING
-l = SoundLab(48000, loadGUI:true, useSLHW: false, useKernels: false, configFileName: "CONFIG_205.scd")
+l = SoundLab(48000, loadGUI:true, useSLHW: false, useKernels: false, configFileName: "CONFIG_TEST.scd",usingOSX: true)
+l = SoundLab(48000, loadGUI:true, useSLHW: false, useKernels: true, configFileName: "CONFIG_TEST.scd", usingOSX: true)
 
 l.cleanup
 s.quit
 
+s.options.numOutputBusChannels
+
+x = 4.collect{|i| { Out.ar(l.curDecoderPatch.inbusnum+i,PinkNoise.ar(0.75)* SinOsc.kr(0.2*(i+1)).range(0.1,1))}.play}
+x.do(_.free)
+s.meter
+
+
 InterfaceJS.nodePath = "/usr/local/bin/node"
 l = SoundLab(48000, loadGUI:true, useSLHW: false, useKernels: false)
-
-
 
 l.curKernel
 l.kernelDict

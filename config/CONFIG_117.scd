@@ -29,7 +29,7 @@ IdentityDictionary(know: true)
 	\whichMadiOutput,       nil,
 
 	/* file paths */
-	\kernelsPath,           "../../SoundLabSupport/SoundLabKernelsNew/" //currently "../../SoundLabSupport/SoundLabKernelsNew/"
+	\kernelsPath,           "../../SoundLabSupport/SoundLabKernelsNew/"
 ])
 
 /*

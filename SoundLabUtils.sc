@@ -457,13 +457,14 @@
 			if( server.sampleRate == initSR, {
 				rbtTryCnt = 0;
 				this.prLoadServerSide(server);
-				},{
+				},{ fork{
+					1.5.wait;
 					"reboot sample rate doesn't match requested, retrying...".postln;
 					if(rbtTryCnt < 3,
 						{ this.prInitDefaultHW(initSR) }, // call self
-						{"Error trying to change the sample rate after 3 tries!".warn}
+						{ this.changed(\reportStatus, "Error trying to change the sample rate after 3 tries!".warn)}
 					)
-				}
+				}}
 			)
 		});
 	}
