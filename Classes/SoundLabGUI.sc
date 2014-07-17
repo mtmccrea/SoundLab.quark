@@ -10,7 +10,7 @@ SoundLabGUI {
 	var <ampSpec, <oscFuncDict, buildList;
 	var <>maxPostLines, <postString, font = 'Helvetica', lgFontSize = 24, mdFontSize = 20, smFontSize = 16 ;
 
-	*new { |soundLabModel, webInterfacePort = 8000| //don't change web port unless you know how to change redirection in Apache web server
+	*new { |soundLabModel, webInterfacePort = 8080| //don't change web port unless you know how to change redirection in Apache web server
 		^super.newCopyArgs(soundLabModel, webInterfacePort).init;
 	}
 
@@ -107,7 +107,7 @@ SoundLabGUI {
 		gainSl = WsEZSlider.init(wsGUI)
 		.controlSpec_(ampSpec) //only in EZSlider;
 		.action_({|sldr|
-			sl.amp_( sldr.value );
+			sl.amp_( sldr.value )})
 		;
 		// MUTE / ATTENUATE
 		muteButton = WsButton.init(wsGUI)
@@ -558,7 +558,7 @@ SoundLabGUI {
 			gainTxt.string_( format("<strong>Gain: </strong>% dB",sl.globalAmp.ampdb.round(0.01)) );
 			muteButton.value_( if(sl.isMuted, {1},{0}) );
 			attButton.value_( if(sl.isAttenuated, {1},{0}) );
-			(decMenus ++ [srMenu, discreteMenu, stereoMenu, rotateMenu, correctionMenu]).do{|menu| menu.value_(0)};
+			(decMenus.values ++ [srMenu, discreteMenu, stereoMenu, rotateMenu, correctionMenu]).do{|menu| menu.value_(0)};
 			this.postState;
 		}
 	}
@@ -572,7 +572,7 @@ SoundLabGUI {
 }
 
 /* TESTING
-l = SoundLab(48000, loadGUI:true, useSLHW: false, useKernels: false, configFileName: "CONFIG_TEST.scd",usingOSX: true)
+l = SoundLab(48000, loadGUI:true, useSLHW: false, useKernels: false, configFileName: "CONFIG_117.scd",usingOSX: true)
 l = SoundLab(48000, loadGUI:true, useSLHW: false, useKernels: true, configFileName: "CONFIG_TEST.scd", usingOSX: true)
 
 l.cleanup
