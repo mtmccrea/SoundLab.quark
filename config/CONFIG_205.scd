@@ -8,7 +8,7 @@ IdentityDictionary(know: true)
 	\numHardwareIns, 		32,
 	\numSatChans,			19,
 	\numSubChans, 			2,
-	\defaultDecoderName,	\Dodec,
+	\defaultDecoderName,	\Horiz_Dodec,
 	\defaultKernel,			\decor_700,
 	\stereoChanIndex,		[11, 1],
 	\rotateDegree,			-90, // option to rotate the listening position to this angle
@@ -120,9 +120,9 @@ numInChannels: number of input channels into the decoder/router (Int)
 .put(\decAttributeList,
 	[
 		/* --ambisonic decoders-- */
-		[\Dodec,			\diametric,	'dual',		2,	(0..5),					4	],
-		[\Hex,				\diametric,	'dual',		2,	[0,2,4],				4	],
-		[\Quad_Long,		\diametric,	'dual',		2,	[11,1],					4	],
+		[\Horiz_Dodec,			\diametric,	'dual',		2,	(0..5),					4	],
+		[\Horiz_Hex,				\diametric,	'dual',		2,	[0,2,4],				4	],
+		[\Horiz_Quad_Long,		\diametric,	'dual',		2,	[11,1],					4	],
 
 		// domes - half of horizontal speakers plus all dome speakers
 		[\Dome_19ch_12x6x1,	\dome,		'dual', 	3,	(0..5)++(12..18), 		4	],
