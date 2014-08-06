@@ -447,12 +447,13 @@ SoundLabGUI {
 	}
 
 	postState {
-		stateTxt.string_("\n"
-			++ curSR ++ "\n"
-			++ curDecType ++ "\n"
-			++ curKernel ++ "\n"
-			++ sl.stereoActive ++ "\n"
-			++ sl.rotated
+		stateTxt.string_("<strong>"
+			++ curSR ++ "\n "
+			++ curDecType ++ "\n "
+			++ curKernel ++ "\n "
+			++ sl.stereoActive.if({"YES"},{"NO"}) ++ "\n "
+			++ sl.rotated.if({"YES"},{"NO"})
+			++ "</strong>"
 		);
 	}
 
@@ -494,42 +495,40 @@ SoundLabGUI {
 						WsHLayout(Rect(0,0,1,0.25),
 							WsVLayout(Rect(0,0,0.6, 1),
 								*decMenuLayouts
-								// WsHLayout( nil,
-								// 	WsStaticText.init(wsGUI).string_("2-D Horizontal").font_(Font(font, mdFontSize)),
-								// horizMenu ),
-								// WsHLayout( nil,
-								// 	WsStaticText.init(wsGUI).string_("3-D Sphere").font_(Font(font, mdFontSize)),
-								// sphereMenu ),
-								// WsHLayout( nil,
-								// 	WsStaticText.init(wsGUI).string_("3-D Dome").font_(Font(font, mdFontSize)),
-								// domeMenu )
 							),
 							0.1,
 							// rotation
 							WsHLayout( Rect(0,0,0.4, 1),
-								WsVLayout( Rect(0,0,0.8, 1),
+								WsVLayout( Rect(0,0,0.7, 1),
 									1/4,
-									WsStaticText.init(wsGUI, Rect(0,0,0.7, 1)).string_(
-										format("<strong>Rotate</strong> listening position % degrees?",
-											sl.rotateDegree)).font_(Font(font, mdFontSize)),
-									1/4),
-								WsVLayout( Rect(0,0,0.2, 1), 1/3, rotateMenu, 1/3)
+									WsStaticText.init(wsGUI, Rect(0,0,1,0.5))
+									.string_( format(
+										"<strong>Rotate</strong> listening position % degrees?",
+											sl.rotateDegree))
+									.font_(Font(font, mdFontSize)),
+									1/4
+								),
+								WsVLayout( Rect(0,0,0.3, 1), 1/3, rotateMenu, 1/3)
 							)
 						),
 						nil,
 						// discrete routing
-						WsStaticText.init(wsGUI, Rect(0,0,1,0.08)).string_(
-							"<strong>Select a Discrete Routing Layout</strong>").font_(Font(font, mdFontSize)),
+						WsStaticText.init(wsGUI, Rect(0,0,1,0.08))
+						.string_("<strong>Select a Discrete Routing Layout</strong>")
+						.font_(Font(font, mdFontSize)),
 						WsHLayout(Rect(0,0,1,0.1),
 							WsHLayout( Rect(0,0,0.7,1),
-								WsStaticText.init(wsGUI).string_("Which speakers?").font_(Font(font, mdFontSize)),
+								WsStaticText.init(wsGUI)
+								.string_("Which speakers?")
+								.font_(Font(font, mdFontSize)),
 								discreteMenu ),
 							0.6
 						),
 						nil,
 						// stereo
 						WsHLayout( Rect(0,0,1,0.12),
-							WsStaticText.init(wsGUI).string_("<strong>Insert STEREO channels before decoder/router?</strong>")
+							WsStaticText.init(wsGUI)
+							.string_("<strong>Insert STEREO channels before decoder/router?</strong>")
 							.font_(Font(font, mdFontSize)),
 							stereoMenu ),
 						nil,
@@ -550,19 +549,34 @@ SoundLabGUI {
 
 					// COLUMN 3
 					WsVLayout( Rect(0,0,0.45,1),
-						WsStaticText.init(wsGUI, Rect(0,0,1,0.04)).string_(
-							"<strong>Current System Settings</strong>").textAlign_(\center).font_(Font(font, mdFontSize)),
+						WsHLayout( Rect(0,0,1, 0.06),
+							0.15,
+						WsStaticText.init(wsGUI, Rect(0,0,0.7,1)).string_(
+							"<strong>Current System Settings</strong>")
+						.textAlign_(\center).font_(Font(font, mdFontSize))
+							.backgroundColor_(Color.fromHexString("#FFFFCC")),
+							0.15
+						),
 						WsHLayout( nil,
-							WsStaticText.init(wsGUI).string_(
-								"\nSample Rate:  \nDecoder / Router:  \nCorrection:  \nStereo channels first:  \nSound field rotated:  \n"
-							).textAlign_(\right).font_(Font(font, mdFontSize)),
-							//0.025, //TODO: reimplement this, fix layouts of specified dimensions
-							stateTxt
+							0.15,
+							WsStaticText.init(wsGUI, Rect(0,0,0.35,1)).string_(
+								"Sample Rate: \nDecoder / Router: \nCorrection: \nStereo channels first: \nSound field rotated: \n"
+							)
+							.textAlign_(\right)
+							.font_(Font(font, mdFontSize))
+							// .backgroundColor_(Color.yellow),
+							.backgroundColor_(Color.fromHexString("#FFFFCC")),
+
+							stateTxt.bounds_(Rect(0,0,0.35,1))
+							.backgroundColor_(Color.fromHexString("#FFFFCC")),
+							0.15
 						),
 						0.1,
-						WsStaticText.init(wsGUI, Rect(0,0,1,0.04)).string_(
-							"<strong>Post:</strong>").font_(Font(font, mdFontSize)),
-						postTxt
+						WsStaticText.init(wsGUI, Rect(0,0,1,0.04))
+						.string_("<strong>Post:</strong>").font_(Font(font, mdFontSize)),
+
+						postTxt.bounds_(Rect(0,0,1,0.6))
+						.backgroundColor_(Color.fromHexString("#F2F2F2"))
 					)
 				)
 			);

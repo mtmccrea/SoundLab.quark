@@ -681,19 +681,23 @@
 							bandType.folders.do{ |decNameFldr|
 								var pn_lf, pn_hf;
 								"found dual matrix decoder: ".post; decNameFldr.folderName.postln;
-								(decNameFldr.files.size != 2).if{
-									warn(format("found a count of files other than 2 in %. Expecting 2 files: a HF matris and LF matrix.", decNameFldr))
-								};
-								decNameFldr.filesDo{ |fl|
-									var fn;
-									fn = fl.fileNameWithoutExtension;
-									fn.postln; //debug
-									case
-									{ fn.endsWith("LF") } { pn_lf = fl }
-									{ fn.endsWith("HF") } { pn_hf = fl };
-								};
+								(decNameFldr.files.size == 2).if({
+									decNameFldr.filesDo{ |fl|
+										var fn;
+										fn = fl.fileNameWithoutExtension;
+										fn.postln; //debug
+										case
+										{ fn.endsWith("LF") } { pn_lf = fl }
+										{ fn.endsWith("HF") } { pn_hf = fl };
+									};
 
-								this.prLoadDualMatrixDecoder(decNameFldr.folderName, pn_lf, pn_hf);
+									this.prLoadDualMatrixDecoder(
+										decNameFldr.folderName, pn_lf, pn_hf
+									);
+									},{
+										warn(format("found a count of files other than 2 in \n%.\nExpecting 2 files: a HF matris and LF matrix. Skipping this folder.", decNameFldr))
+									}
+								);
 							};
 						}
 					);
