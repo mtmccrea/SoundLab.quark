@@ -10,7 +10,7 @@ SoundLabDecoderPatch {
 	init {
 		fork {
 			block { |break|
-				var synthdefName;
+				var synthdefName, decType;
 				synthdefName = decoderName.asSymbol;
 				("initializing SoundLabDecoderPatch:"+synthdefName).postln;
 
@@ -19,10 +19,19 @@ SoundLabDecoderPatch {
 				};
 				// used for introspection by GUI
 				attributes = soundlab.decAttributes.select{|me| me.synthdefName == synthdefName};
-				(attributes.size >1).if(
-					{ break.( warn("Found more than one decoder attribute list with that synthdefName: "++synthdefName))},
-					{ attributes = attributes[0] }
-				);
+				case
+				{attributes.size == 1}{
+					decType = attributes[0][\kind];
+				}
+				{attributes.size == 0}{
+					decType = \matrix;
+				}
+				{attributes.size >1} {
+					break.( warn(
+						"Found more than one decoder attribute list with that synthdefName: "
+						++synthdefName
+					))
+				};
 
 				server = soundlab.server;
 				group = CtkGroup.play(addAction: \before, target: soundlab.patcherGroup, server: server);
@@ -32,7 +41,7 @@ SoundLabDecoderPatch {
 					addAction: \head, target: group)
 				.in_busnum_(inbusnum);
 				// discrete routing synthdefs have no out_busnum or rotation arg
-				(attributes[\kind] != \discrete).if{
+				(decType != \discrete).if{
 					decodersynth.out_busnum_(outbusnum)
 					.rotate_(if(soundlab.rotated, {soundlab.rotateDegree.degrad},{0}))
 				};

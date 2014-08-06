@@ -31,7 +31,8 @@ IdentityDictionary(know: true)
 	\whichMadiOutput,       nil,
 
 	/* file paths */
-	\kernelsPath,          	"/Users/admin/Documents/Sound_Labs/117/Decoder/117_Decoder_Testing/SoundLabKernels/"
+	\kernelsPath,          	"/Users/admin/Documents/Sound_Labs/117/Decoder/117_Decoder_Testing/SoundLabKernels/",
+	\decoderMatricesPath,	"/Users/admin/Documents/Sound_Labs/117/Decoder/117_Decoder_Testing/DecoderMatrices/"
 ])
 
 /*
@@ -133,7 +134,7 @@ numInChannels: number of input channels into the decoder/router (Int)
 		[\Sph_24ch_all,		\diametric,	'dual',	3,	(0..11),			4	],
 		[\Sph_18ch_6x6x6,	\diametric,	'dual',	3,	(3..11),			4	],
 		[\Sph_14ch_HexInBox,\diametric,	'dual',	3,	[3,4,6,7,9,10,11],	4	],
-		[\Sph_12ch_HexInSquare,\diametric,'dual',	3,	[5,9,10,11,17],		4	],
+		[\Sph_12ch_HexInSquare,\diametric,'dual',3,	[5,9,10,11,17],		4	],
 		[\Sph_12ch_6x6,		\diametric,	'dual',	3,	(3..8),				4	],
 		[\Sph_12ch_3x6x3,	\diametric,	'dual',	3,	(0..2)++(9..11),	4	],
 		[\Sph_6ch_2x2x2,	\diametric,	'dual',	3,	[8, 9, 20],			4	],
@@ -152,7 +153,7 @@ numInChannels: number of input channels into the decoder/router (Int)
 		/* --discrete channel routing-- */
 		// thru routing assumes contiguous channels, starting at arrayOutIndices.first
 		[\All,		\discrete,	\NA,	2,	(0..23),	24	],
-		[\Hex,		\discrete,	\NA,	2,	(9..11),	6	]
+		[\Hex,		\discrete,	\NA,	2,	(9..11),	6	],
 	]
 )
 ;

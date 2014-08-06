@@ -128,10 +128,15 @@
 		var arrayOutIndices, satOutbusNums, subOutbusNums, satDirections, subDirections;
 		var matrix_dec_sat, matrix_dec_sub, decSynthDef;
 
+		/*----------------*/
 		/* --satellites-- */
+		/*----------------*/
 		arrayOutIndices = decSpecs.arrayOutIndices;
+
 		// get the other half of array indices for diametric opposites
-		satOutbusNums = arrayOutIndices ++ arrayOutIndices.collect({|spkdex| spkrOppDict[spkdex]});
+		satOutbusNums = arrayOutIndices
+		++ arrayOutIndices.collect({ |spkdex| spkrOppDict[spkdex] });
+
 		// only need to provide 1/2 of the directions for diametric decoder
 		satDirections = arrayOutIndices.collect({|busnum|
 			switch(decSpecs.dimensions,
@@ -142,12 +147,18 @@
 
 		matrix_dec_sat = FoaDecoderMatrix.newDiametric(satDirections, decSpecs.k);
 
+		/*----------*/
 		/* --subs-- */
-		subOutbusNums = (numSatChans..(numSatChans+numSubChans-1)); // always use all the subs
+		/*----------*/
 
+		// always use all the subs
+		subOutbusNums = (numSatChans..(numSatChans+numSubChans-1));
+
+		// prepare stereo or diammetric decoder for subs if there's an even number of them
 		if(numSubChans.even, {
 			// only need to provide 1/2 of the directions for diametric decoder
-			subDirections = subOutbusNums.keep( (subOutbusNums.size/2).asInt ).collect({|busnum|
+			subDirections = subOutbusNums.keep( (subOutbusNums.size/2).asInt ).collect({
+				|busnum|
 				spkrDirs[busnum][0]  // subs always 2D
 			});
 
@@ -158,7 +169,9 @@
 			)
 		});
 
-		// build the synthdef
+		/*------------------------*/
+		/* --build the synthdef-- */
+		/*------------------------*/
 		decSynthDef = SynthDef( decSpecs.synthdefName, {
 			arg out_busnum=0, in_busnum, fadeTime=0.2, subgain=0, rotate=0, gate=1;
 			var in, env, sat_out, sub_out;
@@ -168,8 +181,7 @@
 				gate, doneAction: 2
 			);
 			in = In.ar(in_busnum, decSpecs.numInputChans) * env; // B-Format signal
-			// rotate the direction the listener should face
-			in = FoaTransform.ar(in, 'rotate', rotate);
+			in = FoaTransform.ar(in, 'rotate', rotate); // rotate the listening orientation
 
 			// include shelf filter?
 			if( matrix_dec_sat.shelfFreq.isNumber, {
@@ -182,8 +194,9 @@
 			});
 
 			// near-field compensate, decode, remap to rig
-			satOutbusNums.do({ arg spkdex, i;
-				Out.ar(out_busnum + spkdex, // remap decoder channels to rig channels
+			satOutbusNums.do({ | spkdex, i |
+				Out.ar(
+					out_busnum + spkdex, // remap decoder channels to rig channels
 					AtkMatrixMix.ar(
 						FoaNFC.ar( in, spkrDists.at(spkdex) ),
 						matrix_dec_sat.matrix.fromRow(i)
@@ -191,19 +204,24 @@
 				)
 			});
 
-			if(numSubChans.even, {
-				subOutbusNums.do({ arg spkdex, i;
-					Out.ar(out_busnum + spkdex, // remap decoder channels to rig channels
+			if( numSubChans.even, {
+				subOutbusNums.do({ | spkdex, i |
+					Out.ar(
+						out_busnum + spkdex,
 						AtkMatrixMix.ar(
 							FoaNFC.ar( in, spkrDists.at(spkdex) ),
 							matrix_dec_sub.matrix.fromRow(i)
 						) * subgain.dbamp
 					)
 				})
-				},{	// quick fix for non-even/non-diametric sub layout
-					subOutbusNums.do({ arg spkdex, i;
-						Out.ar(out_busnum + spkdex,
-							in[0] * numSubChans.reciprocal // send W to subs
+				// quick fix for non-even/non-diametric sub layout
+				},{
+					subOutbusNums.do({ | spkdex, i |
+						var nfc;
+						nfc = FoaNFC.ar( in, spkrDists.at(spkdex) );
+						Out.ar(
+							out_busnum + spkdex,
+							nfc[0] * numSubChans.reciprocal // send W to subs
 						) * subgain.dbamp
 					})
 				}
@@ -211,9 +229,7 @@
 		});
 
 		decoderLib.add( decSynthDef ); // add the synth to the decoder library
-
-		// debug
-		"added diametric decoder to the decoderLib".postln;
+		"added diametric decoder to the decoderLib".postln; // debug
 	}
 
 	// NOTE: arrayOutIndices is [half of horiz] ++ [all elevation dome] spkr indices
@@ -224,16 +240,19 @@
 		var lowerMatrix, lowerSum, lowerComp;
 		var lowerK = -6.0.dbamp;
 
-		// debug
-		"adding DOME decoder ...".postln;
-
+		/*---------------------*/
 		/* --dome satellites-- */
+		/*---------------------*/
+		"adding DOME decoder ... ".post; // debug
+
 		domeOutbusNums = decSpecs.arrayOutIndices; // half horiz & full dome spkr indices
+
 		// append other half of horiz outbus nums for collecting matrix outputs below
-		domeOutbusNumsFullHoriz = domeOutbusNums ++
-		domeOutbusNums.select({|busnum| spkrDirs[busnum][1]==0 }) // select busnums with 0 elevation
-		.collect({|spkdex| spkrOppDict[spkdex]}) // then collect their opposite's busnum
-		;
+		// select busnums with 0 elevation then collect their opposite's busnum
+		domeOutbusNumsFullHoriz = domeOutbusNums
+		++ domeOutbusNums.select({|busnum| spkrDirs[busnum][1]==0 }).collect({
+			|spkdex| spkrOppDict[spkdex]
+		});
 
 		partialDomeDirections = domeOutbusNums.collect({|busnum| spkrDirs[busnum] });
 		halfHorizDirections = partialDomeDirections.select{|item| item[1]==0 };
@@ -249,9 +268,9 @@
 		lowerMatrix = Matrix.with(sphereDecoderMatrix.matrix.asArray[lowerStartDex..]);
 		lowerSum = (lowerK / posElevDirections.size) * lowerMatrix.sumCols;
 		lowerComp = Matrix.with(
-			Array.fill(halfHorizDirections.size,{lowerSum}) // add to first half of horiz
-			++ Array.fill2D(posElevDirections.size,4,{0}) // add 0 to elevation spkrs
-			++ Array.fill(halfHorizDirections.size,{lowerSum}) // add to second half of horiz
+			Array.fill(halfHorizDirections.size,{lowerSum})		// add to first half of horiz
+			++ Array.fill2D(posElevDirections.size,4,{0})		// add 0 to elevation spkrs
+			++ Array.fill(halfHorizDirections.size,{lowerSum})	// add to second half of horiz
 		);
 
 		// truncate - to decoding matrix (raw matrix).. and add compensation matrix
@@ -264,13 +283,20 @@
 		domeDecoderMatrix = Matrix.with(sphereDecoderMatrix.matrix.asArray[..domeEndDex]);
 		domeDecoderMatrix = domeDecoderMatrix + lowerComp;
 
+		/*----------*/
 		/* --subs-- */
-		subOutbusNums = (numSatChans..(numSatChans+numSubChans-1)); // always use all the subs
+		/*----------*/
+		// always use all the subs
+		subOutbusNums = (numSatChans..(numSatChans+numSubChans-1));
+
+		// prepare stereo or diammetric decoder for subs if there's an even number of them
 		if(numSubChans.even, {
 			// only need to provide 1/2 of the directions for diametric decoder
-			subDirections = subOutbusNums.keep( (subOutbusNums.size/2).asInt ).collect({|busnum|
+			subDirections = subOutbusNums.keep( (subOutbusNums.size/2).asInt ).collect({
+				|busnum|
 				spkrDirs[busnum][0]  // subs always 2D
 			});
+			// note subDirections is only half of the subs
 			subDecoderMatrix = (subDirections.size > 1).if(
 				{ FoaDecoderMatrix.newDiametric(subDirections, decSpecs.k) },
 				// stereo decoder for 2 subs, symmetrical across x axis, cardioid decode
@@ -278,7 +304,9 @@
 			)
 		});
 
-		// build the synthdef
+		/*------------------------*/
+		/* --build the synthdef-- */
+		/*------------------------*/
 		decSynthDef = SynthDef( decSpecs.synthdefName, {
 			arg out_busnum=0, in_busnum, fadeTime=0.2, subgain=0, rotate=0, gate=1;
 			var in, env, sat_out, sub_out;
@@ -287,9 +315,9 @@
 				Env( [0,1,0],[fadeTime, fadeTime],\sin, 1),
 				gate, doneAction: 2
 			);
+
 			in = In.ar(in_busnum, decSpecs.numInputChans) * env; // B-Format signal
-			// rotate the direction the listener should face
-			in = FoaTransform.ar(in, 'rotate', rotate);
+			in = FoaTransform.ar(in, 'rotate', rotate); // rotate the listening orientation
 
 			// include shelf filter on inpput or not. inferred from sphere FoaDecoderMatrix
 			// because domeDecoderMatrix is actually just a Matrix object (no .shelfFreq)
@@ -303,8 +331,9 @@
 			});
 
 			// near-field compensate, decode, remap to rig
-			domeOutbusNumsFullHoriz.do({ arg spkdex, i;
-				Out.ar(out_busnum + spkdex, // remap decoder channels to rig channels
+			domeOutbusNumsFullHoriz.do({ |spkdex, i|
+				Out.ar(
+					out_busnum + spkdex, // remap decoder channels to rig channels
 					AtkMatrixMix.ar(
 						FoaNFC.ar( in, spkrDists.at(spkdex) ),
 						domeDecoderMatrix.fromRow(i) // CHECK
@@ -312,29 +341,286 @@
 				)
 			});
 
-			if(numSubChans.even, {
-				subOutbusNums.do({ arg spkdex, i;
-					Out.ar(out_busnum + spkdex, // remap decoder channels to rig channels
+			// sub decode
+			if( numSubChans.even, {
+				subOutbusNums.do({ |spkdex, i|
+					Out.ar(
+						out_busnum + spkdex,
 						AtkMatrixMix.ar(
 							FoaNFC.ar( in, spkrDists.at(spkdex) ),
 							subDecoderMatrix.matrix.fromRow(i)
 						) * subgain.dbamp
 					)
 				})
-				},{	// quick fix for non-even/non-diametric sub layout
-					subOutbusNums.do({ arg spkdex, i;
-						Out.ar(out_busnum + spkdex,
-							in[0] * numSubChans.reciprocal // send W to subs
+				// quick fix for non-even/non-diametric sub layout
+				},{
+					subOutbusNums.do({ |spkdex, i|
+						var nfc;
+						nfc = FoaNFC.ar( in, spkrDists.at(spkdex) );
+						Out.ar(
+							out_busnum + spkdex,
+							nfc[0] * numSubChans.reciprocal // send W to subs
 						) * subgain.dbamp
 					})
 				}
+			);
+		});
+
+		// add the synth to the decoder library
+		decoderLib.add( decSynthDef );
+		"added diametric dome decoder to the decoderLib".postln; // debug
+	}
+
+
+
+	/////// TODO ///////
+	// figure out: subs, satellite channel specification
+	/////// TODO ///////
+	prLoadSingleMatrixDecoder { |matrixPN|
+		var subOutbusNums, subDirections, subDecoderMatrix;
+		var path, name, matrix, ambiOrder, decSynthDef;
+
+		/*-------------------------------------*/
+		/* --load decoder coefficient matrix-- */
+		/*-------------------------------------*/
+		path = matrixPN.fullPath;
+		name = matrixPN.fileNameWithoutExtension.asSymbol;
+
+		"Loading matrix decoder: ".postln; name.post; //debug
+		matrix = Matrix.with(FileReader.read(path).asFloat);
+		// determine order from matrix (must be 'full' order)
+		ambiOrder = matrix.cols.sqrt.asInteger - 1;
+		"order: ".post; ambiOrder.postln; //debug
+
+		/*----------*/
+		/* --subs-- */
+		/*----------*/
+		// always use all the subs
+		subOutbusNums = (numSatChans..(numSatChans+numSubChans-1));
+
+		// prepare stereo or diammetric decoder for subs if there's an even number of them
+		// assume the layout is regular in this case
+		if(numSubChans.even, {
+			// only need to provide 1/2 of the directions for diametric decoder
+			subDirections = subOutbusNums.keep( (subOutbusNums.size/2).asInt ).collect({
+				|busnum|
+				spkrDirs[busnum][0]  // subs always 2D
+			});
+			// note subDirections is only half of the subs
+			subDecoderMatrix = (subDirections.size > 1).if(
+				{ FoaDecoderMatrix.newDiametric(subDirections) },
+				// stereo decoder for 2 subs, symmetrical across x axis, cardioid decode
+				{ FoaDecoderMatrix.newStereo(subDirections[0], 0.5) }
 			)
 		});
 
-		decoderLib.add( decSynthDef ); // add the synth to the decoder library
+		/*------------------------*/
+		/* --build the synthdef-- */
+		/*------------------------*/
+		decSynthDef = SynthDef( name, {
+			arg out_busnum=0, in_busnum, fadeTime=0.2, subgain=0, rotate=0, freq=400, gate=1;
+			var in, env, sat_out, sub_out;
 
-		// debug
-		"added diametric dome decoder to the decoderLib".postln;
+			env = EnvGen.ar(
+				Env( [0,1,0],[fadeTime, fadeTime],\sin, 1),
+				gate, doneAction: 2
+			);
+
+			in = In.ar(in_busnum, (ambiOrder + 1).squared) * env;
+			(ambiOrder == 1).if{ // transform only supported at first order atm
+				in = FoaTransform.ar(in, 'rotate', rotate); // rotate the listening orientation
+			};
+
+			// TODO : add psychoshelf?
+
+			// near-field compensate, decode, remap to rig
+			// it's expected that the matrix has outputs for all speakers in the rig,
+			// even if some are zeroed out in the matrix
+			numSatChans.do({ | spkdex, i |
+				var nfc;
+						(ambiOrder == 1).if( // nfc only supported at first order atm
+							{ nfc = FoaNFC.ar( in, spkrDists.at(spkdex) ) },
+							{ nfc = in }
+						);
+				Out.ar(
+					out_busnum + spkdex, // remap decoder channels to rig channels
+					AtkMatrixMix.ar(
+						nfc, matrix.fromRow(i)
+					)
+				)
+			});
+
+			// sub decode
+			if( numSubChans.even, {
+				subOutbusNums.do({ |spkdex, i|
+					var nfc;
+						(ambiOrder == 1).if( // nfc only supported at first order atm
+							{ nfc = FoaNFC.ar( in, spkrDists.at(spkdex) ) },
+							{ nfc = in }
+						);
+					Out.ar(
+						out_busnum + spkdex,
+						AtkMatrixMix.ar(
+							nfc, subDecoderMatrix.matrix.fromRow(i)
+						) * subgain.dbamp
+					)
+				})
+				// quick fix for non-even/non-diametric sub layout
+				},{
+					subOutbusNums.do({ |spkdex, i|
+						var nfc;
+						(ambiOrder == 1).if( // nfc only supported at first order atm
+							{ nfc = FoaNFC.ar( in, spkrDists.at(spkdex) ) },
+							{ nfc = in }
+						);
+						Out.ar(
+							out_busnum + spkdex,
+							nfc[0] * numSubChans.reciprocal // send W to subs
+						) * subgain.dbamp
+					})
+				}
+			);
+
+		});
+
+		// add the synth to the decoder library
+		decoderLib.add( decSynthDef );
+		matrixDecoderNames = matrixDecoderNames.add(name);
+	}
+
+	prLoadDualMatrixDecoder { |decName, matrixPN_LF, matrixPN_HF|
+		var subOutbusNums, subDirections, subDecoderMatrix;
+		var path_lf, path_hf, name, matrix_lf, matrix_hf, ambiOrder, decSynthDef;
+
+		/*-------------------------------------*/
+		/* --load decoder coefficient matrix-- */
+		/*-------------------------------------*/
+		path_lf = matrixPN_LF.fullPath;
+		path_hf = matrixPN_HF.fullPath;
+		name = decName.asSymbol;
+
+		"Loading matrix decoder: ".postln; name.postln; //debug
+		// load decoder coefficient matrix
+		matrix_lf = Matrix.with(FileReader.read(path_lf).asFloat);
+		matrix_hf = Matrix.with(FileReader.read(path_hf).asFloat);
+
+		// determine order from matrix (must be 'full' order)
+		// NOTE: addition of matricies is a quick way to check whether they are the same
+		ambiOrder = (matrix_lf + matrix_hf).cols.sqrt.asInteger - 1;
+		"order: ".post; ambiOrder.postln; //debug
+
+		/*----------*/
+		/* --subs-- */
+		/*----------*/
+		// always use all the subs
+		subOutbusNums = (numSatChans..(numSatChans+numSubChans-1));
+
+		// prepare stereo or diammetric decoder for subs if there's an even number of them
+		// assume the layout is regular in this case
+		if(numSubChans.even, {
+			// only need to provide 1/2 of the directions for diametric decoder
+			subDirections = subOutbusNums.keep( (subOutbusNums.size/2).asInt ).collect({
+				|busnum|
+				spkrDirs[busnum][0]  // subs always 2D
+			});
+			// note subDirections is only half of the subs
+			subDecoderMatrix = (subDirections.size > 1).if(
+				{ FoaDecoderMatrix.newDiametric(subDirections) },
+				// stereo decoder for 2 subs, symmetrical across x axis, cardioid decode
+				{ FoaDecoderMatrix.newStereo(subDirections[0], 0.5) }
+			)
+		});
+
+		"past sub setup".postln; // debug
+
+		/*------------------------*/
+		/* --build the synthdef-- */
+		/*------------------------*/
+		decSynthDef = SynthDef( name, {
+			arg out_busnum=0, in_busnum, fadeTime=0.2, subgain=0, rotate=0, freq=400, gate=1;
+			var in, env, sat_out, sub_out;
+			var k = -180.dbamp; // RM-shelf gain (for cross-over)
+
+			env = EnvGen.ar(
+				Env( [0,1,0],[fadeTime, fadeTime],\sin, 1),
+				gate, doneAction: 2
+			);
+
+			// read in (ambisonic 'b-format')
+			in = In.ar(in_busnum, (ambiOrder + 1).squared) * env;
+			// transform only supported at first order atm
+			(ambiOrder == 1).if{
+				in = FoaTransform.ar(in, 'rotate', rotate); // rotate the listening orientation
+			};
+
+			// TODO : add psychoshelf?
+
+			// near-field compensate, decode, remap to rig
+			// it's expected that the matrix has outputs for all speakers in the rig,
+			// even if some are zeroed out in the matrix
+			numSatChans.do({ | spkdex, i |
+				var nfc;
+				(ambiOrder == 1).if( // nfc only supported at first order atm
+					{ nfc = FoaNFC.ar( in, spkrDists.at(spkdex) ) },
+					{ nfc = in }
+				);
+				// LF
+				Out.ar(
+					out_busnum + spkdex, // remap decoder channels to rig channels
+					AtkMatrixMix.ar(
+						RMShelf2.ar( nfc, freq, k ),
+						matrix_lf.fromRow(i)
+					)
+				);
+				// HF
+				Out.ar(
+					out_busnum + spkdex, // remap decoder channels to rig channels
+					AtkMatrixMix.ar(
+						RMShelf2.ar( nfc, freq, -1 * k ),
+						matrix_hf.fromRow(i)
+					)
+				);
+			});
+
+			// sub decode
+			if( numSubChans.even, {
+
+				subOutbusNums.do({ |spkdex, i|
+					var nfc;
+					(ambiOrder == 1).if( // nfc only supported at first order atm
+						{ nfc = FoaNFC.ar( in, spkrDists.at(spkdex) ) },
+						{ nfc = in }
+					);
+					Out.ar(
+						out_busnum + spkdex,
+						AtkMatrixMix.ar(
+							nfc, subDecoderMatrix.matrix.fromRow(i)
+						) * subgain.dbamp
+					);
+				})
+				// quick fix for non-even/non-diametric sub layout
+				},{
+					subOutbusNums.do({ |spkdex, i|
+						var nfc;
+						(ambiOrder == 1).if( // nfc only supported at first order atm
+							{ nfc = FoaNFC.ar( in, spkrDists.at(spkdex) ) },
+							{ nfc = in }
+						);
+						Out.ar(
+							out_busnum + spkdex,
+							nfc[0] * numSubChans.reciprocal // send W to subs
+						) * subgain.dbamp
+					});
+				}
+			);
+
+		});
+
+		"past synthdef setup".post; decSynthDef.postln; // debug
+
+		// add the synth to the decoder library
+		decoderLib.add( decSynthDef );
+		matrixDecoderNames = matrixDecoderNames.add(name);
 	}
 
 	prLoadDiscreteRoutingSynth { |decSpecs|
@@ -363,7 +649,7 @@
 
 		decoderLib = CtkProtoNotes();
 
-		/* build and load decoders */
+		/* build and load decoders specified in config*/
 		decAttributes.do{ |decSpecs|
 
 			// debug
@@ -375,6 +661,44 @@
 				\dome,		{ this.prLoadDiametricDomeDecoderSynth(decSpecs)},
 				\discrete,	{ this.prLoadDiscreteRoutingSynth(decSpecs)	}
 			);
+		};
+
+		/* build and load decoders in matrix folder, if any */
+		decoderMatricesPath !? {
+			decoderMatricesPath.entries.do{ |bandType|
+
+				bandType.isFolder.if{
+					switch(bandType.folderName,
+
+						"single", {
+							bandType.filesDo{ |fl|
+								"found single matrix decoder: ".post; fl.fileNameWithoutExtension.postln;
+								this.prLoadSingleMatrixDecoder(fl); // fl is pathname to matrix file
+							}
+						},
+
+						"dual", {
+							bandType.folders.do{ |decNameFldr|
+								var pn_lf, pn_hf;
+								"found dual matrix decoder: ".post; decNameFldr.folderName.postln;
+								(decNameFldr.files.size != 2).if{
+									warn(format("found a count of files other than 2 in %. Expecting 2 files: a HF matris and LF matrix.", decNameFldr))
+								};
+								decNameFldr.filesDo{ |fl|
+									var fn;
+									fn = fl.fileNameWithoutExtension;
+									fn.postln; //debug
+									case
+									{ fn.endsWith("LF") } { pn_lf = fl }
+									{ fn.endsWith("HF") } { pn_hf = fl };
+								};
+
+								this.prLoadDualMatrixDecoder(decNameFldr.folderName, pn_lf, pn_hf);
+							};
+						}
+					);
+				}
+			};
 		};
 
 		/* library of synths other than decoders */

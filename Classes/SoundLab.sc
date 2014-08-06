@@ -5,7 +5,7 @@ SoundLab {
 	var <>xfade = 0.2,  <>debug=true;
 	var <globalAmp, <numSatChans, <numSubChans, <totalArrayChans, <numKernelChans, <>rotateDegree;
 	var <hwInCount, <hwInStart;
-	var <config, <labName, <numHardwareOuts, <numHardwareIns, <stereoChanIndex, <>defaultDecoderName, <>defaultKernel, <>kernelDirPath;
+	var <config, <labName, <numHardwareOuts, <numHardwareIns, <stereoChanIndex, <>defaultDecoderName, <>defaultKernel, <>kernelDirPath, <>decoderMatricesPath;
 
 	var <server, <gui, <curKernel, <stereoActive, <isMuted, <isAttenuated, <stateLoaded, <rotated;
 	var <clipMonitoring, <curDecoderPatch, rbtTryCnt;
@@ -15,7 +15,7 @@ SoundLab {
 	var <jconvolver, <nextjconvolver, <jconvinbus, <nextjconvinbus; //, <nextKernel;
 
 	// SoundLabUtils
-	var <compDict, <decAttributes, <decAttributeList;
+	var <compDict, <decAttributes, <decAttributeList, <matrixDecoderNames;
 	var <spkrAzims, <spkrElevs, <spkrDirs, <spkrOppDict, <spkrDels, <spkrGains, <spkrDists;
 	var <decoderLib, <synthLib, <loadedDelDistGain;
 	var <slhw;
@@ -50,16 +50,42 @@ SoundLab {
 
 		// kernelDirPath = PathName.new(Platform.resourceDir ++ "/sounds/SoundLabKernelsNew/");
 		kernelDirPath = kernelDirPath ?? {
-			if(config.kernelsPath[0].asSymbol == '/', {//it's absolute path
-				PathName.new(config.kernelsPath);
-				}, {
-					if(config.kernelsPath[0] == "~", {//it's relative to home directory
-						PathName.new(config.kernelsPath.standardizePath);
-						}, {//it's relative to the class file
-							PathName.new(File.realpath(this.class.filenameSymbol).dirname ++ "/" ++ config.kernelsPath)
-					});
-			});
+			config.kernelsPath !? {
+				if(config.kernelsPath[0].asSymbol == '/', {//it's absolute path
+					PathName.new(config.kernelsPath);
+					}, {
+						if(config.kernelsPath[0] == "~", {//it's relative to home directory
+							PathName.new(config.kernelsPath.standardizePath);
+							}, {//it's relative to the class file
+								PathName.new(File.realpath(this.class.filenameSymbol).dirname ++ "/"
+									++ config.kernelsPath)
+						});
+				});
+			};
 		}; //expecting path relative the class, NOT starting with a slash
+
+		/* Custom matrix decoder TXT files */
+		// folder structure under decoderMatricesPath location should be
+		// 2 folders: "dual", "single"
+		// "dual" contains folders for each set of HF and LF matrix files, the name of the
+		// folder becomes the name of the decoder
+		// "single" contains the matrix txt files, the name of the file (without .txt)
+		// becomes the name of the decoder
+		decoderMatricesPath = decoderMatricesPath ?? {
+			config.decoderMatricesPath !? {
+				if(config.decoderMatricesPath[0].asSymbol == '/', {	//it's absolute path
+					PathName.new(config.decoderMatricesPath);
+					}, {
+						if(config.decoderMatricesPath[0] == "~", {	//it's relative to home directory
+							PathName.new(config.decoderMatricesPath.standardizePath);
+							}, {//it's relative to the class file
+								PathName.new(File.realpath(
+									this.class.filenameSymbol).dirname ++ "/"
+									++ config.decoderMatricesPath)
+						});
+				});
+			}; //expecting path relative the class, NOT starting with a slash
+		};
 
 		globalAmp = 0.dbamp;
 		stereoActive = stereoActive ?? {true};
@@ -68,6 +94,7 @@ SoundLab {
 		stateLoaded = stateLoaded ?? {false};
 		clipMonitoring = clipMonitoring ?? {false};
 		rotated = rotated ?? {false};
+		matrixDecoderNames = [];
 
 		this.prInitRigDimensions;
 		this.prInitDecoderAttributes;

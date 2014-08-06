@@ -2,9 +2,9 @@ SoundLabGUI {
 	// copyArgs
 	var <sl, <wwwPort;
 	var <slhw, <deviceAddr, <wsGUI; //<listeners
-	var <decsHoriz, <decsSphere, <decsDome, <discreteRouters;//<decoders,
+	var <decsHoriz, <decsSphere, <decsDome, <discreteRouters, <decsMatrix;
 	var <sampleRates, <kernels, <stereoPending, <rotatePending;
-	var <gainTxt, <gainSl, <muteButton, <attButton, <srMenu, <decMenus, <horizMenu, <sphereMenu, <domeMenu, <discreteMenu, <stereoMenu, <rotateMenu, <correctionMenu, <applyButton, <stateTxt, <postTxt;
+	var <gainTxt, <gainSl, <muteButton, <attButton, <srMenu, <decMenus, <decMenuLayouts, <horizMenu, <sphereMenu, <domeMenu, < matrixMenu, <discreteMenu, <stereoMenu, <rotateMenu, <correctionMenu, <applyButton, <stateTxt, <postTxt;
 	var <curDecType, <curSR, <curKernel, <pendingDecType, <pendingInput, <pendingSR, <pendingKernel;
 	// var numCols, butheight, vpad, hpad, h1, h2, h3,h4, buth, butw, inLabel;
 	var <ampSpec, <oscFuncDict, buildList;
@@ -28,16 +28,15 @@ SoundLabGUI {
 			wsGUI = WsGUI.new(wwwPort);
 			1.5.wait; // TODO: add condition
 
-			// decoders = [];
-			// sl.decAttributeList.do({ |attset|
-			// 	if(decoders.includes(attset[0]).not,
-			// 	{decoders = decoders.add(attset[0])})
-			// });
-
+			/*
+			build arrays of the decoder/router synth names
+			as specified in the config file
+			*/
 			decsHoriz = [];
 			decsSphere = [];
 			decsDome = [];
 			discreteRouters = [];
+			decsMatrix = [];
 
 			sl.decAttributeList.do{ |dAtts|
 				dAtts.postln;
@@ -66,12 +65,15 @@ SoundLabGUI {
 				});
 			};
 
+			decsMatrix = sl.matrixDecoderNames;
+
 			postf(
 				"decsHoriz = %\n
 				decsSphere = %\n
 				decsDome = %\n
-				discreteRouters = %\n",
-				decsHoriz, decsSphere, decsDome, discreteRouters);
+				discreteRouters = %\n
+				decsMatrix = %\n",
+				decsHoriz, decsSphere, decsDome, discreteRouters, decsMatrix);
 
 			kernels = sl.compDict.delays.keys.select({ |name|
 				name.asString.contains(sl.sampleRate.asString)
@@ -151,18 +153,48 @@ SoundLabGUI {
 		// DECODER
 		decMenus = Dictionary();
 
-		decMenus.put( \horiz,
-			horizMenu = WsPopUpMenu.init(wsGUI).items_(['-'] ++ decsHoriz)
-		);
-		decMenus.put( \sphere,
-			sphereMenu = WsPopUpMenu.init(wsGUI).items_(['-'] ++ decsSphere)
-		);
-		decMenus.put( \dome,
-			domeMenu = WsPopUpMenu.init(wsGUI).items_(['-'] ++ decsDome)
-		);
+		(decsHoriz.size > 0).if{
+			decMenus.put( \horiz,
+				IdentityDictionary(know: true)
+				.put( \menu, horizMenu = WsPopUpMenu.init(wsGUI).items_(['-'] ++ decsHoriz) )
+				.put( \label, "2-D Horizontal")
+			);
+		};
+		(decsSphere.size > 0).if{
+			decMenus.put( \sphere,
+				IdentityDictionary(know: true)
+				.put( \menu, sphereMenu = WsPopUpMenu.init(wsGUI).items_(['-'] ++ decsSphere) )
+				.put( \label, "3-D Sphere" )
+			);
+		};
+		(decsDome.size > 0).if{
+			decMenus.put( \dome,
+				IdentityDictionary(know: true)
+				.put( \menu, domeMenu = WsPopUpMenu.init(wsGUI).items_(['-'] ++ decsDome) )
+				.put( \label, "3-D Dome" )
+			);
+		};
+		(decsMatrix.size > 0).if{
+			decMenus.put( \matrix,
+				IdentityDictionary(know: true)
+				.put( \menu, matrixMenu = WsPopUpMenu.init(wsGUI).items_(['-'] ++ decsMatrix) )
+				.put( \label, "Custom Matrix" )
+			);
+		};
+
+		decMenuLayouts = [];
+		[\horiz, \sphere, \dome, \matrix].do{|key|
+			decMenus[key].notNil.if{
+				decMenuLayouts = decMenuLayouts.add(
+					WsHLayout( nil,
+						WsStaticText.init(wsGUI).string_(decMenus[key].label).font_(Font(font, mdFontSize)),
+						decMenus[key].menu )
+				)
+			}
+		};
 
 		decMenus.keysValuesDo{|k,v|
-			decMenus[k].action_({|mn|
+			decMenus[k].menu.action_({|mn|
 				this.clearDecSelections(k); // sets pendingDecType to nil
 				discreteMenu.value_(0);		// reset discrete routing menu
 				pendingDecType = if(mn.item != '-', {mn.item},{nil});
@@ -425,7 +457,9 @@ SoundLabGUI {
 	}
 
 	clearDecSelections {|exceptThisKey|
-		decMenus.keysValuesDo{|k,v| if(k!=exceptThisKey,{v.value_(0)}) };
+		decMenus.keysValuesDo{|k,v|
+			if(k != exceptThisKey,{v.menu.value_(0)}) }
+		;
 		pendingDecType = nil;
 	}
 
@@ -459,15 +493,16 @@ SoundLabGUI {
 							"<strong>Select an Ambisonic Decoder</strong>").font_(Font(font, mdFontSize)),
 						WsHLayout(Rect(0,0,1,0.25),
 							WsVLayout(Rect(0,0,0.6, 1),
-								WsHLayout( nil,
-									WsStaticText.init(wsGUI).string_("2-D Horizontal").font_(Font(font, mdFontSize)),
-									horizMenu ),
-								WsHLayout( nil,
-									WsStaticText.init(wsGUI).string_("3-D Sphere").font_(Font(font, mdFontSize)),
-									sphereMenu ),
-								WsHLayout( nil,
-									WsStaticText.init(wsGUI).string_("3-D Dome").font_(Font(font, mdFontSize)),
-									domeMenu )
+								*decMenuLayouts
+								// WsHLayout( nil,
+								// 	WsStaticText.init(wsGUI).string_("2-D Horizontal").font_(Font(font, mdFontSize)),
+								// horizMenu ),
+								// WsHLayout( nil,
+								// 	WsStaticText.init(wsGUI).string_("3-D Sphere").font_(Font(font, mdFontSize)),
+								// sphereMenu ),
+								// WsHLayout( nil,
+								// 	WsStaticText.init(wsGUI).string_("3-D Dome").font_(Font(font, mdFontSize)),
+								// domeMenu )
 							),
 							0.1,
 							// rotation
@@ -558,7 +593,10 @@ SoundLabGUI {
 			gainTxt.string_( format("<strong>Gain: </strong>% dB",sl.globalAmp.ampdb.round(0.01)) );
 			muteButton.value_( if(sl.isMuted, {1},{0}) );
 			attButton.value_( if(sl.isAttenuated, {1},{0}) );
-			(decMenus.values ++ [srMenu, discreteMenu, stereoMenu, rotateMenu, correctionMenu]).do{|menu| menu.value_(0)};
+			(
+				decMenus.values.collect({|dict| dict.menu})
+				++ [srMenu, discreteMenu, stereoMenu, rotateMenu, correctionMenu]
+			).do{ |menu| menu.value_(0)};
 			this.postState;
 		}
 	}
@@ -573,7 +611,7 @@ SoundLabGUI {
 
 /* TESTING
 l = SoundLab(48000, loadGUI:true, useSLHW: false, useKernels: false, configFileName: "CONFIG_117.scd",usingOSX: true)
-l = SoundLab(48000, loadGUI:true, useSLHW: false, useKernels: true, configFileName: "CONFIG_TEST.scd", usingOSX: true)
+l = SoundLab(48000, loadGUI:true, useSLHW: false, useKernels: false, configFileName: "CONFIG_TEST.scd", usingOSX: true)
 
 l.cleanup
 s.quit
