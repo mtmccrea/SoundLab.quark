@@ -114,8 +114,8 @@ SoundLabGUI {
 		// MUTE / ATTENUATE
 		muteButton = WsButton.init(wsGUI)
 		.states_([
-			["Mute", Color.black, Color.gray],
-			["Muted", Color.white, Color.red]
+			["Mute", Color.black, Color.fromHexString("#FAFAFA")],
+			["Muted", Color.white, Color.fromHexString("#F78181")]
 		])
 		.action_({ |but|
 			switch( but.value,
@@ -125,8 +125,8 @@ SoundLabGUI {
 		;
 		attButton = WsButton.init(wsGUI)
 		.states_([
-			["Attenuate", Color.black, Color.gray],
-			["Attenuated", Color.white, Color.magenta]
+			["Attenuate", Color.black, Color.fromHexString("#FAFAFA")],
+			["Attenuated", Color.white, Color.fromHexString("#E2A9F3")]
 		])
 		.action_({ |but|
 			switch( but.value,
@@ -483,6 +483,7 @@ SoundLabGUI {
 						WsStaticText.init(wsGUI, Rect(0,0,1,0.05)).string_(
 							"<strong>Sample Rate</strong>").font_(Font(font, mdFontSize)),
 						WsHLayout(Rect(0,0,1,0.05), srMenu, 2),
+						0.05,
 						// gain
 						gainTxt,
 						gainSl,
@@ -493,10 +494,10 @@ SoundLabGUI {
 						WsStaticText.init(wsGUI,Rect(0,0,1,0.08)).string_(
 							"<strong>Select an Ambisonic Decoder</strong>").font_(Font(font, mdFontSize)),
 						WsHLayout(Rect(0,0,1,0.25),
-							WsVLayout(Rect(0,0,0.6, 1),
+							WsVLayout(Rect(0,0,0.55, 1),
 								*decMenuLayouts
 							),
-							0.1,
+							0.05,
 							// rotation
 							WsHLayout( Rect(0,0,0.4, 1),
 								WsVLayout( Rect(0,0,0.7, 1),
@@ -511,32 +512,37 @@ SoundLabGUI {
 								WsVLayout( Rect(0,0,0.3, 1), 1/3, rotateMenu, 1/3)
 							)
 						),
-						nil,
+						0.05,
 						// discrete routing
 						WsStaticText.init(wsGUI, Rect(0,0,1,0.08))
 						.string_("<strong>Select a Discrete Routing Layout</strong>")
 						.font_(Font(font, mdFontSize)),
 						WsHLayout(Rect(0,0,1,0.1),
-							WsHLayout( Rect(0,0,0.7,1),
+							WsHLayout( Rect(0,0,0.55,1),
 								WsStaticText.init(wsGUI)
 								.string_("Which speakers?")
 								.font_(Font(font, mdFontSize)),
 								discreteMenu ),
-							0.6
+							0.45
 						),
 						nil,
 						// stereo
 						WsHLayout( Rect(0,0,1,0.12),
-							WsStaticText.init(wsGUI)
+							stereoMenu.bounds_(Rect(0,0, 0.1,1)),
+							0.15,
+							WsStaticText.init(wsGUI, Rect(0,0, 0.75,1))
 							.string_("<strong>Insert STEREO channels before decoder/router?</strong>")
-							.font_(Font(font, mdFontSize)),
-							stereoMenu ),
+							.font_(Font(font, mdFontSize))
+							),
 						nil,
 						// correction
 						WsHLayout( Rect(0,0,1,0.12),
-							WsStaticText.init(wsGUI).string_("<strong>Room correction</strong>")
-							.font_(Font(font, mdFontSize)),
-							correctionMenu ),
+							correctionMenu.bounds_(Rect(0,0, 0.2,1)),
+							0.05,
+							WsStaticText.init(wsGUI, Rect(0,0, 0.75,1))
+							.string_("<strong>Room correction</strong>")
+							.font_(Font(font, mdFontSize))
+							),
 						nil,
 						nil,
 						applyButton
