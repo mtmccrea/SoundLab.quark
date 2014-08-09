@@ -568,7 +568,7 @@ SoundLab {
 	rotate_ { |bool|
 		block({ |break|
 			(rotated == bool).if{ break.("rotation setting already current".warn) };
-			(curDecoderPatch.attributes.kind == \discrete).if{
+			(curDecoderPatch.decType == \discrete).if{
 				this.changed(\reportStatus, "routing is discrete, no rotation");
 				break.("routing is discrete, no rotation".warn);
 			};

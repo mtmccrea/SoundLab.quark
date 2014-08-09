@@ -1,7 +1,7 @@
 SoundLabDecoderPatch {
 	// copyArgs
 	var <soundlab, <decoderName, <inbusnum, <outbusnum, <loadCondition;
-	var <server, <group, <decodersynth, <compsynth, <attributes;
+	var <server, <group, <decodersynth, <compsynth, <attributes, <decType;
 
 	*new { |soundlab, decoderName, inbusnum, outbusnum, loadCondition|
 		^super.newCopyArgs(soundlab, decoderName, inbusnum, outbusnum, loadCondition).init;
@@ -10,7 +10,7 @@ SoundLabDecoderPatch {
 	init {
 		fork {
 			block { |break|
-				var synthdefName, decType;
+				var synthdefName;
 				synthdefName = decoderName.asSymbol;
 				("initializing SoundLabDecoderPatch:"+synthdefName).postln;
 
@@ -21,9 +21,11 @@ SoundLabDecoderPatch {
 				attributes = soundlab.decAttributes.select{|me| me.synthdefName == synthdefName};
 				case
 				{attributes.size == 1}{
-					decType = attributes[0][\kind];
+					attributes = attributes[0];
+					decType = attributes[\kind];
 				}
 				{attributes.size == 0}{
+					attributes = IdentityDictionary(know: true).put(\kind, \matrix);
 					decType = \matrix;
 				}
 				{attributes.size >1} {

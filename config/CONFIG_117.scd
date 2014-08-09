@@ -30,7 +30,8 @@ IdentityDictionary(know: true)
 	\whichMadiOutput,       nil,
 
 	/* file paths */
-	\kernelsPath,           "../../SoundLabSupport/SoundLabKernelsNew/"
+	\kernelsPath,           "../../SoundLabSupport/SoundLabKernelsNew/",
+	\decoderMatricesPath, "../../SoundLabSupport/DecoderMatrices/"
 ])
 
 /*

@@ -30,8 +30,9 @@ IdentityDictionary(know: true)
 	\whichMadiOutput,       2,
 
 	/* file paths */
-	\kernelsPath,           "../../SoundLabSupport/SoundLabKernelsBROKEN/" //currently "../../SoundLabSupport/SoundLabKernels/"
-])
+	\kernelsPath,           "../../SoundLabSupport/SoundLabKernelsBROKEN/",
+	\decoderMatricesPath, "../../SoundLabSupport/DecoderMatrices/"
+	])
 
 /*
 speaker order is assumed to be satellites, subs, stereo (optional)

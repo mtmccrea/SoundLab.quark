@@ -238,7 +238,7 @@
 		var halfHorizDirections, posElevDirections, halfSphereDirections, lowerStartDex, domeEndDex, domeDecoderMatrix;
 		var sphereDecoderMatrix, subDecoderMatrix, decSynthDef;
 		var lowerMatrix, lowerSum, lowerComp;
-		var lowerK = -6.0.dbamp;
+		var lowerK = -8.0.dbamp;
 
 		/*---------------------*/
 		/* --dome satellites-- */

@@ -11,6 +11,7 @@ IdentityDictionary(know: true)
 	\defaultDecoderName,	\Hex,
 	\defaultKernel,			\basic_balance,
 	\stereoChanIndex,		[0, 1],
+	\rotateDegree,			90, // option to rotate the listening position to this angle
 
 	/* SoundLabHardware settings */
 
@@ -29,7 +30,8 @@ IdentityDictionary(know: true)
 	\whichMadiOutput,       nil,
 
 	/* file paths */
-	\kernelsPath,           "../../SoundLabSupport/SoundLabKernelsNew/" //currently "../../SoundLabSupport/SoundLabKernelsNew/"
+	\kernelsPath,       "/home/audioadmin/Documents/SoundLabSupport/SoundLabKernels",
+	\decoderMatricesPath, "/home/audioadmin/Documents/SoundLabSupport/DecoderMatrices/"
 ])
 
 /*
