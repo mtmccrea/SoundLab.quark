@@ -736,3 +736,4 @@ q.startAudio(periodNum: 1)
 q.stopAudio
 s.scope(2,3)
 "/usr/local/bin/jackdmp -R  -dcoreaudio -r96000 -p256 -n1 -D".unixCmd
+*/
