@@ -121,9 +121,9 @@ numInChannels: number of input channels into the decoder/router (Int)
 .put(\decAttributeList,
 	[
 		/* --ambisonic decoders-- */
-		[\Horiz_Dodec,			\diametric,	'dual',		2,	(0..5),					4	],
-		[\Horiz_Hex,				\diametric,	'dual',		2,	[0,2,4],				4	],
-		[\Horiz_Quad_Long,		\diametric,	'dual',		2,	[11,1],					4	],
+		[\Horiz_Dodec,			\diametric,	'dual',		2,	(0..5),		4	],
+		[\Horiz_Hex,			\diametric,	'dual',		2,	[0,2,4],	4	],
+		[\Horiz_Quad_Long,		\diametric,	'dual',		2,	[11,1],		4	],
 
 		// domes - half of horizontal speakers plus all dome speakers
 		[\Dome_19ch_12x6x1,	\dome,		'dual', 	3,	(0..5)++(12..18), 		4	],
@@ -132,9 +132,10 @@ numInChannels: number of input channels into the decoder/router (Int)
 		/* --discrete channel routing-- */
 		// thru routing assumes contiguous channels, starting at arrayOutIndices.first
 		[\All,			\discrete,	\NA,	2,	(0..18),				24	],
-		[\Hex,			\discrete,	\NA,	2,	Array.series(6, 0, 2),	6	],
+		[\Hex_Point_Fwd,\discrete,	\NA,	2,	Array.series(6, 0, 2),	6	],
+		[\Hex_Flat_Fwd,	\discrete,	\NA,	2,	[11,1,3,5,7,9],			6	],
 		[\Quad_Square,	\discrete,	\NA,	2,	Array.series(4, 0, 3),	4	],
-		[\Quad_Rect,	\discrete,	\NA,	2,	[11, 1, 4, 6],			4	]
+		[\Quad_Rect,	\discrete,	\NA,	2,	[11, 1, 5, 7],			4	]
 	]
 )
 ;
