@@ -802,12 +802,12 @@ sats_xover = HPF.ar( HPF.ar(sat_sig, xover_hpf), xover_hpf);
 		});
 	}
 
-	prFindKernelDir { |kenelName|
+	prFindKernelDir { |kernelName|
 		var kernelDir_pn;
 		kernelDirPath.folders.do({ |sr_pn|
 			if( sr_pn.folderName.asInt == server.sampleRate, {
 				sr_pn.folders.do({ |kernel_pn|
-					if( kernel_pn.folderName.asSymbol == kenelName, {
+					if( kernel_pn.folderName.asSymbol == kernelName, {
 						("found kernel match"+kernel_pn).postln;
 						kernelDir_pn = kernel_pn; });
 				});
