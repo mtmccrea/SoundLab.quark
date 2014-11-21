@@ -718,12 +718,9 @@
 				* spkrGains[numSatChans..(numSatChans+numSubChans-1)].dbamp;
 				stereo_sig = In.ar(in_busnum+totalArrayChans);
 
-subs_xover = LPF.ar( LPF.ar(sub_sig, xover_lpf), xover_lpf);
-sats_xover = HPF.ar( HPF.ar(sat_sig, xover_hpf), xover_hpf);
-
-				sats_delayed = DelayN.ar( sats_xover,
+				sats_delayed = DelayN.ar( sat_sig,
 					spkrDels.maxItem, spkrDels[0..(numSatChans-1)] );
-				subs_delayed = DelayN.ar( subs_xover,
+				subs_delayed = DelayN.ar( sub_sig,
 					spkrDels.maxItem, spkrDels[numSatChans..(numSatChans+numSubChans-1)] );
 
 
