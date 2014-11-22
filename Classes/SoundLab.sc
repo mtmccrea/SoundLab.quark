@@ -2,8 +2,8 @@ SoundLab {
 	// copyArgs
 	var <initSR, <loadGUI, <usingSLHW, <>usingKernels, <configFileName, <osx;
 
-	var <>xfade = 0.2,  <>debug=true;
-	var <globalAmp, <numSatChans, <numSubChans, <totalArrayChans, <numKernelChans, <>rotateDegree;
+	var <>xfade = 0.2,  <>debug=true, <kernels;
+	var <globalAmp, <numSatChans, <numSubChans, <totalArrayChans, <numKernelChans, <>rotateDegree, <>xOverHPF, <>xOverLPF;
 	var <hwInCount, <hwInStart;
 	var <config, <labName, <numHardwareOuts, <numHardwareIns, <stereoChanIndex, <>defaultDecoderName, <>defaultKernel, <>kernelDirPath, <>decoderMatricesPath;
 
@@ -47,6 +47,8 @@ SoundLab {
 		totalArrayChans		= numSatChans+numSubChans;	// stereo not included
 		numKernelChans		= totalArrayChans; 	// TODO: confirm this approach
 		rotateDegree		= config.rotateDegree ?? {-90}; // default rotation to the right
+		xOverHPF			= config.xOverHPF ?? {80};
+		xOverLPF			= config.xOverLPF ?? {80};
 
 		// kernelDirPath = PathName.new(Platform.resourceDir ++ "/sounds/SoundLabKernelsNew/");
 		kernelDirPath = kernelDirPath ?? {
@@ -135,7 +137,39 @@ SoundLab {
 		server.doWhenBooted({
 			fork {
 				"waiting 3 seconds".postln;
-				3.wait; // give server time to get its shit together
+				3.wait; // give server time to get sorted
+
+				if( usingKernels, {
+					// get an up-to-date list of the kernels available at this sample rate
+					kernels = compDict.delays.keys.select({ |name|
+						name.asString.contains(server.sampleRate.asString)
+					});
+					// reformat to exclude SR
+					kernels = kernels.collect{|key|
+						var modkey;
+						modkey = key.asString;
+						modkey = modkey.replace("_44100","");
+						modkey = modkey.replace("_48000","");
+						modkey = modkey.replace("_96000","");
+						modkey.asSymbol;
+					};
+					kernels = [\basic_balance] ++ kernels.asArray;
+
+					// in the case of a SR change, check to make sure the curKernel is still available
+					// at this sampleRate
+					curKernel !? {
+						if( kernels.includes(curKernel).not, {
+							curKernel.postln;
+							curKernel.class.postln;
+							kernels.postln;
+							this.changed(\reportStatus,
+								warn("Last kernel wasn't found at this samplerate. Defaulting to basic_balance.")
+							);
+							this.setNoKernel;
+						})
+					};
+				});
+
 				// kill any running Jconvolvers
 				jconvolver !? {"Stopping a running jconvolver".postln; jconvolver.free};
 				nextjconvolver !? {"Stopping a running jconvolver".postln; nextjconvolver.free};
@@ -215,7 +249,7 @@ SoundLab {
 				while(	{stereoPatcherSynths.collect({|synth|synth.isPlaying}).includes(false)},
 					{"waiting on stereo patchers".postln; 0.02.wait;}
 				);
-				0.2.wait; // TODO find a better solution here
+				0.2.wait; // TODO find a better solution than wait
 				stereoActive.not.if{stereoPatcherSynths.do(_.pause)};
 
 				// CLIP MONITORS
@@ -295,7 +329,10 @@ SoundLab {
 						// nextjconvolver var set in loadJconvolver method above
 						if( nextjconvolver.notNil, // TODO what happens below when loadJconvolver fails?
 							{nextjconvolver.kernelName},
-							{"selecting default dist/gains".postln; \default}
+							{
+								"selecting default dist/gains".postln;
+								\default; // return
+							}
 						),
 						cond
 					);
@@ -353,11 +390,11 @@ SoundLab {
 
 			// set new state vars based on results from each above step
 			nextjconvolver !? {
-				jconvolver !? {jconvolver.free}; // free the current jconvolver
-				jconvolver = nextjconvolver;
+				jconvolver !? {jconvolver.free}; 	// free the current jconvolver
+				jconvolver = nextjconvolver;		// update var with new instance
 				curKernel = jconvolver.kernelName;
 				jconvinbus = nextjconvinbus;
-				nextjconvolver = nil;
+				nextjconvolver = nil;				// reset var
 				this.changed(\kernel, curKernel);
 			};
 
@@ -430,7 +467,11 @@ SoundLab {
 				kernelDir_pn.postln;
 				kernelDir_pn ?? {
 					this.changed(\reportStatus, warn("Kernel name not found: "++newKernel));
-					jconvolver ?? {warn("No longer usingKernels"); usingKernels = false}; // if no kernel already loaded, not using kernels
+					jconvolver ?? {
+						// if no kernel already loaded, not using kernels
+						warn("No longer usingKernels");
+						this.setNoKernel;
+					};
 					break.();
 				};
 

@@ -1,6 +1,6 @@
 SoundLabDecoderPatch {
 	// copyArgs
-	var <soundlab, <decoderName, <inbusnum, <outbusnum, <loadCondition;
+	var <sl, <decoderName, <inbusnum, <outbusnum, <loadCondition;
 	var <server, <group, <decodersynth, <compsynth, <attributes, <decType;
 
 	*new { |soundlab, decoderName, inbusnum, outbusnum, loadCondition|
@@ -14,11 +14,11 @@ SoundLabDecoderPatch {
 				synthdefName = decoderName.asSymbol;
 				("initializing SoundLabDecoderPatch:"+synthdefName).postln;
 
-				soundlab.decoderLib[synthdefName] ?? {
+				sl.decoderLib[synthdefName] ?? {
 					break.( warn( synthdefName ++" decoder not found in decoderLib!!!" ))
 				};
 				// used for introspection by GUI
-				attributes = soundlab.decAttributes.select{|me| me.synthdefName == synthdefName};
+				attributes = sl.decAttributes.select{|me| me.synthdefName == synthdefName};
 				case
 				{attributes.size == 1}{
 					attributes = attributes[0];
@@ -35,23 +35,24 @@ SoundLabDecoderPatch {
 					))
 				};
 
-				server = soundlab.server;
-				group = CtkGroup.play(addAction: \before, target: soundlab.patcherGroup, server: server);
+				server = sl.server;
+				group = CtkGroup.play(addAction: \before, target: sl.patcherGroup, server: server);
 				server.sync;
 
-				decodersynth = soundlab.decoderLib[synthdefName].note(
+				decodersynth = sl.decoderLib[synthdefName].note(
 					addAction: \head, target: group)
 				.in_busnum_(inbusnum);
 				// discrete routing synthdefs have no out_busnum or rotation arg
 				(decType != \discrete).if{
 					decodersynth.out_busnum_(outbusnum)
-					.rotate_(if(soundlab.rotated, {soundlab.rotateDegree.degrad},{0}))
+					.rotate_(if(sl.rotated, {sl.rotateDegree.degrad},{0}))
 				};
 
-				compsynth = soundlab.synthLib[\delay_gain_comp].note(
+				compsynth = sl.synthLib[\delay_gain_comp].note(
 					addAction: \tail, target: group)
 				.in_busnum_(outbusnum).out_busnum_(outbusnum) // uses ReplaceOut
-				.masterAmp_(soundlab.globalAmp);
+				.xover_hpf_(sl.xOverHPF).xover_lpf_(sl.xOverLPF)
+				.masterAmp_(sl.globalAmp);
 
 			};
 			loadCondition.test_(true).signal;

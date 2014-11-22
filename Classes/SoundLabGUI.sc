@@ -3,9 +3,9 @@ SoundLabGUI {
 	var <sl, <wwwPort;
 	var <slhw, <deviceAddr, <wsGUI; //<listeners
 	var <decsHoriz, <decsSphere, <decsDome, <discreteRouters, <decsMatrix;
-	var <sampleRates, <kernels, <stereoPending, <rotatePending;
+	var <sampleRates, <stereoPending, <rotatePending;
 	var <gainTxt, <gainSl, <muteButton, <attButton, <srMenu, <decMenus, <decMenuLayouts, <horizMenu, <sphereMenu, <domeMenu, < matrixMenu, <discreteMenu, <stereoMenu, <rotateMenu, <correctionMenu, <applyButton, <stateTxt, <postTxt;
-	var <curDecType, <curSR, <curKernel, <pendingDecType, <pendingInput, <pendingSR, <pendingKernel;
+	var <pendingDecType, <pendingInput, <pendingSR, <pendingKernel; //<curKernel, <curSR, <curDecType,
 	// var numCols, butheight, vpad, hpad, h1, h2, h3,h4, buth, butw, inLabel;
 	var <ampSpec, <oscFuncDict, buildList;
 	var <>maxPostLines, <postString, font = 'Helvetica', lgFontSize = 24, mdFontSize = 20, smFontSize = 16 ;
@@ -75,20 +75,6 @@ SoundLabGUI {
 				decsMatrix = %\n",
 				decsHoriz, decsSphere, decsDome, discreteRouters, decsMatrix);
 
-			kernels = sl.compDict.delays.keys.select({ |name|
-				name.asString.contains(sl.sampleRate.asString)
-			});
-			// reformat to exclude SR
-			kernels = kernels.collect{|key|
-				var modkey;
-				modkey = key.asString;
-				modkey = modkey.replace("_44100","");
-				modkey = modkey.replace("_48000","");
-				modkey = modkey.replace("_96000","");
-				modkey.asSymbol;
-			};
-			kernels = [\basic_balance] ++ kernels.asArray;
-
 			ampSpec = ControlSpec.new(-80, 12, -2, default: 0);
 			sampleRates = [44100, 48000, 96000];
 			maxPostLines = 16;
@@ -141,8 +127,8 @@ SoundLabGUI {
 			(mn.value==0).if(
 				{ pendingSR = nil },
 				{
-					(mn.item == curSR.asSymbol).if({
-						this.status_("Sample rate is already " ++ curSR.asString);
+					(mn.item == sl.sampleRate.asSymbol).if({
+						this.status_("Requested samplerate is already current.");
 						mn.valueAction_(0); // set back to '-'
 						},{	pendingSR = mn.item.asInt }
 					)
@@ -228,7 +214,7 @@ SoundLabGUI {
 		;
 		// CORRECTION
 		correctionMenu = WsPopUpMenu.init(wsGUI)
-		.items_(['-'] ++ kernels)
+		.items_(['-'] ++ sl.kernels)
 		.action_({|mn|
 			pendingKernel = if(mn.item != '-', {mn.item},{nil});
 			// TODO check if requesting new SR if selected correction is available
@@ -277,7 +263,7 @@ SoundLabGUI {
 							// of soundlab then change sample rate straight away,
 							// no need to update signal chain twice
 
-							pendingDecType = pendingDecType ?? curDecType;
+							pendingDecType = pendingDecType ?? sl.curDecoderPatch.decoderName;
 							("Updating decoder to "++pendingDecType).postln;
 
 							if( pendingKernel.notNil,
@@ -380,10 +366,10 @@ SoundLabGUI {
 					));
 				},
 				\decoder,	{
-					curDecType = args[0].decoderName; // args[0] is the decoderpatch
+					// curDecType = args[0].decoderName; // args[0] is the decoderpatch
 					this.clearDecSelections;	// sets pending decoder to nil
 					discreteMenu.value_(0);		// reset discrete routing menu
-					this.status_("Now decoding with: " ++ curDecType);
+					this.status_("Now decoding with: " ++ sl.curDecoderPatch.decoderName);
 				},
 				\stereo,	{
 					this.status_( args[0].if(
@@ -400,16 +386,16 @@ SoundLabGUI {
 					rotateMenu.valueAction_(0);
 				},
 				\kernel,	{
-					var k_name;
-					k_name = args[0];
-					curKernel = k_name !? {k_name.asSymbol};
+					// var k_name;
+					// k_name = args[0];
+					// curKernel = k_name !? {k_name.asSymbol};
 					correctionMenu.valueAction_(0);
-					this.status_("Kernel updated: " ++ curKernel);
+					this.status_("Kernel updated: " ++ sl.curKernel);
 				},
 				\stateLoaded,	{
 					this.initVars;
 					this.recallValues;
-					this.status_("State reloaded. Check Current Settings window.")
+					this.status_("State reloaded. Confirm in Current Settings window.")
 				},
 				\stoppingAudio, { this.status_("Audio is stopping - Standby.") },
 				\reportError,	{ this.status_(args[0]) },
@@ -448,9 +434,9 @@ SoundLabGUI {
 
 	postState {
 		stateTxt.string_("<strong>"
-			++ curSR ++ "\n "
-			++ curDecType ++ "\n "
-			++ curKernel ++ "\n "
+			++ sl.sampleRate ++ "\n "
+			++ sl.curDecoderPatch.decoderName ++ "\n "
+			++ sl.curKernel ++ "\n "
 			++ sl.stereoActive.if({"YES"},{"NO"}) ++ "\n "
 			++ sl.rotated.if({"YES"},{"NO"})
 			++ "</strong>"
@@ -596,14 +582,13 @@ SoundLabGUI {
 		pendingSR = nil;
 		// defaults on startup - pulled from SoundLab state
 		// TODO: consider not storing 'cur' variables in gui class, refer to sl directly
-		curDecType = sl.curDecoderPatch.decoderName; // not the same as synthdef name
-		curSR = sl.sampleRate;
-		curKernel = sl.curKernel ?? {\basic_balance};
+		// curDecType = sl.curDecoderPatch.decoderName; // not the same as synthdef name
+		// curKernel = sl.curKernel ?? {\basic_balance};
 		stereoPending = nil;
 		rotatePending = nil;
 
-		postf("curDecType: %, curSR: %, curKernel: %\n",
-			curDecType, curSR, curKernel);
+		postf("current decoder: %, current SR: %, curKernel: %\n",
+			sl.curDecoderPatch.decoderName, sl.sampleRate, sl.curKernel);
 		loadCondition !? {loadCondition.test_(true).signal}
 	}
 
@@ -613,6 +598,7 @@ SoundLabGUI {
 			gainTxt.string_( format("<strong>Gain: </strong>% dB",sl.globalAmp.ampdb.round(0.01)) );
 			muteButton.value_( if(sl.isMuted, {1},{0}) );
 			attButton.value_( if(sl.isAttenuated, {1},{0}) );
+			correctionMenu.items_(['-'] ++ sl.kernels); // reload the kernel names in the case of a sample rate change
 			(
 				decMenus.values.collect({|dict| dict.menu})
 				++ [srMenu, discreteMenu, stereoMenu, rotateMenu, correctionMenu]
@@ -631,7 +617,7 @@ SoundLabGUI {
 
 /* TESTING
 l = SoundLab(48000, loadGUI:true, useSLHW: false, useKernels: false, configFileName: "CONFIG_117.scd",usingOSX: true)
-l = SoundLab(48000, loadGUI:true, useSLHW: false, useKernels: false, configFileName: "CONFIG_TEST.scd", usingOSX: true)
+l = SoundLab(48000, loadGUI:true, useSLHW: false, useKernels: true, configFileName: "CONFIG_TEST.scd", usingOSX: true)
 
 l.cleanup
 s.quit

@@ -710,7 +710,7 @@
 		// signal order to comp stage is assumed to be satellites, subs, stereo
 		synthLib = CtkProtoNotes(
 
-			SynthDef(\delay_gain_comp, { arg in_busnum=0, out_busnum=0, masterAmp = 1.0, xover_hpf = 60, xover_lpf = 60;
+			SynthDef(\delay_gain_comp, { arg in_busnum=0, out_busnum=0, masterAmp = 1.0, xover_hpf = 70, xover_lpf = 70;
 				var in_sig, sat_sig, stereo_sig, sub_sig, subs_xover, sats_xover, subs_delayed, sats_delayed, outs;
 
 				sat_sig = In.ar(in_busnum, numSatChans) * spkrGains.keep(numSatChans).dbamp;
@@ -718,8 +718,8 @@
 				* spkrGains[numSatChans..(numSatChans+numSubChans-1)].dbamp;
 				stereo_sig = In.ar(in_busnum+totalArrayChans);
 
-subs_xover = LPF.ar( LPF.ar(sub_sig, xover_lpf), xover_lpf);
-sats_xover = HPF.ar( HPF.ar(sat_sig, xover_hpf), xover_hpf);
+				subs_xover = LPF.ar( LPF.ar(sub_sig, xover_lpf), xover_lpf);
+				sats_xover = HPF.ar( HPF.ar(sat_sig, xover_hpf), xover_hpf);
 
 				sats_delayed = DelayN.ar( sats_xover,
 					spkrDels.maxItem, spkrDels[0..(numSatChans-1)] );
