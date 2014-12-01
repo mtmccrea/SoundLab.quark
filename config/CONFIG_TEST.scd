@@ -168,8 +168,8 @@ numInChannels: number of input channels into the decoder/router (Int)
 		[\Dome_9ch_6x3,		\dome,		'dual', 3,	(9..11)++(21..23), 	4	],
 
 		// horizontal-only
-		[\Quad_Rect,	\diametric,	'dual',	2,	[10,11],	4	],
-		[\Hex,			\diametric,	'dual',	2,	(9..11),	4	],
+		[\Horiz_Quad_Rect,	\diametric,	'dual',	2,	[10,11],	4	],
+		[\Horiz_Hex,			\diametric,	'dual',	2,	(9..11),	4	],
 
 		/* --discrete channel routing-- */
 		// thru routing assumes contiguous channels, starting at arrayOutIndices.first

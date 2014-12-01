@@ -434,11 +434,11 @@ SoundLabGUI {
 
 	postState {
 		stateTxt.string_("<strong>"
-			++ sl.sampleRate ++ "\n "
-			++ sl.curDecoderPatch.decoderName ++ "\n "
-			++ sl.curKernel ++ "\n "
-			++ sl.stereoActive.if({"YES"},{"NO"}) ++ "\n "
-			++ sl.rotated.if({"YES"},{"NO"})
+			++ "\t" ++ sl.sampleRate ++ "\n "
+			++ "\t" ++ sl.stereoActive.if({"YES"},{"NO"}) ++ "\n "
+			++ "\t" ++ sl.curDecoderPatch.decoderName ++ "\n "
+			++ "\t" ++ sl.curKernel ++ "\n "
+			++ "\t" ++ sl.rotated.if({"YES"},{"NO"})
 			++ "</strong>"
 		);
 	}
@@ -454,6 +454,153 @@ SoundLabGUI {
 	/* PAGE LAYOUT */
 
 	buildControls {
+		wsGUI.layout_(
+			WsVLayout( Rect(0.025,0.025,0.95,0.95),
+				WsStaticText.init(wsGUI, Rect(0,0,1,0.1)).string_(
+					format("<strong>%\nRouting and Decoding System</strong>",sl.labName))
+				.textAlign_(\center).font_(Font(font, lgFontSize)),
+				WsHLayout( Rect(0,0,1,0.9),
+
+					// COLUMN 1
+					WsVLayout( Rect(0,0,0.45,1),
+						// Change Settings title
+						WsStaticText.init(wsGUI).string_(
+							"<strong>Change Settings</strong>").textAlign_(\center).font_(Font(font, mdFontSize)),
+						// sample rate
+						WsHLayout( Rect(0,0,1,0.05),
+							WsStaticText.init(wsGUI, Rect(0,0,1/2.5,1)).string_(
+								"<strong>Sample Rate</strong>").font_(Font(font, mdFontSize)),
+							srMenu, 1/2
+						),
+						// gain
+						WsHLayout( Rect(0,0,1,0.05),
+							gainTxt.bounds_(Rect(0,0,1/3,1)),
+							gainSl
+						),
+						// mute / attenuate
+						WsHLayout(Rect(0,0,1,0.05),
+							1/3, muteButton, 0.025, attButton, 1/5 - 0.025),
+						0.05,
+
+						WsHLayout( Rect(0,0,1,0.4),
+							// ambisonic decoder
+							WsVLayout( Rect(0,0,0.6, 1),
+
+								WsVLayout( Rect(0,0, 1, 0.2),
+									WsStaticText.init(wsGUI,Rect(0,0,1,0.08))
+									.string_("<strong>Select an Ambisonic Decoder</strong>")
+									.textAlign_(\center).font_(Font(font, mdFontSize))
+								),
+								WsVLayout( Rect(0,0, 1, 0.8),
+									*decMenuLayouts ++
+									WsHLayout( Rect(0,0,1,0.3),
+										0.1,
+										WsStaticText.init(wsGUI, Rect(0,0,0.8,1))
+										.string_( format(
+											"<strong>Rotate</strong> listening position % degrees?",
+											sl.rotateDegree))
+										.textAlign_(\center)
+										.font_(Font(font, mdFontSize)),
+										0.1 ) ++
+									WsHLayout( nil,
+										1/3, rotateMenu, 1/3) // center the menu
+								)
+							),
+							0.03,
+							// discrete routing
+							WsVLayout( Rect(0,0,0.4, 1),
+
+								WsStaticText.init(wsGUI, Rect(0,0,1,0.4))
+								.string_("<strong>Select a Discrete Routing Layout</strong>")
+								.textAlign_(\center)
+								.font_(Font(font, mdFontSize)),
+
+								WsStaticText.init(wsGUI, Rect(0,0,1,0.2))
+								.string_("Which speakers?")
+								.textAlign_(\center)
+								.font_(Font(font, mdFontSize)),
+
+								WsHLayout( Rect(0,0, 1,0.1),
+									1/4, discreteMenu.bounds_(Rect(0,0,1/2,1)), 1/4), // center the menu
+								0.3 // push "which speakers?" and discrete menu together
+							)
+						),
+						nil,
+
+						WsHLayout( Rect(0,0,1,0.12),
+							// stereo
+							WsVLayout( Rect(0,0,0.5,1),
+
+								WsStaticText.init(wsGUI, Rect(0,0, 1,0.65))
+								.string_("<strong>Insert STEREO channels before decoder/router?</strong>")
+								.textAlign_(\center)
+								.font_(Font(font, mdFontSize)),
+
+								WsHLayout( Rect(0,0, 1,0.35),
+										1/3, stereoMenu, 1/3) // center the menu
+							),
+							// correction
+							WsVLayout( Rect(0,0,0.5,1),
+
+								WsStaticText.init(wsGUI, Rect(0,0, 1,0.5))
+								.string_("<strong>Room correction</strong>")
+								.textAlign_(\center)
+								.font_(Font(font, mdFontSize)),
+
+								WsHLayout( Rect(0,0, 1,0.5),
+										1/4, correctionMenu.bounds_(Rect(0,0,1/2,1)), 1/4) // center the menu
+							)
+						),
+
+						nil,
+						// apply button
+						WsHLayout( Rect(0,0,1,0.05),
+							1/3, applyButton, 1/3) // center the menu
+					),
+
+					// COLUMN 2
+					WsVLayout( Rect(0,0,0.05,1),
+						// picture
+					),
+
+					// COLUMN 3
+					WsVLayout( Rect(0,0,0.45,1),
+						WsHLayout( Rect(0,0,1, 0.06),
+							// 0.15,
+							WsStaticText.init(wsGUI, Rect(0,0,1,1)).string_(
+								"<strong>Current System Settings</strong>")
+							.textAlign_(\center).font_(Font(font, mdFontSize))
+							.backgroundColor_(Color.fromHexString("#FFFFCC")),
+							// 0.15
+						),
+						WsHLayout( nil,
+							// 0.15,
+							WsStaticText.init(wsGUI, Rect(0,0,0.5,1)).string_(
+								"Sample Rate: \nStereo channels first: \nDecoder / Router: \nCorrection: \nSound field rotated: \n"
+							)
+							.textAlign_(\right)
+							.font_(Font(font, mdFontSize))
+							// .backgroundColor_(Color.yellow),
+							.backgroundColor_(Color.fromHexString("#FFFFCC")),
+
+							stateTxt.bounds_(Rect(0,0,0.5,1))
+							.backgroundColor_(Color.fromHexString("#FFFFCC")),
+							// 0.15
+						),
+						0.1,
+						WsStaticText.init(wsGUI, Rect(0,0,1,0.04))
+						.string_("<strong>Post:</strong>").font_(Font(font, mdFontSize)),
+
+						postTxt.bounds_(Rect(0,0,1,0.6))
+						.backgroundColor_(Color.fromHexString("#F2F2F2"))
+					)
+				)
+			);
+		);
+		this.recallValues; /* this will turn on the defaults */
+	}
+
+	/*{
 		wsGUI.layout_(
 			WsVLayout( Rect(0.025,0.025,0.95,0.95),
 				WsStaticText.init(wsGUI, Rect(0,0,1,0.1)).string_(
@@ -574,7 +721,7 @@ SoundLabGUI {
 			);
 		);
 		this.recallValues; /* this will turn on the defaults */
-	}
+	}*/
 
 	initVars { |loadCondition|
 		pendingDecType = nil;
@@ -617,7 +764,7 @@ SoundLabGUI {
 
 /* TESTING
 l = SoundLab(48000, loadGUI:true, useSLHW: false, useKernels: false, configFileName: "CONFIG_117.scd",usingOSX: true)
-l = SoundLab(48000, loadGUI:true, useSLHW: false, useKernels: true, configFileName: "CONFIG_TEST.scd", usingOSX: true)
+l = SoundLab(48000, loadGUI:true, useSLHW: false, useKernels: false, configFileName: "CONFIG_TEST.scd", usingOSX: true)
 
 l.cleanup
 s.quit
