@@ -214,11 +214,9 @@ SoundLabGUI {
 		;
 		// CORRECTION
 		correctionMenu = WsPopUpMenu.init(wsGUI)
-		.items_(['-'] ++ sl.kernels)
+		.items_(['-'] ++ sl.kernels.sort) // alphabatize
 		.action_({|mn|
 			pendingKernel = if(mn.item != '-', {mn.item},{nil});
-			// TODO check if requesting new SR if selected correction is available
-			// make the switch but post warning that correction change not made
 		})
 		;
 
@@ -745,7 +743,7 @@ SoundLabGUI {
 			gainTxt.string_( format("<strong>Gain: </strong>% dB",sl.globalAmp.ampdb.round(0.01)) );
 			muteButton.value_( if(sl.isMuted, {1},{0}) );
 			attButton.value_( if(sl.isAttenuated, {1},{0}) );
-			correctionMenu.items_(['-'] ++ sl.kernels); // reload the kernel names in the case of a sample rate change
+			correctionMenu.items_(['-'] ++ sl.kernels.sort); // reload the kernel names in the case of a sample rate change
 			(
 				decMenus.values.collect({|dict| dict.menu})
 				++ [srMenu, discreteMenu, stereoMenu, rotateMenu, correctionMenu]
