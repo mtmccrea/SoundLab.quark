@@ -393,7 +393,7 @@ SoundLabGUI {
 				\stateLoaded,	{
 					this.initVars;
 					this.recallValues;
-					this.status_("State reloaded. Confirm in Current Settings window.")
+					this.status_("State reloaded. Confirm in Current System Settings window.")
 				},
 				\stoppingAudio, { this.status_("Audio is stopping - Standby.") },
 				\reportError,	{ this.status_(args[0]) },

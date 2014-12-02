@@ -1,3 +1,8 @@
+// TODO:
+// ~~ create a distinction between the functionality that uses JConvolver (usingKernels boolean)
+// and simply doing \basic_balance correction (which doesn't use convolution), so the \basic_balance
+// isn't labeled as a "kernel", i.e. curKernel ~~
+
 SoundLab {
 	// copyArgs
 	var <initSR, <loadGUI, <usingSLHW, <>usingKernels, <configFileName, <osx;
@@ -139,7 +144,7 @@ SoundLab {
 				"waiting 3 seconds".postln;
 				3.wait; // give server time to get sorted
 
-				if( usingKernels, {
+				// if( usingKernels, {
 					// get an up-to-date list of the kernels available at this sample rate
 					kernels = compDict.delays.keys.select({ |name|
 						name.asString.contains(server.sampleRate.asString)
@@ -163,12 +168,12 @@ SoundLab {
 							curKernel.class.postln;
 							kernels.postln;
 							this.changed(\reportStatus,
-								warn("Last kernel wasn't found at this samplerate. Defaulting to basic_balance.")
+								warn("Last kernel wasn't found at this sample rate. Defaulting to basic_balance.")
 							);
 							this.setNoKernel;
 						})
 					};
-				});
+			// });
 
 				// kill any running Jconvolvers
 				jconvolver !? {"Stopping a running jconvolver".postln; jconvolver.free};
@@ -300,7 +305,7 @@ SoundLab {
 						usingKernels = true;
 						"loading new jconvolver".postln; // debug
 						this.loadJconvolver(kernelName, cond); // this sets nextjconvolver var
-						// TODO: what happens below when loadJconvolver fails and
+						// TODO: confirm what happens below when loadJconvolver fails and
 						// nextjconvolver set to nil?
 						},{
 							"no new correction specified".postln;
@@ -466,7 +471,7 @@ SoundLab {
 				kernelDir_pn = this.prFindKernelDir(newKernel);
 				kernelDir_pn.postln;
 				kernelDir_pn ?? {
-					this.changed(\reportStatus, warn("Kernel name not found: "++newKernel));
+					this.changed(\reportStatus, warn("Kernel name not found: "++newKernel++". No longer using kernels!"));
 					jconvolver ?? {
 						// if no kernel already loaded, not using kernels
 						warn("No longer usingKernels");
