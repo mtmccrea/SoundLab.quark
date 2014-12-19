@@ -8,8 +8,8 @@ IdentityDictionary(know: true)
 	\numHardwareIns, 		32,
 	\numSatChans,			24,
 	\numSubChans, 			4,
-	\defaultDecoderName,	\Sph_18ch_6x6x6, // must match a name in \decAttributeList below
-	\defaultKernel,			\decor_700,
+	\defaultDecoderName,	\Sph_24ch_all, // must match a name in \decAttributeList below
+	\defaultKernel,			'1.0-open-no_desk-reference_ø',
 	\stereoChanIndex,		[28, 29],
 	\rotateDegree,			-90, // option to rotate the listening position to this angle
 	\xOverHPF,				60,
