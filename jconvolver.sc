@@ -13,7 +13,7 @@ Jconvolver {
 	classvar <>executablePath = "jconvolver";
 	classvar <>configFileName = "jconvolver.conf";
 
-	var kernelFolderPath, compensateLatency, configFileStringArr;
+	var <kernelFolderPath, <compensateLatency, <configFileStringArr;
 	var <partitionSize, <maxKernelSize, <numInChannels, <numOutChannels, channelMatrix;
 	var <kernelName, <pid;
 

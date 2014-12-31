@@ -44,16 +44,17 @@ SoundLab {
 		labName				= config.labName ?? {""};
 		numHardwareOuts		= config.numHardwareOuts;
 		numHardwareIns		= config.numHardwareIns;
-		defaultDecoderName	= config.defaultDecoderName;// synthDef name
+		defaultDecoderName	= config.defaultDecoderName;	// synthDef name
 		defaultKernel		= config.defaultKernel;
 		stereoChanIndex		= config.stereoChanIndex;
 		numSatChans			= config.numSatChans;
 		numSubChans			= config.numSubChans;
-		totalArrayChans		= numSatChans+numSubChans;	// stereo not included
-		numKernelChans		= totalArrayChans; 	// TODO: confirm this approach
-		rotateDegree		= config.rotateDegree ?? {-90}; // default rotation to the right
-		xOverHPF			= config.xOverHPF ?? {80};
-		xOverLPF			= config.xOverLPF ?? {80};
+		totalArrayChans		= numSatChans+numSubChans;		// stereo not included
+		numKernelChans		= totalArrayChans;				// TODO: confirm this approach
+		rotateDegree		= config.rotateDegree ?? {-90};	// default rotation to the right
+		xOverHPF			= config.xOverHPF ?? {80};		// default xover 80Hz if not specified
+		xOverLPF			= config.xOverLPF ?? {80};		// default xover 80Hz if not specified
+		shelfFreq			= config.shelfFreq ?? {400};	// default shelf 400Hz (for dual band decoders) if not specified
 
 		// kernelDirPath = PathName.new(Platform.resourceDir ++ "/sounds/SoundLabKernelsNew/");
 		kernelDirPath = kernelDirPath ?? {
@@ -517,7 +518,7 @@ SoundLab {
 				Jconvolver.createSimpleConfigFileFromFolder(
 					kernelFolderPath: k_path, partitionSize: partSize,
 					maxKernelSize: k_size, matchFileName: "*.wav",
-					autoConnectToScChannels: nextjconvinbus, autoConnectToSoundcardChannels: 0
+					autoConnectToScChannels: nextjconvinbus, autoConnectToSoundcardChannels: 66
 				);
 
 				jconvinbus = nextjconvinbus;

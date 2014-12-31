@@ -14,6 +14,7 @@ IdentityDictionary(know: true)
 	\rotateDegree,			90, // option to rotate the listening position to this angle
 	\xOverHPF,				80,
 	\xOverLPF,				80,
+	\shelfFreq,				400,
 
 	/* SoundLabHardware settings */
 

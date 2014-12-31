@@ -9,10 +9,12 @@
 		]);
 
 		/* distances (m): */
-		compDict.distances.put( \default, config.defaultSpkrDistances);
+		compDict.distances.put( \default, config.defaultSpkrDistances );
 
 		/* calculate delays (sec): */
 		compDict.delays.put( \default,
+			config.defaultSpkrDelays ??
+			// calculate from distance
 			(compDict.distances.default.maxItem - compDict.distances.default) / 343;
 		);
 
@@ -89,9 +91,10 @@
 	}
 
 	/*	load speaker delays, distances, gains here because
-	in the case of using kernels, it can be samplerate
-	dependent, and so needs to happen after server has
-	been initialized. */
+		in the case of using kernels, it can be samplerate
+		dependent, and so needs to happen after server has
+		been initialized.
+	*/
 	prLoadDelDistGain { |kernelName, completeCondition|
 		fork {
 			var sr, key;
@@ -128,9 +131,9 @@
 		var arrayOutIndices, satOutbusNums, subOutbusNums, satDirections, subDirections;
 		var matrix_dec_sat, matrix_dec_sub, decSynthDef;
 
-		/*----------------*/
-		/* --satellites-- */
-		/*----------------*/
+
+		/* --satellites matrix-- */
+
 		arrayOutIndices = decSpecs.arrayOutIndices;
 
 		// get the other half of array indices for diametric opposites
@@ -145,16 +148,15 @@
 			);
 		});
 
-		matrix_dec_sat = FoaDecoderMatrix.newDiametric(satDirections, decSpecs.k);
+		matrix_dec_sat = FoaDecoderMatrix.newDiametric(satDirections, decSpecs.k).shelfFreq_(shelfFreq);
 
-		/*----------*/
-		/* --subs-- */
-		/*----------*/
+
+		/* --subs matrix-- */
 
 		// always use all the subs
 		subOutbusNums = (numSatChans..(numSatChans+numSubChans-1));
 
-		// prepare stereo or diammetric decoder for subs if there's an even number of them
+		// prepare stereo decoder for subs or diammetric if there's an even number of them > 2
 		if(numSubChans.even, {
 			// only need to provide 1/2 of the directions for diametric decoder
 			subDirections = subOutbusNums.keep( (subOutbusNums.size/2).asInt ).collect({
@@ -163,15 +165,16 @@
 			});
 
 			matrix_dec_sub = (subDirections.size > 1).if(
-				{ FoaDecoderMatrix.newDiametric(subDirections, decSpecs.k) },
+				{ FoaDecoderMatrix.newDiametric(subDirections, decSpecs.k).shelfFreq_(shelfFreq);
+				},
 				// stereo decoder for 2 subs, symmetrical across x axis, cardioid decode
-				{ FoaDecoderMatrix.newStereo(subDirections[0], 0.5) }
+				{ FoaDecoderMatrix.newStereo(subDirections[0], 0.5).shelfFreq_(shelfFreq) }
 			)
 		});
 
-		/*------------------------*/
+
 		/* --build the synthdef-- */
-		/*------------------------*/
+
 		decSynthDef = SynthDef( decSpecs.synthdefName, {
 			arg out_busnum=0, in_busnum, fadeTime=0.2, subgain=0, rotate=0, gate=1;
 			var in, env, sat_out, sub_out;
@@ -183,7 +186,8 @@
 			in = In.ar(in_busnum, decSpecs.numInputChans) * env; // B-Format signal
 			in = FoaTransform.ar(in, 'rotate', rotate); // rotate the listening orientation
 
-			// include shelf filter?
+			// include shelf filter if the satellite
+			// matrix has a shelf freq specified
 			if( matrix_dec_sat.shelfFreq.isNumber, {
 				in = FoaPsychoShelf.ar(
 					in,
@@ -192,6 +196,8 @@
 					matrix_dec_sat.shelfK.at(1)
 				)
 			});
+
+			/* -- sat decode --*/
 
 			// near-field compensate, decode, remap to rig
 			satOutbusNums.do({ | spkdex, i |
@@ -204,18 +210,24 @@
 				)
 			});
 
-			if( numSubChans.even, {
-				subOutbusNums.do({ | spkdex, i |
-					Out.ar(
-						out_busnum + spkdex,
-						AtkMatrixMix.ar(
-							FoaNFC.ar( in, spkrDists.at(spkdex) ),
-							matrix_dec_sub.matrix.fromRow(i)
-						) * subgain.dbamp
-					)
-				})
-				// quick fix for non-even/non-diametric sub layout
-				},{
+			/* -- sub decode --*/
+
+			if( numSubChans.even,
+				{
+					subOutbusNums.do({ | spkdex, i |
+						Out.ar(
+							out_busnum + spkdex,
+							AtkMatrixMix.ar(
+								FoaNFC.ar( in, spkrDists.at(spkdex) ),
+								matrix_dec_sub.matrix.fromRow(i)
+							) * subgain.dbamp
+						)
+					})
+				},
+				// TODO:	this is a quick fix for non-even/non-diametric sub layout
+				// 			Not this likely hasn't been used/tested because 113 specifies
+				//			a false 2nd sub
+				{
 					subOutbusNums.do({ | spkdex, i |
 						var nfc;
 						nfc = FoaNFC.ar( in, spkrDists.at(spkdex) );
@@ -225,11 +237,11 @@
 						) * subgain.dbamp
 					})
 				}
-			)
+			);
 		});
 
 		decoderLib.add( decSynthDef ); // add the synth to the decoder library
-		"added diametric decoder to the decoderLib".postln; // debug
+		("added diametric decoder to the decoderLib: "++decSpecs.synthdefName).postln;
 	}
 
 	// NOTE: arrayOutIndices is [half of horiz] ++ [all elevation dome] spkr indices
@@ -240,10 +252,7 @@
 		var lowerMatrix, lowerSum, lowerComp;
 		var lowerK = -8.0.dbamp;
 
-		/*---------------------*/
 		/* --dome satellites-- */
-		/*---------------------*/
-		"adding DOME decoder ... ".post; // debug
 
 		domeOutbusNums = decSpecs.arrayOutIndices; // half horiz & full dome spkr indices
 
@@ -260,7 +269,7 @@
 		halfSphereDirections = halfHorizDirections ++ posElevDirections;
 
 		// model full diametric decoder, and matrix
-		sphereDecoderMatrix = FoaDecoderMatrix.newDiametric(halfSphereDirections, decSpecs.k);
+		sphereDecoderMatrix = FoaDecoderMatrix.newDiametric(halfSphereDirections, decSpecs.k).shelfFreq_(shelfFreq);
 
 		// truncate to just lower speakers to calculate compensation matrix...
 		lowerStartDex = (halfHorizDirections.size*2) + posElevDirections.size;
@@ -298,9 +307,9 @@
 			});
 			// note subDirections is only half of the subs
 			subDecoderMatrix = (subDirections.size > 1).if(
-				{ FoaDecoderMatrix.newDiametric(subDirections, decSpecs.k) },
+				{ FoaDecoderMatrix.newDiametric(subDirections, decSpecs.k).shelfFreq_(shelfFreq) },
 				// stereo decoder for 2 subs, symmetrical across x axis, cardioid decode
-				{ FoaDecoderMatrix.newStereo(subDirections[0], 0.5) }
+				{ FoaDecoderMatrix.newStereo(subDirections[0], 0.5).shelfFreq_(shelfFreq) }
 			)
 		});
 
@@ -336,7 +345,7 @@
 					out_busnum + spkdex, // remap decoder channels to rig channels
 					AtkMatrixMix.ar(
 						FoaNFC.ar( in, spkrDists.at(spkdex) ),
-						domeDecoderMatrix.fromRow(i) // CHECK
+						domeDecoderMatrix.fromRow(i)
 					)
 				)
 			});
@@ -373,28 +382,26 @@
 
 
 
-	/////// TODO ///////
-	// figure out: subs, satellite channel specification
-	/////// TODO ///////
+
 	prLoadSingleMatrixDecoder { |matrixPN|
 		var subOutbusNums, subDirections, subDecoderMatrix;
 		var path, name, matrix, ambiOrder, decSynthDef;
 
-		/*-------------------------------------*/
+
 		/* --load decoder coefficient matrix-- */
-		/*-------------------------------------*/
+
 		path = matrixPN.fullPath;
 		name = matrixPN.fileNameWithoutExtension.asSymbol;
 
-		"Loading matrix decoder: ".postln; name.post; //debug
+		"Loading matrix decoder: ".postln; name.post;
 		matrix = Matrix.with(FileReader.read(path).asFloat);
 		// determine order from matrix (must be 'full' order)
 		ambiOrder = matrix.cols.sqrt.asInteger - 1;
-		"order: ".post; ambiOrder.postln; //debug
+		"order: ".post; ambiOrder.postln;
 
-		/*----------*/
+
 		/* --subs-- */
-		/*----------*/
+
 		// always use all the subs
 		subOutbusNums = (numSatChans..(numSatChans+numSubChans-1));
 
@@ -408,15 +415,15 @@
 			});
 			// note subDirections is only half of the subs
 			subDecoderMatrix = (subDirections.size > 1).if(
-				{ FoaDecoderMatrix.newDiametric(subDirections) },
+				{ FoaDecoderMatrix.newDiametric(subDirections).shelfFreq_(shelfFreq) },
 				// stereo decoder for 2 subs, symmetrical across x axis, cardioid decode
-				{ FoaDecoderMatrix.newStereo(subDirections[0], 0.5) }
+				{ FoaDecoderMatrix.newStereo(subDirections[0], 0.5).shelfFreq_(shelfFreq) }
 			)
 		});
 
-		/*------------------------*/
+
 		/* --build the synthdef-- */
-		/*------------------------*/
+
 		decSynthDef = SynthDef( name, {
 			arg out_busnum=0, in_busnum, fadeTime=0.2, subgain=0, rotate=0, freq=400, gate=1;
 			var in, env, sat_out, sub_out;
@@ -525,9 +532,9 @@
 			});
 			// note subDirections is only half of the subs
 			subDecoderMatrix = (subDirections.size > 1).if(
-				{ FoaDecoderMatrix.newDiametric(subDirections) },
+				{ FoaDecoderMatrix.newDiametric(subDirections).shelfFreq_(shelfFreq) },
 				// stereo decoder for 2 subs, symmetrical across x axis, cardioid decode
-				{ FoaDecoderMatrix.newStereo(subDirections[0], 0.5) }
+				{ FoaDecoderMatrix.newStereo(subDirections[0], 0.5).shelfFreq_(shelfFreq) }
 			)
 		});
 
@@ -710,7 +717,7 @@
 		// signal order to comp stage is assumed to be satellites, subs, stereo
 		synthLib = CtkProtoNotes(
 
-			SynthDef(\delay_gain_comp, { arg in_busnum=0, out_busnum=0, masterAmp = 1.0, xover_hpf = 70, xover_lpf = 70;
+			SynthDef(\delay_gain_comp, { arg in_busnum=0, out_busnum=0, masterAmp = 1.0, xover_hpf = 60, xover_lpf = 60;
 				var in_sig, sat_sig, stereo_sig, sub_sig, subs_xover, sats_xover, subs_delayed, sats_delayed, outs;
 
 				sat_sig = In.ar(in_busnum, numSatChans) * spkrGains.keep(numSatChans).dbamp;
@@ -727,7 +734,7 @@
 					spkrDels.maxItem, spkrDels[numSatChans..(numSatChans+numSubChans-1)] );
 
 
-				// TODO no stereo delay/gain comp atm
+				// Note: no stereo delay/gain comp atm
 				outs = sats_delayed ++ subs_delayed ++ stereo_sig;
 				ReplaceOut.ar(out_busnum, outs * masterAmp);
 			})

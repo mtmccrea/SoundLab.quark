@@ -12,6 +12,9 @@ IdentityDictionary(know: true)
 	\defaultKernel,			\basic_balance,
 	\stereoChanIndex,		[28, 29],
 	\rotateDegree,			-90, // option to rotate the listening position to this angle
+	\xOverHPF,				60,
+	\xOverLPF,				60,
+	\shelfFreq,				60,
 
 	/* SoundLabHardware settings */
 
