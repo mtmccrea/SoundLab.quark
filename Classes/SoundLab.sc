@@ -8,7 +8,7 @@ SoundLab {
 	var <initSR, <loadGUI, <usingSLHW, <>usingKernels, <configFileName, <osx;
 
 	var <>xfade = 0.2,  <>debug=true, <kernels;
-	var <globalAmp, <numSatChans, <numSubChans, <totalArrayChans, <numKernelChans, <>rotateDegree, <>xOverHPF, <>xOverLPF;
+	var <globalAmp, <numSatChans, <numSubChans, <totalArrayChans, <numKernelChans, <>rotateDegree, <>xOverHPF, <>xOverLPF, <>shelfFreq;
 	var <hwInCount, <hwInStart;
 	var <config, <labName, <numHardwareOuts, <numHardwareIns, <stereoChanIndex, <>defaultDecoderName, <>defaultKernel, <>kernelDirPath, <>decoderMatricesPath;
 

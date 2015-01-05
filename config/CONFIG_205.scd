@@ -9,7 +9,7 @@ IdentityDictionary(know: true)
 	\numSatChans,			19,
 	\numSubChans, 			2,
 	\defaultDecoderName,	\Horiz_Dodec,
-	\defaultKernel,			\decor_700,
+	\defaultKernel,			\basic_balance,
 	\stereoChanIndex,		[11, 1],
 	\rotateDegree,			-90, // option to rotate the listening position to this angle
 	\xOverHPF,				60,
