@@ -1,16 +1,20 @@
 SoundLabGUI {
 	// copyArgs
 	var <sl, <wwwPort;
-	var <slhw, <deviceAddr, <wsGUI; //<listeners
+	var <slhw, <deviceAddr, <wsGUI;
 	var <decsHoriz, <decsSphere, <decsDome, <discreteRouters, <decsMatrix;
 	var <sampleRates, <stereoPending, <rotatePending;
-	var <gainTxt, <gainSl, <muteButton, <attButton, <srMenu, <decMenus, <decMenuLayouts, <horizMenu, <sphereMenu, <domeMenu, < matrixMenu, <discreteMenu, <stereoMenu, <rotateMenu, <correctionMenu, <applyButton, <stateTxt, <postTxt;
-	var <pendingDecType, <pendingInput, <pendingSR, <pendingKernel; //<curKernel, <curSR, <curDecType,
-	// var numCols, butheight, vpad, hpad, h1, h2, h3,h4, buth, butw, inLabel;
+	var <gainTxt, <gainSl, <muteButton, <attButton, <srMenu, <decMenus,
+		<decMenuLayouts, <horizMenu, <sphereMenu, <domeMenu, < matrixMenu,
+		<discreteMenu, <stereoMenu, <rotateMenu, <correctionMenu, <applyButton,
+		<stateTxt, <postTxt, <sweetSl, <sweetTxt, <sweetSpec;
+	var <pendingDecType, <pendingInput, <pendingSR, <pendingKernel;
+
 	var <ampSpec, <oscFuncDict, buildList;
 	var <>maxPostLines, <postString, font = 'Helvetica', lgFontSize = 24, mdFontSize = 20, smFontSize = 16 ;
 
-	*new { |soundLabModel, webInterfacePort = 8080| //don't change web port unless you know how to change redirection in Apache web server
+	//don't change web port unless you know how to change redirection in Apache web server
+	*new { |soundLabModel, webInterfacePort = 8080|
 		^super.newCopyArgs(soundLabModel, webInterfacePort).init;
 	}
 
@@ -18,7 +22,7 @@ SoundLabGUI {
 		var cond;
 		cond = Condition(false);
 		fork {
-			"initializing slgui".postln;
+			"INITIALIZING GUI".postln;
 			sl.addDependant( this );
 			if( sl.usingSLHW, {
 				slhw = sl.slhw.addDependant(this)
@@ -26,6 +30,7 @@ SoundLabGUI {
 
 			" ---------- \n creating new instance of wsGUI \n------------".postln;
 			wsGUI = WsGUI.new(wwwPort);
+			"\n".postln;
 			1.5.wait; // TODO: add condition
 
 			/*
@@ -39,27 +44,18 @@ SoundLabGUI {
 			decsMatrix = [];
 
 			sl.decAttributeList.do{ |dAtts|
+
 				dAtts.postln;
+
 				if( dAtts[1] == \discrete, {
 					discreteRouters = discreteRouters.add(dAtts.first);
-					"adding discrete routing".postln;
-					discreteRouters.postln;
 					},{
 						switch( dAtts[3], // numDimensions
-							2, { decsHoriz = decsHoriz.add(dAtts.first);
-								"adding horiz routing".postln;
-								decsHoriz.postln;
-							},
-							3, { if(dAtts[1] == \dome,
-								{ decsDome = decsDome.add(dAtts.first);
-									"adding dome routing".postln;
-									decsDome.postln;
-								},
-								{ decsSphere = decsSphere.add(dAtts.first);
-									"adding sphere routing".postln;
-									decsSphere.postln;
-								}
-								)
+							2, { decsHoriz = decsHoriz.add(dAtts.first) },
+							3, {
+								if( dAtts[1] == \dome )
+								{ decsDome = decsDome.add(dAtts.first) }
+								{ decsSphere = decsSphere.add(dAtts.first) };
 							}
 						)
 				});
@@ -67,17 +63,17 @@ SoundLabGUI {
 
 			decsMatrix = sl.matrixDecoderNames;
 
-			postf(
-				"decsHoriz = %\n
-				decsSphere = %\n
-				decsDome = %\n
-				discreteRouters = %\n
-				decsMatrix = %\n",
-				decsHoriz, decsSphere, decsDome, discreteRouters, decsMatrix);
+			"\n--decsHoriz--".postln; decsHoriz.do(_.postln);
+			"\n--decsSphere--".postln; decsSphere.do(_.postln);
+			"\n--decsDome--".postln; decsDome.do(_.postln);
+			"\n--discreteRouters--".postln; discreteRouters.do(_.postln);
+			"\n--decsMatrix--".postln; decsMatrix.do(_.postln);
 
 			ampSpec = ControlSpec.new(-80, 12, -2, default: 0);
+			// sweet spot diam (m)
+			sweetSpec = ControlSpec.new(0.17, 4, 'lin', default: 0.5);
 			sampleRates = [44100, 48000, 96000];
-			maxPostLines = 16;
+			maxPostLines = 12;
 			postString = "";
 			this.initVars(cond);
 			cond.wait;
@@ -88,12 +84,12 @@ SoundLabGUI {
 	}
 
 	initControls {
-		"initializing controls".postln;
 		// GAIN
-		gainTxt = WsStaticText.init(wsGUI, Rect(0,0,1,0.05)).string_("").font_(Font(font, mdFontSize))
+		gainTxt = WsStaticText.init(wsGUI, Rect(0,0,1,0.05))
+		.string_("").font_(Font(font, mdFontSize))
 		;
 		gainSl = WsEZSlider.init(wsGUI)
-		.controlSpec_(ampSpec) //only in EZSlider;
+		.controlSpec_(ampSpec)
 		.action_({|sldr|
 			sl.amp_( sldr.value )})
 		;
@@ -118,6 +114,16 @@ SoundLabGUI {
 			switch( but.value,
 				0, {sl.attenuate(false)}, 1, {sl.attenuate(true)}
 			)
+		})
+		;
+		// SWEET SPOT DIAMETER
+		sweetTxt = WsStaticText.init(wsGUI, Rect(0,0,1,0.05))
+		.string_("").font_(Font(font, mdFontSize))
+		;
+		sweetSl = WsEZSlider.init(wsGUI)
+		.controlSpec_(sweetSpec)
+		.action_({|sldr|
+			sl.sweetSpotDiam_( sldr.value )
 		})
 		;
 		// SAMPLE RATE
@@ -173,8 +179,9 @@ SoundLabGUI {
 			decMenus[key].notNil.if{
 				decMenuLayouts = decMenuLayouts.add(
 					WsHLayout( nil,
-						WsStaticText.init(wsGUI).string_(decMenus[key].label).font_(Font(font, mdFontSize)),
-						decMenus[key].menu )
+						WsStaticText.init(wsGUI).string_(
+							decMenus[key].label).font_(Font(font, mdFontSize)
+						), decMenus[key].menu )
 				)
 			}
 		};
@@ -214,7 +221,7 @@ SoundLabGUI {
 		;
 		// CORRECTION
 		correctionMenu = WsPopUpMenu.init(wsGUI)
-		.items_(['-'] ++ sl.kernels.sort) // alphabatize
+		.items_(['-'] ++ sl.kernels.sort) // alphabetize
 		.action_({|mn|
 			pendingKernel = if(mn.item != '-', {mn.item},{nil});
 		})
@@ -357,6 +364,13 @@ SoundLabGUI {
 						}
 					)
 				},
+				\sweetSpotDiam, { var val = args[0];
+					sweetSl.value_( val );
+					sweetTxt.string_( format(
+						"<strong>Listening Area Diameter: </strong>% m",
+						val.round(0.001).asString)
+					);
+				},
 				\clipped,	{
 					this.status_( (args[0] < sl.numHardwareIns).if(
 						{ "Clipped IN " ++ args[0].asString },
@@ -364,7 +378,6 @@ SoundLabGUI {
 					));
 				},
 				\decoder,	{
-					// curDecType = args[0].decoderName; // args[0] is the decoderpatch
 					this.clearDecSelections;	// sets pending decoder to nil
 					discreteMenu.value_(0);		// reset discrete routing menu
 					this.status_("Now decoding with: " ++ sl.curDecoderPatch.decoderName);
@@ -384,9 +397,6 @@ SoundLabGUI {
 					rotateMenu.valueAction_(0);
 				},
 				\kernel,	{
-					// var k_name;
-					// k_name = args[0];
-					// curKernel = k_name !? {k_name.asSymbol};
 					correctionMenu.valueAction_(0);
 					this.status_("Kernel updated: " ++ sl.curKernel);
 				},
@@ -461,293 +471,200 @@ SoundLabGUI {
 
 					// COLUMN 1
 					WsVLayout( Rect(0,0,0.45,1),
-						// Change Settings title
-						WsStaticText.init(wsGUI).string_(
-							"<strong>Change Settings</strong>").textAlign_(\center).font_(Font(font, mdFontSize)),
-						// sample rate
-						WsHLayout( Rect(0,0,1,0.05),
-							WsStaticText.init(wsGUI, Rect(0,0,1/2.5,1)).string_(
-								"<strong>Sample Rate</strong>").font_(Font(font, mdFontSize)),
-							srMenu, 1/2
+
+						// current settings
+						WsHLayout( Rect(0,0,1, 0.08),
+							WsStaticText.init(wsGUI, Rect(0,0,1,1)).string_(
+								"<strong>Current System Settings</strong>")
+							.textAlign_(\center).font_(Font(font, mdFontSize))
+							.backgroundColor_(Color.fromHexString("#FFFFCC")),
 						),
-						// gain
-						WsHLayout( Rect(0,0,1,0.05),
-							gainTxt.bounds_(Rect(0,0,1/3,1)),
-							gainSl
+
+						WsHLayout( Rect(0,0,1, 0.3),
+							WsStaticText.init(wsGUI, Rect(0,0,0.5,1)).string_(
+								"Sample Rate: \nStereo channels first: \nDecoder / Router: \nCorrection: \nSound field rotated: \n"
+							)
+							.textAlign_(\right)
+							.font_(Font(font, mdFontSize))
+							.backgroundColor_(Color.fromHexString("#FFFFCC")),
+
+							stateTxt.bounds_(Rect(0,0,0.5,1))
+							.backgroundColor_(Color.fromHexString("#FFFFCC")),
 						),
-						// mute / attenuate
-						WsHLayout(Rect(0,0,1,0.05),
-							1/3, muteButton, 0.025, attButton, 1/5 - 0.025),
 						0.05,
 
-						WsHLayout( Rect(0,0,1,0.4),
+						// amp controls
+						WsVLayout( Rect(0,0,1,0.15),
+							gainTxt.bounds_(Rect(0,0,1,1/3)),
+							gainSl.bounds_(Rect(0,0,2/3,1/3)),
+							// mute / attenuate
+							WsHLayout( Rect(0,0,0.5,1/3),
+								muteButton, 0.15, attButton
+							)
+						),
+						0.05,
+						// shelf freq / sweet spot size
+						WsVLayout( Rect(0,0,1,0.12),
+							sweetTxt.bounds_(Rect(0,0,1,1/2)),
+							sweetSl.bounds_(Rect(0,0,2/3,1/2))
+						),
+						0.05,
+
+						// post window
+						WsStaticText.init(wsGUI, Rect(0,0,1,0.04))
+						.string_("<strong>Post:</strong>").font_(Font(font, mdFontSize)),
+
+						postTxt.bounds_(Rect(0,0,1,0.5))
+						.backgroundColor_(Color.fromHexString("#F2F2F2"))
+					),
+
+
+					// COLUMN 2
+					WsVLayout( Rect(0,0,0.05,1),
+						// space
+					),
+
+					// COLUMN 3
+					WsVLayout( Rect(0,0,0.45,1),
+						// Change Settings title
+						WsStaticText.init(wsGUI, Rect(0,0,1,0.1)).string_(
+							"<strong>Change Settings</strong>"
+						).textAlign_(\center).font_(Font(font, mdFontSize)),
+
+						// Sample Rate / Stereo layout
+						WsHLayout( Rect(0,0,1,0.15),
+							// stereo
+							WsVLayout( Rect(0,0,0.6,1),
+
+								WsStaticText.init(wsGUI, Rect(0,0, 1,0.65))
+								.string_(
+									"<strong>Insert STEREO channels before decoder/router?</strong>"
+								)
+								.textAlign_(\left)
+								.font_(Font(font, mdFontSize)),
+
+								WsHLayout( Rect(0,0, 1, 0.35), stereoMenu, 2/3)
+							),
+							0.05,
+							// sample rate
+							WsVLayout( Rect(0,0,0.4,1),
+								WsStaticText.init(wsGUI, Rect(0,0,1,1))
+								.string_("<strong>Sample Rate</strong>")
+								.font_(Font(font, mdFontSize)),
+								srMenu.bounds_(Rect(0,0,0.5,1)), 0.05,
+							)
+						),
+						0.05,
+
+						// DECODER / ROUTER selection
+						WsHLayout( Rect(0,0,1,0.7),
 							// ambisonic decoder
 							WsVLayout( Rect(0,0,0.6, 1),
 
 								WsVLayout( Rect(0,0, 1, 0.2),
 									WsStaticText.init(wsGUI,Rect(0,0,1,0.08))
 									.string_("<strong>Select an Ambisonic Decoder</strong>")
-									.textAlign_(\center).font_(Font(font, mdFontSize))
+									.textAlign_(\left).font_(Font(font, mdFontSize))
 								),
 								WsVLayout( Rect(0,0, 1, 0.8),
 									*decMenuLayouts ++
-									WsHLayout( Rect(0,0,1,0.3),
+									[
 										0.1,
-										WsStaticText.init(wsGUI, Rect(0,0,0.8,1))
+										WsStaticText.init(wsGUI, Rect(0,0,1,0.15))
 										.string_( format(
-											"<strong>Rotate</strong> listening position % degrees?",
+											"Rotate listening position % degrees?",
 											sl.rotateDegree))
-										.textAlign_(\center)
+										.textAlign_(\left)
 										.font_(Font(font, mdFontSize)),
-										0.1 ) ++
-									WsHLayout( nil,
-										1/3, rotateMenu, 1/3) // center the menu
-								)
+										0.05
+									] ++
+									WsHLayout( nil, rotateMenu, 2/3)
+								),
 							),
-							0.03,
+							0.05,
 							// discrete routing
 							WsVLayout( Rect(0,0,0.4, 1),
 
-								WsStaticText.init(wsGUI, Rect(0,0,1,0.4))
-								.string_("<strong>Select a Discrete Routing Layout</strong>")
-								.textAlign_(\center)
-								.font_(Font(font, mdFontSize)),
-
 								WsStaticText.init(wsGUI, Rect(0,0,1,0.2))
-								.string_("Which speakers?")
-								.textAlign_(\center)
+								.string_("<strong>Select a Discrete Routing Layout</strong>")
+								.textAlign_(\left)
 								.font_(Font(font, mdFontSize)),
+								0.05,
 
+								WsStaticText.init(wsGUI, Rect(0,0,1,0.15))
+								.string_("Which speakers?")
+								.textAlign_(\left)
+								.font_(Font(font, mdFontSize)),
+								0.05,
 								WsHLayout( Rect(0,0, 1,0.1),
-									1/4, discreteMenu.bounds_(Rect(0,0,1/2,1)), 1/4), // center the menu
-								0.3 // push "which speakers?" and discrete menu together
+									discreteMenu.bounds_(Rect(0,0,1/2,1)), 0.5),
+								0.45 // push "which speakers?" and discrete menu together
 							)
 						),
 						nil,
 
-						WsHLayout( Rect(0,0,1,0.12),
-							// stereo
-							WsVLayout( Rect(0,0,0.5,1),
+						// correction
+						WsVLayout( Rect(0,0,0.5,0.1),
 
-								WsStaticText.init(wsGUI, Rect(0,0, 1,0.65))
-								.string_("<strong>Insert STEREO channels before decoder/router?</strong>")
-								.textAlign_(\center)
-								.font_(Font(font, mdFontSize)),
+							WsStaticText.init(wsGUI, Rect(0,0, 1,0.5))
+							.string_("<strong>Room correction</strong>")
+							.textAlign_(\left)
+							.font_(Font(font, mdFontSize)),
 
-								WsHLayout( Rect(0,0, 1,0.35),
-										1/3, stereoMenu, 1/3) // center the menu
-							),
-							// correction
-							WsVLayout( Rect(0,0,0.5,1),
-
-								WsStaticText.init(wsGUI, Rect(0,0, 1,0.5))
-								.string_("<strong>Room correction</strong>")
-								.textAlign_(\center)
-								.font_(Font(font, mdFontSize)),
-
-								WsHLayout( Rect(0,0, 1,0.5),
-										1/4, correctionMenu.bounds_(Rect(0,0,1/2,1)), 1/4) // center the menu
-							)
+							WsHLayout( Rect(0,0, 1,0.5),
+								correctionMenu.bounds_(Rect(0,0,1/2,1)), 0.5)
 						),
 
 						nil,
 						// apply button
 						WsHLayout( Rect(0,0,1,0.05),
-							1/3, applyButton, 1/3) // center the menu
-					),
-
-					// COLUMN 2
-					WsVLayout( Rect(0,0,0.05,1),
-						// picture
-					),
-
-					// COLUMN 3
-					WsVLayout( Rect(0,0,0.45,1),
-						WsHLayout( Rect(0,0,1, 0.06),
-							// 0.15,
-							WsStaticText.init(wsGUI, Rect(0,0,1,1)).string_(
-								"<strong>Current System Settings</strong>")
-							.textAlign_(\center).font_(Font(font, mdFontSize))
-							.backgroundColor_(Color.fromHexString("#FFFFCC")),
-							// 0.15
-						),
-						WsHLayout( nil,
-							// 0.15,
-							WsStaticText.init(wsGUI, Rect(0,0,0.5,1)).string_(
-								"Sample Rate: \nStereo channels first: \nDecoder / Router: \nCorrection: \nSound field rotated: \n"
-							)
-							.textAlign_(\right)
-							.font_(Font(font, mdFontSize))
-							// .backgroundColor_(Color.yellow),
-							.backgroundColor_(Color.fromHexString("#FFFFCC")),
-
-							stateTxt.bounds_(Rect(0,0,0.5,1))
-							.backgroundColor_(Color.fromHexString("#FFFFCC")),
-							// 0.15
-						),
-						0.1,
-						WsStaticText.init(wsGUI, Rect(0,0,1,0.04))
-						.string_("<strong>Post:</strong>").font_(Font(font, mdFontSize)),
-
-						postTxt.bounds_(Rect(0,0,1,0.6))
-						.backgroundColor_(Color.fromHexString("#F2F2F2"))
+							2/3, applyButton)
 					)
 				)
 			);
 		);
 		this.recallValues; /* this will turn on the defaults */
+		"Interface built.".postln;
 	}
-
-	/*{
-		wsGUI.layout_(
-			WsVLayout( Rect(0.025,0.025,0.95,0.95),
-				WsStaticText.init(wsGUI, Rect(0,0,1,0.1)).string_(
-					format("<strong>%\nRouting and Decoding System</strong>",sl.labName))
-				.textAlign_(\center).font_(Font(font, lgFontSize)),
-				WsHLayout( Rect(0,0,1,0.9),
-
-					// COLUMN 1
-					WsVLayout( Rect(0,0,0.45,1),
-						WsStaticText.init(wsGUI).string_(
-							"<strong>Change Settings</strong>").textAlign_(\center).font_(Font(font, mdFontSize)),
-						// sample rate
-						WsStaticText.init(wsGUI, Rect(0,0,1,0.05)).string_(
-							"<strong>Sample Rate</strong>").font_(Font(font, mdFontSize)),
-						WsHLayout(Rect(0,0,1,0.05), srMenu, 2),
-						0.05,
-						// gain
-						gainTxt,
-						gainSl,
-						// mute / attenuate
-						WsHLayout(Rect(0,0,1,0.05), muteButton, 0.025, attButton, 1.25),
-						0.05,
-						// decoder
-						WsStaticText.init(wsGUI,Rect(0,0,1,0.08)).string_(
-							"<strong>Select an Ambisonic Decoder</strong>").font_(Font(font, mdFontSize)),
-						WsHLayout(Rect(0,0,1,0.25),
-							WsVLayout(Rect(0,0,0.55, 1),
-								*decMenuLayouts
-							),
-							0.05,
-							// rotation
-							WsHLayout( Rect(0,0,0.4, 1),
-								WsVLayout( Rect(0,0,0.7, 1),
-									1/4,
-									WsStaticText.init(wsGUI, Rect(0,0,1,0.5))
-									.string_( format(
-										"<strong>Rotate</strong> listening position % degrees?",
-											sl.rotateDegree))
-									.font_(Font(font, mdFontSize)),
-									1/4
-								),
-								WsVLayout( Rect(0,0,0.3, 1), 1/3, rotateMenu, 1/3)
-							)
-						),
-						0.05,
-						// discrete routing
-						WsStaticText.init(wsGUI, Rect(0,0,1,0.08))
-						.string_("<strong>Select a Discrete Routing Layout</strong>")
-						.font_(Font(font, mdFontSize)),
-						WsHLayout(Rect(0,0,1,0.1),
-							WsHLayout( Rect(0,0,0.55,1),
-								WsStaticText.init(wsGUI)
-								.string_("Which speakers?")
-								.font_(Font(font, mdFontSize)),
-								discreteMenu ),
-							0.45
-						),
-						nil,
-						// stereo
-						WsHLayout( Rect(0,0,1,0.12),
-							stereoMenu.bounds_(Rect(0,0, 0.1,1)),
-							0.15,
-							WsStaticText.init(wsGUI, Rect(0,0, 0.75,1))
-							.string_("<strong>Insert STEREO channels before decoder/router?</strong>")
-							.font_(Font(font, mdFontSize))
-							),
-						nil,
-						// correction
-						WsHLayout( Rect(0,0,1,0.12),
-							correctionMenu.bounds_(Rect(0,0, 0.2,1)),
-							0.05,
-							WsStaticText.init(wsGUI, Rect(0,0, 0.75,1))
-							.string_("<strong>Room correction</strong>")
-							.font_(Font(font, mdFontSize))
-							),
-						nil,
-						nil,
-						applyButton
-					),
-
-					// COLUMN 2
-					WsVLayout( Rect(0,0,0.1,1),
-						// picture
-					),
-
-					// COLUMN 3
-					WsVLayout( Rect(0,0,0.45,1),
-						WsHLayout( Rect(0,0,1, 0.06),
-							0.15,
-						WsStaticText.init(wsGUI, Rect(0,0,0.7,1)).string_(
-							"<strong>Current System Settings</strong>")
-						.textAlign_(\center).font_(Font(font, mdFontSize))
-							.backgroundColor_(Color.fromHexString("#FFFFCC")),
-							0.15
-						),
-						WsHLayout( nil,
-							0.15,
-							WsStaticText.init(wsGUI, Rect(0,0,0.35,1)).string_(
-								"Sample Rate: \nDecoder / Router: \nCorrection: \nStereo channels first: \nSound field rotated: \n"
-							)
-							.textAlign_(\right)
-							.font_(Font(font, mdFontSize))
-							// .backgroundColor_(Color.yellow),
-							.backgroundColor_(Color.fromHexString("#FFFFCC")),
-
-							stateTxt.bounds_(Rect(0,0,0.35,1))
-							.backgroundColor_(Color.fromHexString("#FFFFCC")),
-							0.15
-						),
-						0.1,
-						WsStaticText.init(wsGUI, Rect(0,0,1,0.04))
-						.string_("<strong>Post:</strong>").font_(Font(font, mdFontSize)),
-
-						postTxt.bounds_(Rect(0,0,1,0.6))
-						.backgroundColor_(Color.fromHexString("#F2F2F2"))
-					)
-				)
-			);
-		);
-		this.recallValues; /* this will turn on the defaults */
-	}*/
 
 	initVars { |loadCondition|
 		pendingDecType = nil;
 		pendingInput = nil;
 		pendingSR = nil;
-		// defaults on startup - pulled from SoundLab state
-		// TODO: consider not storing 'cur' variables in gui class, refer to sl directly
-		// curDecType = sl.curDecoderPatch.decoderName; // not the same as synthdef name
-		// curKernel = sl.curKernel ?? {\basic_balance};
 		stereoPending = nil;
 		rotatePending = nil;
 
-		postf("current decoder: %, current SR: %, curKernel: %\n",
+		postf("\tCurrent decoder: %\n\tCurrent SR: %\n\tCurKernel: %\n",
 			sl.curDecoderPatch.decoderName, sl.sampleRate, sl.curKernel);
 		loadCondition !? {loadCondition.test_(true).signal}
 	}
 
 	recallValues {
 		fork {
+			var sweetRad;
 			gainSl.value_(sl.globalAmp.ampdb);
-			gainTxt.string_( format("<strong>Gain: </strong>% dB",sl.globalAmp.ampdb.round(0.01)) );
+			gainTxt.string_( format(
+				"<strong>Gain: </strong>% dB",
+				sl.globalAmp.ampdb.round(0.01))
+			);
+
 			muteButton.value_( if(sl.isMuted, {1},{0}) );
 			attButton.value_( if(sl.isAttenuated, {1},{0}) );
-			correctionMenu.items_(['-'] ++ sl.kernels.sort); // reload the kernel names in the case of a sample rate change
-			(
-				decMenus.values.collect({|dict| dict.menu})
+
+			// reload the kernel names in the case of a sample rate change
+			correctionMenu.items_(['-'] ++ sl.kernels.sort);
+
+			sweetRad = sl.getDiamByFreq(sl.shelfFreq.round(0.001));
+			sweetSl.value_(sweetRad);
+			sweetTxt.string_( format(
+				"<strong>Listening Area Diameter: </strong>% m",
+				sweetRad.round(0.001))
+			);
+
+			(	decMenus.values.collect({|dict| dict.menu})
 				++ [srMenu, discreteMenu, stereoMenu, rotateMenu, correctionMenu]
 			).do{ |menu| menu.value_(0)};
+
 			this.postState;
 		}
 	}

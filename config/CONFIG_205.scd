@@ -14,7 +14,8 @@ IdentityDictionary(know: true)
 	\rotateDegree,			-90, // option to rotate the listening position to this angle
 	\xOverHPF,				60,
 	\xOverLPF,				60,
-	\shelfFreq,				60,
+	\shelfFreq,				60,		// takes predecdence over listening Diameter
+	\listeningDiameter,		2,	// sweet spot size in meters
 
 	/* SoundLabHardware settings */
 

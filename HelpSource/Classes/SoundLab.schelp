@@ -28,6 +28,9 @@ argument::configFileName
 A String naming the file which specifies your rig dimensions, the format of which is (to be documented).
 The location of this file is assumed to be in the same folder as this class file.
 
+argument::usingOSX
+A Boolean whether the class is used on OSX or Linux. This alters the configuration of JConvolver in the case of using convolution on the output.
+
 returns::
 itself
 

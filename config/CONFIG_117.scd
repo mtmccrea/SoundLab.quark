@@ -14,7 +14,8 @@ IdentityDictionary(know: true)
 	\rotateDegree,			-90, // option to rotate the listening position to this angle
 	\xOverHPF,				60,
 	\xOverLPF,				60,
-	\shelfFreq,				60,
+	\shelfFreq,				60,		// takes predecdence over listening Diameter
+	\listeningDiameter,		1.5,	// sweet spot size in meters
 
 	/* SoundLabHardware settings */
 
@@ -163,7 +164,7 @@ numInChannels: number of input channels into the decoder/router (Int)
 
 		// domes - half of horizontal speakers plus all dome speakers
 		[\Dome_15ch_6x6x3,	\dome,		'dual', 3,	(9..11)++(15..23), 	4	],
-		[\Dome_13ch_6x4x3,	\dome,		'dual', 3,	[10,11]++[15,16,18,19,21,22,23],4],
+		[\Dome_13ch_6x4x3,	\dome,		'dual', 3,	(9..11)++[15,16,18,19,21,22,23], 4],
 		[\Dome_11ch_4x4x3,	\dome,		'dual', 3,	[10,11]++[15,16,18,19,21,22,23], 4],
 		[\Dome_10ch_6x4,	\dome,		'dual', 3,	[10,11]++[15,16,18,19],4],
 		[\Dome_9ch_6x3,		\dome,		'dual', 3,	(9..11)++(21..23), 	4	],

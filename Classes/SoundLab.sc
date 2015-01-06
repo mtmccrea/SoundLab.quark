@@ -54,7 +54,10 @@ SoundLab {
 		rotateDegree		= config.rotateDegree ?? {-90};	// default rotation to the right
 		xOverHPF			= config.xOverHPF ?? {80};		// default xover 80Hz if not specified
 		xOverLPF			= config.xOverLPF ?? {80};		// default xover 80Hz if not specified
-		shelfFreq			= config.shelfFreq ?? {400};	// default shelf 400Hz (for dual band decoders) if not specified
+
+		// default shelf 400Hz (for dual band decoders)
+		// note shelfFreq in config takes precedence over listeningDiameter
+		shelfFreq			= config.shelfFreq ?? config.listeningDiameter ?? {400};
 
 		// kernelDirPath = PathName.new(Platform.resourceDir ++ "/sounds/SoundLabKernelsNew/");
 		kernelDirPath = kernelDirPath ?? {
@@ -146,35 +149,34 @@ SoundLab {
 				3.wait; // give server time to get sorted
 
 				// if( usingKernels, {
-					// get an up-to-date list of the kernels available at this sample rate
-					kernels = compDict.delays.keys.select({ |name|
-						name.asString.contains(server.sampleRate.asString)
-					});
-					// reformat to exclude SR
-					kernels = kernels.collect{|key|
-						var modkey;
-						modkey = key.asString;
-						modkey = modkey.replace("_44100","");
-						modkey = modkey.replace("_48000","");
-						modkey = modkey.replace("_96000","");
-						modkey.asSymbol;
-					};
-					kernels = [\basic_balance] ++ kernels.asArray;
+				// get an up-to-date list of the kernels available at this sample rate
+				kernels = compDict.delays.keys.select({ |name|
+					name.asString.contains(server.sampleRate.asString)
+				});
+				// reformat to exclude SR
+				kernels = kernels.collect{|key|
+					var modkey;
+					modkey = key.asString;
+					modkey = modkey.replace("_44100","");
+					modkey = modkey.replace("_48000","");
+					modkey = modkey.replace("_96000","");
+					modkey.asSymbol;
+				};
+				kernels = [\basic_balance] ++ kernels.asArray;
 
-					// in the case of a SR change, check to make sure the curKernel is still available
-					// at this sampleRate
-					curKernel !? {
-						if( kernels.includes(curKernel).not, {
-							curKernel.postln;
-							curKernel.class.postln;
-							kernels.postln;
-							this.changed(\reportStatus,
-								warn("Last kernel wasn't found at this sample rate. Defaulting to basic_balance.")
-							);
-							this.setNoKernel;
-						})
-					};
-			// });
+				// in the case of a SR change, check to make sure the curKernel is still available
+				// at this sampleRate
+				if( curKernel.notNil )
+				{
+					if( kernels.includes(curKernel).not, {
+						this.changed(\reportStatus,
+							warn("Last kernel wasn't found at this sample rate. Defaulting to basic_balance.")
+						);
+						this.setNoKernel;
+					})
+				}{
+					this.setNoKernel;
+				};
 
 				// kill any running Jconvolvers
 				jconvolver !? {"Stopping a running jconvolver".postln; jconvolver.free};
@@ -317,7 +319,6 @@ SoundLab {
 			);
 
 			cond.wait;
-			"1 - Passed loading jconvolver".postln;
 			cond.test_(false); // reset the condition to hang when needed later
 
 			// LOAD DELAYS AND GAINS
@@ -326,14 +327,9 @@ SoundLab {
 				or: nextjconvolver.notNil			// kernel change
 				or: (kernelName == \basic_balance),	// switching to basic_balance
 				{
-					//debug
-					postf("\nloadedDelDistGain.isNil - startup: %\n", loadedDelDistGain.isNil);
-					postf("nextjconvolver.notNil - kernel change: %\n", nextjconvolver.notNil);
-					postf("kernelName == \basic_balance -  switching to basic_balance: %\n\n", kernelName == \basic_balance);
-
 					this.prLoadDelDistGain(
 						// nextjconvolver var set in loadJconvolver method above
-						if( nextjconvolver.notNil, // TODO what happens below when loadJconvolver fails?
+						if( nextjconvolver.notNil,
 							{nextjconvolver.kernelName},
 							{
 								"selecting default dist/gains".postln;
@@ -344,8 +340,6 @@ SoundLab {
 					);
 					cond.wait;
 					cond.test_(false);
-					// debug
-					"nextjconvolver: ".post; nextjconvolver.postln;
 
 					nextjconvolver.notNil.if{
 						if( loadedDelDistGain != ((nextjconvolver.kernelName++"_"++server.sampleRate).asSymbol),
@@ -364,24 +358,23 @@ SoundLab {
 					"loading synthdefs".postln;
 					this.prLoadSynthDefs(cond);
 					cond.wait;
-					"2 - SynthDefs loaded".postln;
+					"SynthDefs loaded.\n".postln;
 					cond.test_(false); // reset the condition to hang when needed later
 			});
 
 			server.sync; // sync to let all the synths load
 
 			// START DECODER
-
-			postf("nextjconvolver before starting decoder: %\n", nextjconvolver);
 			if( nextjconvolver.notNil or: 	// new jconvolver, so new outbus
 				deocderName.notNil,			// requested decoder change
 				{
 					var newDecName;
+					// if no decoderName given, create new decoder matching the current one
 					newDecName = deocderName ?? {
-						// if no decoderName given, create new decoder matching the current one
 						curDecoderPatch !? {curDecoderPatch.decoderName}
 					};
-					"new decoder name: %\n".postf( newDecName ); // debug
+					postf("New decoder name: %\n", newDecName);
+
 					if( newDecName.notNil, {
 						this.startDecoder(newDecName, cond)
 						},{ warn(
@@ -392,7 +385,8 @@ SoundLab {
 					);
 				},{ warn("NO NEW DECODER CREATED - no nextjconvolver and/or no decoder name provided!")}
 			);
-			cond.wait; "3 - Decoder started".postln;
+			cond.wait;
+			postln("Decoder started.\n");
 
 			// set new state vars based on results from each above step
 			nextjconvolver !? {
@@ -427,8 +421,6 @@ SoundLab {
 		var cond, newDecoderPatch, cur_decoutbus, new_decoutbus, new_decinbus;
 		cond = Condition(false);
 		fork {
-			postf("Starting decoder: % \n", newDecName); // debug
-
 			// select which of the 3 out groups to send decoder/correction to
 			new_decoutbus = if(usingKernels, {
 				if(jconvinbus.notNil, // jconvinbus set in loadJConvolver method
@@ -575,7 +567,6 @@ SoundLab {
 		if(bool,
 			{
 				curDecoderPatch.compsynth.masterAmp_(0);
-				("amp set to " ++ 0).postln;
 				isMuted = true;
 				this.changed(\mute, 1);
 			},{
@@ -583,10 +574,7 @@ SoundLab {
 				this.changed(\mute, 0);
 				if( isAttenuated,
 					{this.attenuate},
-					{
-						curDecoderPatch.compsynth.masterAmp_(globalAmp);
-						("amp set to " ++ globalAmp.ampdb).postln;
-					}
+					{ curDecoderPatch.compsynth.masterAmp_(globalAmp) }
 				);
 			}
 		)
@@ -595,17 +583,15 @@ SoundLab {
 	attenuate { | bool = true, att_dB = -30|
 		if(bool,
 			{
-				if(isMuted.not, {
-					curDecoderPatch.compsynth.masterAmp_(att_dB.dbamp);
-					("amp set to " ++ att_dB).postln;
-				});
+				if( isMuted.not )
+				{ curDecoderPatch.compsynth.masterAmp_(att_dB.dbamp) };
+
 				isAttenuated = true;
 				this.changed(\attenuate, 1);
 			},{
-				if(isMuted.not, {
-					curDecoderPatch.compsynth.masterAmp_(globalAmp);
-					("amp set to " ++ globalAmp.ampdb).postln;
-				});
+				if( isMuted.not )
+				{ curDecoderPatch.compsynth.masterAmp_(globalAmp) };
+
 				isAttenuated = false;
 				this.changed(\attenuate, 0);
 			}
@@ -637,10 +623,22 @@ SoundLab {
 		// only update amp if not muted or att
 		if( isAttenuated.not && isMuted.not, {
 			curDecoderPatch.compsynth.masterAmp_(ampnorm);
-			("amp set to " ++ ampnorm.ampdb).postln;
 		});
 		globalAmp = ampnorm; // normalized, not dB
 		this.changed(\amp, globalAmp);
+	}
+
+	sweetSpotDiam_ { |diam, order = 1| // diam in meters
+		var freq;
+		freq = order / pi * 340 / diam;
+		curDecoderPatch !? { curDecoderPatch.shelfFreq_(freq) };
+		shelfFreq = freq;
+		this.changed(\shelfFreq, freq);
+		this.changed(\sweetSpotDiam, diam);
+	}
+
+	getDiamByFreq { |freq, order = 1|
+		^ order / 2pi * 340 / freq;
 	}
 
 	clipMonitor_{ | bool = true |

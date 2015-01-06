@@ -10,9 +10,7 @@ SoundLabDecoderPatch {
 	init {
 		fork {
 			block { |break|
-				var synthdefName;
-				synthdefName = decoderName.asSymbol;
-				("initializing SoundLabDecoderPatch:"+synthdefName).postln;
+				var synthdefName = decoderName.asSymbol;
 
 				sl.decoderLib[synthdefName] ?? {
 					break.( warn( synthdefName ++" decoder not found in decoderLib!!!" ))
@@ -46,6 +44,7 @@ SoundLabDecoderPatch {
 				(decType != \discrete).if{
 					decodersynth.out_busnum_(outbusnum)
 					.rotate_(if(sl.rotated, {sl.rotateDegree.degrad},{0}))
+					.shelfFreq_(sl.shelfFreq);
 				};
 
 				compsynth = sl.synthLib[\delay_gain_comp].note(
@@ -57,6 +56,13 @@ SoundLabDecoderPatch {
 			};
 			loadCondition.test_(true).signal;
 		}
+	}
+
+	shelfFreq_ { |frq|
+		(decType != \discrete).if(
+			{ decodersynth.shelfFreq_(frq) },
+			{ "decoder type is discrete routing, not a dual decoder, so no PsychoShelf".warn } // debug
+		);
 	}
 
 	play { |xfade = 0.2|

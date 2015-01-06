@@ -98,9 +98,6 @@
 	prLoadDelDistGain { |kernelName, completeCondition|
 		fork {
 			var sr, key;
-			// debug
-			"prLoadDelDistGain".postln;
-
 			sr = this.sampleRate;
 			key = if(kernelName != \default, {(kernelName++"_"++sr).asSymbol},{\default});
 
@@ -110,22 +107,21 @@
 			if( usingKernels.not or:
 				compDict.distances.includesKey(key).not or:
 				compDict.delays.includesKey(key).not or:
-				compDict.gains.includesKey(key).not, {
-					"kernel name is default or otherwise wasn't found in
-					distances, delays or gains lists".postln;
-					key = \default;
-			});
+				compDict.gains.includesKey(key).not,
+				{ key = \default }
+			);
 
 			spkrDists = compDict.distances.at(key);
 			spkrDels = compDict.delays.at(key);
 			spkrGains = compDict.gains.at(key);
 
 			this.prCheckArrayData;
-			("delays, gains, distances loaded for:" ++ key).postln;
+			("delays, gains, distances loaded for: " ++ key).postln;
 			loadedDelDistGain = key;
 			completeCondition !? {completeCondition.test_(true).signal};
 		}
 	}
+
 
 	prLoadDiametricDecoderSynth { |decSpecs|
 		var arrayOutIndices, satOutbusNums, subOutbusNums, satDirections, subDirections;
@@ -191,7 +187,8 @@
 			if( matrix_dec_sat.shelfFreq.isNumber, {
 				in = FoaPsychoShelf.ar(
 					in,
-					matrix_dec_sat.shelfFreq,
+					//matrix_dec_sat.shelfFreq,
+					\shelfFreq.kr(matrix_dec_sat.shelfFreq), // see Control.names
 					matrix_dec_sat.shelfK.at(0),
 					matrix_dec_sat.shelfK.at(1)
 				)
@@ -241,7 +238,7 @@
 		});
 
 		decoderLib.add( decSynthDef ); // add the synth to the decoder library
-		("added diametric decoder to the decoderLib: "++decSpecs.synthdefName).postln;
+		postf("added decoder to the decoderLib: (diametric) %\n", decSpecs.synthdefName);
 	}
 
 	// NOTE: arrayOutIndices is [half of horiz] ++ [all elevation dome] spkr indices
@@ -333,7 +330,8 @@
 			if( sphereDecoderMatrix.shelfFreq.isNumber, {
 				in = FoaPsychoShelf.ar(
 					in,
-					sphereDecoderMatrix.shelfFreq,
+					//sphereDecoderMatrix.shelfFreq,
+					\shelfFreq.kr(sphereDecoderMatrix.shelfFreq),
 					sphereDecoderMatrix.shelfK.at(0),
 					sphereDecoderMatrix.shelfK.at(1)
 				)
@@ -377,10 +375,8 @@
 
 		// add the synth to the decoder library
 		decoderLib.add( decSynthDef );
-		"added diametric dome decoder to the decoderLib".postln; // debug
+		postf("added decoder to the decoderLib: (dome) %\n", decSpecs.synthdefName);
 	}
-
-
 
 
 	prLoadSingleMatrixDecoder { |matrixPN|
@@ -393,11 +389,11 @@
 		path = matrixPN.fullPath;
 		name = matrixPN.fileNameWithoutExtension.asSymbol;
 
-		"Loading matrix decoder: ".postln; name.post;
 		matrix = Matrix.with(FileReader.read(path).asFloat);
 		// determine order from matrix (must be 'full' order)
 		ambiOrder = matrix.cols.sqrt.asInteger - 1;
-		"order: ".post; ambiOrder.postln;
+
+		postf("Loading matrix decoder:\t\t\t%, order %\n", name, ambiOrder);
 
 
 		/* --subs-- */
@@ -506,7 +502,6 @@
 		path_hf = matrixPN_HF.fullPath;
 		name = decName.asSymbol;
 
-		"Loading matrix decoder: ".postln; name.postln; //debug
 		// load decoder coefficient matrix
 		matrix_lf = Matrix.with(FileReader.read(path_lf).asFloat);
 		matrix_hf = Matrix.with(FileReader.read(path_hf).asFloat);
@@ -514,7 +509,8 @@
 		// determine order from matrix (must be 'full' order)
 		// NOTE: addition of matricies is a quick way to check whether they are the same
 		ambiOrder = (matrix_lf + matrix_hf).cols.sqrt.asInteger - 1;
-		"order: ".post; ambiOrder.postln; //debug
+
+		postf("Loading dual matrix decoder:\t%, order %\n", name, ambiOrder);
 
 		/*----------*/
 		/* --subs-- */
@@ -537,8 +533,6 @@
 				{ FoaDecoderMatrix.newStereo(subDirections[0], 0.5).shelfFreq_(shelfFreq) }
 			)
 		});
-
-		"past sub setup".postln; // debug
 
 		/*------------------------*/
 		/* --build the synthdef-- */
@@ -623,8 +617,6 @@
 
 		});
 
-		"past synthdef setup".post; decSynthDef.postln; // debug
-
 		// add the synth to the decoder library
 		decoderLib.add( decSynthDef );
 		matrixDecoderNames = matrixDecoderNames.add(name);
@@ -658,11 +650,6 @@
 
 		/* build and load decoders specified in config*/
 		decAttributes.do{ |decSpecs|
-
-			// debug
-			"build and load decoder. kind: ".post; decSpecs.kind.postln;
-			// decSpecs.postln;
-
 			switch( decSpecs.kind,
 				\diametric,	{ this.prLoadDiametricDecoderSynth(decSpecs)},
 				\dome,		{ this.prLoadDiametricDomeDecoderSynth(decSpecs)},
@@ -679,7 +666,8 @@
 
 						"single", {
 							bandType.filesDo{ |fl|
-								"found single matrix decoder: ".post; fl.fileNameWithoutExtension.postln;
+								postf( "Found single matrix decoder:\t%\n",
+									fl.fileNameWithoutExtension );
 								this.prLoadSingleMatrixDecoder(fl); // fl is pathname to matrix file
 							}
 						},
@@ -687,12 +675,12 @@
 						"dual", {
 							bandType.folders.do{ |decNameFldr|
 								var pn_lf, pn_hf;
-								"found dual matrix decoder: ".post; decNameFldr.folderName.postln;
+								postf( "Found dual matrix decoder:\t\t%\n", decNameFldr.folderName);
 								(decNameFldr.files.size == 2).if({
 									decNameFldr.filesDo{ |fl|
 										var fn;
 										fn = fl.fileNameWithoutExtension;
-										fn.postln; //debug
+										// fn.postln; //debug
 										case
 										{ fn.endsWith("LF") } { pn_lf = fl }
 										{ fn.endsWith("HF") } { pn_hf = fl };
@@ -740,7 +728,6 @@
 			})
 		);
 
-		" *********** Sound Lab synths loaded ************ \n".postln;
 		finishLoadCondition.test_(true).signal;
 	}
 
@@ -845,20 +832,12 @@
 		});
 	}
 
-		// diagnostics for testing
 	prCheckArrayData {
-		// debug
-		"checking array data".postln;
-		[
-					"these should equal numSatChans + numSubChans: "++ (numSatChans+numSubChans),
-					spkrAzims.size,
-					spkrElevs.size,
-					spkrDists.size,
-					spkrDels.size,
-					spkrGains.size,
-					spkrDirs.size,
-					// spkrOppDict.size,
-				].do(_.postln);
+		postf(
+			"Checking array data...\nThese should equal % (numSatChans + numSubChans)\n[%, %, %, %, %, %]\n",
+			numSatChans+numSubChans, spkrAzims.size, spkrElevs.size, spkrDists.size,
+			spkrDels.size, spkrGains.size, spkrDirs.size
+		);
 
 		if (
 			spkrAzims.size == spkrElevs.size and:
@@ -866,34 +845,20 @@
 			spkrDists.size == spkrDels.size and:
 			spkrDels.size == spkrGains.size and:
 			spkrGains.size == totalArrayChans,
-			// and: spkrOppDict.size == spkrDirs.size,
-			{
-				"OK: array sizes of rig dimensions match".postln;
-			},{
-				"mismatch in rig dimension array sizes!".warn;
-				[
-					"these should equal numSatChans + numSubChans: "++ (numSatChans+numSubChans),
-					spkrAzims.size,
-					spkrElevs.size,
-					spkrDists.size,
-					spkrDels.size,
-					spkrGains.size,
-					spkrDirs.size,
-					// spkrOppDict.size,
-				].do(_.postln);
-			}
+			{ "OK: array sizes of rig dimensions match".postln },
+			{ "mismatch in rig dimension array sizes!".warn }
 		);
 
 		"\nSpeaker Gains, Distances, Delays".postln;
 		(numSatChans+numSubChans).do({ |i|
-			postf("chan: %\t| gain: %\t| dist: %\t| del: %\n",
+			postf("chan  %:\t| gain:   %\t| dist:   %\t| del:  %\n",
 				i, spkrGains[i], spkrDists[i], spkrDels[i]
 			)
 		});
 
 		"\nSpeaker Directions:".postln;
 		(numSatChans+numSubChans).do({ |i|
-			postf("chan: %\t| dir: %\n", i, spkrDirs[i].raddeg)
+			postf("chan  %:\t| dir: %\n", i, spkrDirs[i].raddeg)
 		});
 	}
 }
