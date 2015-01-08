@@ -17,7 +17,7 @@ SoundLab {
 	var <clipListener, <reloadGUIListener, <clipMonDef, <patcherDef;
 	var <patcherGroup, <stereoPatcherSynths, <satPatcherSynths, <subPatcherSynths;
 	var <monitorGroup_ins, <monitorGroup_outs, <monitorSynths_outs, <monitorSynths_ins;
-	var <jconvolver, <nextjconvolver, <jconvinbus, <nextjconvinbus; //, <nextKernel;
+	var <jconvolver, <nextjconvolver, <jconvinbus, <nextjconvinbus, <jconvHWOutChannel; //, <nextKernel;
 
 	// SoundLabUtils
 	var <compDict, <decAttributes, <decAttributeList, <matrixDecoderNames;
