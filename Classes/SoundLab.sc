@@ -54,6 +54,7 @@ SoundLab {
 		rotateDegree		= config.rotateDegree ?? {-90};	// default rotation to the right
 		xOverHPF			= config.xOverHPF ?? {80};		// default xover 80Hz if not specified
 		xOverLPF			= config.xOverLPF ?? {80};		// default xover 80Hz if not specified
+		jconvHWOutChannel	= config.jconvHWOutChannel ?? {0};		// default xover 80Hz if not specified
 
 		// default shelf 400Hz (for dual band decoders)
 		// note shelfFreq in config takes precedence over listeningDiameter
@@ -510,7 +511,7 @@ SoundLab {
 				Jconvolver.createSimpleConfigFileFromFolder(
 					kernelFolderPath: k_path, partitionSize: partSize,
 					maxKernelSize: k_size, matchFileName: "*.wav",
-					autoConnectToScChannels: nextjconvinbus, autoConnectToSoundcardChannels: 66
+					autoConnectToScChannels: nextjconvinbus, autoConnectToSoundcardChannels: jconvHWOutChannel
 				);
 
 				jconvinbus = nextjconvinbus;

@@ -10,6 +10,7 @@ IdentityDictionary(know: true)
 	\numSubChans, 			2,
 	\defaultDecoderName,	\Horiz_Dodec,
 	\defaultKernel,			\basic_balance,
+	\jconvHWOutChannel,		66,
 	\stereoChanIndex,		[11, 1],
 	\rotateDegree,			-90, // option to rotate the listening position to this angle
 	\xOverHPF,				60,

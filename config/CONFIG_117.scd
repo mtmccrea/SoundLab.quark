@@ -10,6 +10,7 @@ IdentityDictionary(know: true)
 	\numSubChans, 			4,
 	\defaultDecoderName,	\Sph_24ch_all, // must match a name in \decAttributeList below
 	\defaultKernel,			'1.0-open-no_desk-reference_ø',
+	\jconvHWOutChannel,		0,
 	\stereoChanIndex,		[28, 29],
 	\rotateDegree,			-90, // option to rotate the listening position to this angle
 	\xOverHPF,				60,
