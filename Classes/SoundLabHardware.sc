@@ -644,7 +644,10 @@ SoundLabHardware {
 		if(useFireface, {
 			// this.clearFireface;
 			"Starting ffado-dbus-server for Fireface".postln;
-			dbusServerPid = "exec ffado-dbus-server".unixCmd({|msg| "Dbus server finished".postln}); //needs to be run each time fireface disconnects
+			dbusServerPid = "exec ffado-dbus-server".unixCmd({|msg|
+				dbusServerPid = nil;
+				"Dbus server finished".postln;
+			}); //needs to be run each time fireface disconnects
 			//so to be safe: record the pid of the process, and kill/restart it on each sampleRate change / audio restart, that way user can bring the device back if needed.
 			//also, set autoSync shortly afterwards here, so we don't have to remember
 			{this.setFfAutoSync(true)}.defer(2);
