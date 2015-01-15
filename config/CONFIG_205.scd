@@ -12,7 +12,7 @@ IdentityDictionary(know: true)
 	\defaultKernel,			\basic_balance,
 	\jconvHWOutChannel,		66,
 	\stereoChanIndex,		[11, 1],
-	\rotateDegree,			-90, // option to rotate the listening position to this angle
+	\rotateDegree,			90, // option to rotate the listening position to this angle
 	\xOverHPF,				60,
 	\xOverLPF,				60,
 	\shelfFreq,				60,		// takes predecdence over listening Diameter
@@ -45,8 +45,32 @@ Array size must equal \numSatChans + \numSubChans
 see prLoadSynthDefs for how channel mappings are used
 */
 .put(\defaultSpkrDistances,
+	// [
+	// 	// drc-measured speaker distances - curtains fully open
+	// 	3.105146250000,
+	// 	3.629760000000,
+	// 	3.378087187500,
+	// 	2.949180000000,
+	// 	3.314282812500,
+	// 	3.608491875000,
+	// 	3.023618437500,
+	// 	3.576589687500,
+	// 	3.441891562500,
+	// 	2.888920312500,
+	// 	3.317827500000,
+	// 	3.601402500000,
+	// 	4.087024687500,
+	// 	3.906245625000,
+	// 	3.161861250000,
+	// 	3.721921875000,
+	// 	3.363908437500,
+	// 	3.661662187500,
+	// 	2.654970937500,
+	// 	2.94,
+	// 	2.920
+	// ]
 	[
-		// drc-measured speaker distances
+		// drc-measured speaker distances - curtains fully drawn
 		3.101601562500,
 		3.622670625000,
 		3.370997812500,
@@ -80,7 +104,32 @@ see prLoadSynthDefs for how channel mappings are used
 	// ]
 )
 .put(\defaultSpkrDelays,
+	// [
+	// 	// drc-measured speaker delays - curtains fully open
+	// 	0.002885416667,
+	// 	0.001343750000,
+	// 	0.002083333333,
+	// 	0.003343750000,
+	// 	0.002270833333,
+	// 	0.001406250000,
+	// 	0.003125000000,
+	// 	0.001500000000,
+	// 	0.001895833333,
+	// 	0.003520833333,
+	// 	0.002260416667,
+	// 	0.001427083333,
+	// 	0.000000000000,
+	// 	0.000531250000,
+	// 	0.002718750000,
+	// 	0.001072916667,
+	// 	0.002125000000,
+	// 	0.001250000000,
+	// 	0.004208333333,
+	// 	0.008437500000,
+	// 	0.010239583333
+	// ]
 	[
+		// drc-measured speaker delays - curtains fully drawn
 		0.002885416667,
 		0.001354166667,
 		0.002093750000,
@@ -105,8 +154,32 @@ see prLoadSynthDefs for how channel mappings are used
 	]
 )
 .put(\defaultSpkrGainsDB,
+	// [
+	// 	// drc-measured speaker gains - curtains fully open
+	// 	-2.916926353663,
+	// 	-1.310620951377,
+	// 	-1.784970160711,
+	// 	-2.865487100518,
+	// 	-1.576996496960,
+	// 	-0.856302204580,
+	// 	-1.971458405998,
+	// 	-1.670950107778,
+	// 	-1.316821750950,
+	// 	-2.602723157621,
+	// 	-1.734256776659,
+	// 	-1.926251956036,
+	// 	0.000000000000,
+	// 	-0.855207142058,
+	// 	-1.836792942210,
+	// 	-0.804194568331,
+	// 	-1.211393635735,
+	// 	-1.619750725390,
+	// 	-3.707459480582,
+	// 	-8.755954210527,
+	// 	-6.167524852745
+	// ]
 
-	// drc-measured gains
+	// drc-measured gains- curtains fully drawn
 	[
 		-2.853001364430,
 		-1.525170826009,
