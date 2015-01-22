@@ -5,7 +5,7 @@ SoundLabGUI {
 	var <decsHoriz, <decsSphere, <decsDome, <discreteRouters, <decsMatrix;
 	var <sampleRates, <stereoPending, <rotatePending;
 	var <gainTxt, <gainSl, <muteButton, <attButton, <srMenu, <decMenus,
-		<decMenuLayouts, <horizMenu, <sphereMenu, <domeMenu, < matrixMenu,
+		<decMenuLayouts, <horizMenu, <sphereMenu, <domeMenu, <matrixMenu,
 		<discreteMenu, <stereoMenu, <rotateMenu, <correctionMenu, <applyButton,
 		<stateTxt, <postTxt, <sweetSl, <sweetTxt, <sweetSpec;
 	var <pendingDecType, <pendingInput, <pendingSR, <pendingKernel;

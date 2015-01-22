@@ -243,6 +243,7 @@
 
 	// NOTE: arrayOutIndices is [half of horiz] ++ [all elevation dome] spkr indices
 	prLoadDiametricDomeDecoderSynth { |decSpecs|
+
 		var domeOutbusNums, domeOutbusNumsFullHoriz, partialDomeDirections, subOutbusNums, subDirections;
 		var halfHorizDirections, posElevDirections, halfSphereDirections, lowerStartDex, domeEndDex, domeDecoderMatrix;
 		var sphereDecoderMatrix, subDecoderMatrix, decSynthDef;
@@ -421,7 +422,8 @@
 		/* --build the synthdef-- */
 
 		decSynthDef = SynthDef( name, {
-			arg out_busnum=0, in_busnum, fadeTime=0.2, subgain=0, rotate=0, freq=400, gate=1;
+			arg out_busnum=0, in_busnum, fadeTime=0.2, subgain=0, rotate=0, freq=400, gate=1,
+			shelfFreq = 400;  // shelfFreq defined but not used in single matrix decoder
 			var in, env, sat_out, sub_out;
 
 			env = EnvGen.ar(
@@ -433,8 +435,6 @@
 			(ambiOrder == 1).if{ // transform only supported at first order atm
 				in = FoaTransform.ar(in, 'rotate', rotate); // rotate the listening orientation
 			};
-
-			// TODO : add psychoshelf?
 
 			// near-field compensate, decode, remap to rig
 			// it's expected that the matrix has outputs for all speakers in the rig,
@@ -538,7 +538,7 @@
 		/* --build the synthdef-- */
 		/*------------------------*/
 		decSynthDef = SynthDef( name, {
-			arg out_busnum=0, in_busnum, fadeTime=0.2, subgain=0, rotate=0, freq=400, gate=1;
+			arg out_busnum=0, in_busnum, fadeTime=0.2, subgain=0, rotate=0, shelfFreq=400, gate=1;
 			var in, env, sat_out, sub_out;
 			var k = -180.dbamp; // RM-shelf gain (for cross-over)
 
@@ -549,12 +549,17 @@
 
 			// read in (ambisonic 'b-format')
 			in = In.ar(in_busnum, (ambiOrder + 1).squared) * env;
-			// transform only supported at first order atm
+
+			// transform and physcoshelf only supported at first order atm
 			(ambiOrder == 1).if{
 				in = FoaTransform.ar(in, 'rotate', rotate); // rotate the listening orientation
+				in = FoaPsychoShelf.ar(
+					in,
+					shelfFreq, // default, overwritten by config setting
+					1.4142135623731, // hard coded k vals from a 'dual' decoder
+					0.81649658092773
+				);
 			};
-
-			// TODO : add psychoshelf?
 
 			// near-field compensate, decode, remap to rig
 			// it's expected that the matrix has outputs for all speakers in the rig,
@@ -569,7 +574,7 @@
 				Out.ar(
 					out_busnum + spkdex, // remap decoder channels to rig channels
 					AtkMatrixMix.ar(
-						RMShelf2.ar( nfc, freq, k ),
+						RMShelf2.ar( nfc, shelfFreq, k ),
 						matrix_lf.fromRow(i)
 					)
 				);
@@ -577,7 +582,7 @@
 				Out.ar(
 					out_busnum + spkdex, // remap decoder channels to rig channels
 					AtkMatrixMix.ar(
-						RMShelf2.ar( nfc, freq, -1 * k ),
+						RMShelf2.ar( nfc, shelfFreq, -1 * k ),
 						matrix_hf.fromRow(i)
 					)
 				);
