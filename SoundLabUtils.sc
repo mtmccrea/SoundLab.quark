@@ -223,7 +223,7 @@
 				},
 				// TODO:	this is a quick fix for non-even/non-diametric sub layout
 				// 			Not this likely hasn't been used/tested because 113 specifies
-				//			a false 2nd sub
+				//			a false 2nd sub - note for single sub receiving W, boost by 3dB
 				{
 					subOutbusNums.do({ | spkdex, i |
 						var nfc;
@@ -553,12 +553,6 @@
 			// transform and physcoshelf only supported at first order atm
 			(ambiOrder == 1).if{
 				in = FoaTransform.ar(in, 'rotate', rotate); // rotate the listening orientation
-				in = FoaPsychoShelf.ar(
-					in,
-					shelfFreq, // default, overwritten by config setting
-					1.4142135623731, // hard coded k vals from a 'dual' decoder
-					0.81649658092773
-				);
 			};
 
 			// near-field compensate, decode, remap to rig
