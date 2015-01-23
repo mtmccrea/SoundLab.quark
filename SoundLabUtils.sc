@@ -493,6 +493,7 @@
 
 	prLoadDualMatrixDecoder { |decName, matrixPN_LF, matrixPN_HF|
 		var subOutbusNums, subDirections, subDecoderMatrix;
+		var lf_array, hf_array;
 		var path_lf, path_hf, name, matrix_lf, matrix_hf, ambiOrder, decSynthDef;
 
 		/*-------------------------------------*/
@@ -502,9 +503,12 @@
 		path_hf = matrixPN_HF.fullPath;
 		name = decName.asSymbol;
 
+		lf_array = FileReader.read(path_lf).asFloat;
+		hf_array = FileReader.read(path_hf).asFloat;
+
 		// load decoder coefficient matrix
-		matrix_lf = Matrix.with(FileReader.read(path_lf).asFloat);
-		matrix_hf = Matrix.with(FileReader.read(path_hf).asFloat);
+		matrix_lf = Matrix.with(lf_array);
+		matrix_hf = Matrix.with(hf_array);
 
 		// determine order from matrix (must be 'full' order)
 		// NOTE: addition of matricies is a quick way to check whether they are the same
@@ -560,6 +564,7 @@
 			// even if some are zeroed out in the matrix
 			numSatChans.do({ | spkdex, i |
 				var nfc;
+
 				(ambiOrder == 1).if( // nfc only supported at first order atm
 					{ nfc = FoaNFC.ar( in, spkrDists.at(spkdex) ) },
 					{ nfc = in }
