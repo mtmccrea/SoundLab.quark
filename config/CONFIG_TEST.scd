@@ -40,6 +40,12 @@ IdentityDictionary(know: true)
 	\decoderMatricesPath,	"/Users/admin/Documents/Sound_Labs/117/Decoder/117_Decoder_Testing/DecoderMatrices/"
 ])
 
+.put(\kernelSpec,
+	["desk_curtains_screen/medium/",	'desk',	'curtains',	'screen',	'medium'],
+	["desk_curtains/tight/",			'desk',	'curtains',				'tight' ],
+	["open_floor_bare_walls/tight/",									'tight' ],
+)
+
 /*
 Speaker order is assumed to be satellites, subs, stereo (optional).
 Stereo not included in these arrays, as there isn't correction for them.
