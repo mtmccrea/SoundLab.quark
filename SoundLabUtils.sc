@@ -22,6 +22,9 @@
 		compDict.gains.put( \default, config.defaultSpkrGainsDB );
 
 		/* parse distance delay and gain files from kernel folders */
+		// Folder structure: /sampleRate/kernelName/ holds
+		// delay, dist, gain .txt files and folders for each "version"
+		// of the kernel, i.e. the various settings: moderate, high correction, min/lin phase, etc
 		kernelDirPath.entries.do({ |sr_pn|
 			var sr, nm, knm, result;
 

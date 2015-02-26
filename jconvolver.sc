@@ -15,7 +15,7 @@ Jconvolver {
 
 	var <kernelFolderPath, <compensateLatency, <configFileStringArr;
 	var <partitionSize, <maxKernelSize, <numInChannels, <numOutChannels, channelMatrix;
-	var <kernelName, <pid;
+	var <pid;
 
 	// srcChannels: number for number of channels starting at first, array for anything else, 0-based
 	// dstChannels: (use srcCh) or an array, 0-based
@@ -195,9 +195,7 @@ Jconvolver {
 				maxKernelSize = thisArr[4].asInteger;
 			});
 		});
-		kernelName = kernelFolderPath.withoutTrailingSlash.split.last.asSymbol;
-		//debug
-		postf("kernelName: %", kernelName);
+
 		//start convolver
 		"Starting jconvolver...".postln;
 		// command = executablePath;

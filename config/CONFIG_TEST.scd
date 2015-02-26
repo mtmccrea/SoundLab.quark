@@ -9,7 +9,7 @@ IdentityDictionary(know: true)
 	\numSatChans,			24,
 	\numSubChans, 			4,
 	\defaultDecoderName,	\Sph_18ch_6x6x6, // must match a name in \decAttributeList below
-	\defaultKernel,			\basic_balance,
+	\defaultKernelPath,		\basic_balance,
 	\jconvHWOutChannel,		0,
 	\stereoChanIndex,		[28, 29],
 	\rotateDegree,			-90,	// option to rotate the listening position to this angle
@@ -36,7 +36,7 @@ IdentityDictionary(know: true)
 	\whichMadiOutput,       nil,
 
 	/* file paths */
-	\kernelsPath,          	"/Users/admin/Documents/Sound_Labs/117/Decoder/117_Decoder_Testing/SoundLabKernels/",
+	\kernelsPath,          	"/Users/admin/Documents/Sound_Labs/SoundLabKernels/",
 	\decoderMatricesPath,	"/Users/admin/Documents/Sound_Labs/117/Decoder/117_Decoder_Testing/DecoderMatrices/"
 ])
 

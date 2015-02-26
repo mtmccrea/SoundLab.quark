@@ -10,14 +10,14 @@ SoundLab {
 	var <>xfade = 0.2,  <>debug=true, <kernels;
 	var <globalAmp, <numSatChans, <numSubChans, <totalArrayChans, <numKernelChans, <>rotateDegree, <>xOverHPF, <>xOverLPF, <>shelfFreq;
 	var <hwInCount, <hwInStart;
-	var <config, <labName, <numHardwareOuts, <numHardwareIns, <stereoChanIndex, <>defaultDecoderName, <>defaultKernel, <>kernelDirPath, <>decoderMatricesPath;
+	var <config, <labName, <numHardwareOuts, <numHardwareIns, <stereoChanIndex, <>defaultDecoderName, <>defaultKernelPath, <>kernelDirPath, <>decoderMatricesPath;
 
 	var <server, <gui, <curKernel, <stereoActive, <isMuted, <isAttenuated, <stateLoaded, <rotated;
 	var <clipMonitoring, <curDecoderPatch, rbtTryCnt;
 	var <clipListener, <reloadGUIListener, <clipMonDef, <patcherDef;
 	var <patcherGroup, <stereoPatcherSynths, <satPatcherSynths, <subPatcherSynths;
 	var <monitorGroup_ins, <monitorGroup_outs, <monitorSynths_outs, <monitorSynths_ins;
-	var <jconvolver, <nextjconvolver, <jconvinbus, <nextjconvinbus, <jconvHWOutChannel; //, <nextKernel;
+	var <jconvolver, <nextjconvolver, <jconvinbus, <nextjconvinbus, <jconvHWOutChannel;
 
 	// SoundLabUtils
 	var <compDict, <decAttributes, <decAttributeList, <matrixDecoderNames;
@@ -39,13 +39,13 @@ SoundLab {
 		File.use( File.realpath(this.class.filenameSymbol).dirname ++ "/" ++ configFileName, "r", { |f|
 			config = f.readAllString.interpret;
 		});
-		// config = thisProcess.interpreter.executeFile(File.realpath(this.class.filenameSymbol).dirname ++ "/CONFIG.scd");
+
 		// defaults
 		labName				= config.labName ?? {""};
 		numHardwareOuts		= config.numHardwareOuts;
 		numHardwareIns		= config.numHardwareIns;
 		defaultDecoderName	= config.defaultDecoderName;	// synthDef name
-		defaultKernel		= config.defaultKernel;
+		defaultKernelPath	= config.defaultKernelPath;
 		stereoChanIndex		= config.stereoChanIndex;
 		numSatChans			= config.numSatChans;
 		numSubChans			= config.numSubChans;
@@ -146,29 +146,51 @@ SoundLab {
 
 		server.doWhenBooted({
 			fork {
-				"waiting 3 seconds".postln;
-				3.wait; // give server time to get sorted
+				"waiting 2 seconds".postln;
+				2.wait; // give server time to get sorted
 
-				// if( usingKernels, {
 				// get an up-to-date list of the kernels available at this sample rate
-				kernels = compDict.delays.keys.select({ |name|
-					name.asString.contains(server.sampleRate.asString)
+				kernels = [];
+				kernelDirPath.entries.do({ |sr_pn|
+					var sr, nm, knm, result;
+
+					(sr_pn.isFolder && (sr_pn.folderName.asInt == server.sampleRate)).if{
+
+						sr_pn.entries.do({ |kern_pn|
+							kern_pn.isFolder.if{
+								// kernel "category name"
+								knm = kern_pn.folderName;
+								kern_pn.entries.do{ |entry_pn|
+									// kernel folder
+									if(entry_pn.isFolder, {kernels = kernels.add(entry_pn)});
+								}
+							}
+						})
+					}
 				});
-				// reformat to exclude SR
-				kernels = kernels.collect{|key|
-					var modkey;
-					modkey = key.asString;
-					modkey = modkey.replace("_44100","");
-					modkey = modkey.replace("_48000","");
-					modkey = modkey.replace("_96000","");
-					modkey.asSymbol;
-				};
-				kernels = [\basic_balance] ++ kernels.asArray;
+
+				// kernels = compDict.delays.keys.select({ |name|
+				// 	name.asString.contains(server.sampleRate.asString)
+				// });
+				// // reformat to exclude SR
+				// kernels = kernels.collect{|key|
+				// 	var modkey;
+				// 	modkey = key.asString;
+				// 	modkey = modkey.replace("_44100","");
+				// 	modkey = modkey.replace("_48000","");
+				// 	modkey = modkey.replace("_96000","");
+				// 	modkey.asSymbol;
+				// };
+
+				kernels = [\basic_balance] ++ kernels;
 
 				// in the case of a SR change, check to make sure the curKernel is still available
 				// at this sampleRate
 				if( curKernel.notNil )
 				{
+					// TODO: now that kernels list stores pathnames, more specific kernel attribute
+					// checking will be needed to match kernels across sample rate changes
+
 					if( kernels.includes(curKernel).not, {
 						this.changed(\reportStatus,
 							warn("Last kernel wasn't found at this sample rate. Defaulting to basic_balance.")
@@ -278,7 +300,7 @@ SoundLab {
 						{curDecoderPatch.decoderName}, // carried over from reboot/sr change
 						{defaultDecoderName}
 					),
-					if(usingKernels, {curKernel ?? {defaultKernel}},{nil}),
+					if(usingKernels, {curKernel ?? {defaultKernelPath}},{nil}),
 					loadCondition
 				);
 				loadCondition.wait; "New Signal Chain Loaded".postln;
@@ -293,22 +315,22 @@ SoundLab {
 		});
 	}
 
-	startNewSignalChain { |deocderName, kernelName, completeCondition|
+	startNewSignalChain { |deocderName, kernelPath, completeCondition|
 		var cond;
 		cond = Condition(false);
 		fork {
-			"in startNewSignalChain, kernelName: %\n".postf(kernelName);
+			"in startNewSignalChain, kernelPath: \n\t%\n".postf(kernelPath);
 
 			// LOAD JCONVOLVER
-			if( (kernelName == \basic_balance),
+			if( (kernelPath == \basic_balance),
 				{	"changing to basic_balance, usingKernels = false".postln; // debug
 					this.setNoKernel;
 					cond.test_(true).signal
 				},{
-					if( kernelName.notNil, {
+					if( kernelPath.notNil, {
 						usingKernels = true;
 						"loading new jconvolver".postln; // debug
-						this.loadJconvolver(kernelName, cond); // this sets nextjconvolver var
+						this.loadJconvolver(kernelPath, cond); // this sets nextjconvolver var
 						// TODO: confirm what happens below when loadJconvolver fails and
 						// nextjconvolver set to nil?
 						},{
@@ -324,16 +346,15 @@ SoundLab {
 
 			// LOAD DELAYS AND GAINS
 
-			if( loadedDelDistGain.isNil				// startup
-				or: nextjconvolver.notNil			// kernel change
-				or: (kernelName == \basic_balance),	// switching to basic_balance
+			if( loadedDelDistGain.isNil					// startup
+				or: nextjconvolver.notNil				// kernel change
+				or: (kernelPath == \basic_balance),	// switching to basic_balance
 				{
 					this.prLoadDelDistGain(
 						// nextjconvolver var set in loadJconvolver method above
 						if( nextjconvolver.notNil,
-							{nextjconvolver.kernelName},
-							{
-								"selecting default dist/gains".postln;
+							{	nextjconvolver.kernelFolderPath },
+							{	"selecting default dist/gains".postln;
 								\default; // return
 							}
 						),
@@ -343,7 +364,14 @@ SoundLab {
 					cond.test_(false);
 
 					nextjconvolver.notNil.if{
-						if( loadedDelDistGain != ((nextjconvolver.kernelName++"_"++server.sampleRate).asSymbol),
+						var testKey, kpn;
+
+						kpn = PathName(nextjconvolver.kernelFolderPath);
+
+						// grab the kernel "category" name: one folder up from the kernel folder itself
+						testKey = (kpn.allFolders[kpn.allFolders.size-2]).asSymbol;
+
+						if( loadedDelDistGain != testKey,
 							{ warn("nextjconvolver kernel doesn't match the key that
 								sets the delays, distances and gains in the decoder synth");
 								nextjconvolver.free;
@@ -393,7 +421,7 @@ SoundLab {
 			nextjconvolver !? {
 				jconvolver !? {jconvolver.free}; 	// free the current jconvolver
 				jconvolver = nextjconvolver;		// update var with new instance
-				curKernel = jconvolver.kernelName;
+				curKernel = jconvolver.kernelFolderPath;
 				jconvinbus = nextjconvinbus;
 				nextjconvolver = nil;				// reset var
 				this.changed(\kernel, curKernel);
@@ -456,16 +484,16 @@ SoundLab {
 	}
 
 	// expects kernels to be located in kernelDirPath/sampleRate/kernelType/
-	loadJconvolver { |newKernel, completeCondition, timeout = 5|
-		var kernelDir_pn, k_path, partSize, k_size,
+	loadJconvolver { |newKernelPath, completeCondition, timeout = 5|
+		var kernelDir_pn, partSize, k_size,
 		numFoundKernels = 0, numtries = 50, trycnt=0,
 		newjconvolver, scOutbusConnect;
 		fork {
 			block { |break|
-				kernelDir_pn = this.prFindKernelDir(newKernel);
+				kernelDir_pn = PathName(newKernelPath); //this.prFindKernelDir(newKernel);
 				kernelDir_pn.postln;
 				kernelDir_pn ?? {
-					this.changed(\reportStatus, warn("Kernel name not found: "++newKernel++". No longer using kernels!"));
+					this.changed(\reportStatus, warn("Kernel name not found: "++newKernelPath++".  No longer using kernels!"));
 					jconvolver ?? {
 						// if no kernel already loaded, not using kernels
 						warn("No longer usingKernels");
@@ -475,7 +503,6 @@ SoundLab {
 				};
 
 				// initialize Jconvolver variables
-				k_path = kernelDir_pn.absolutePath;
 				partSize = if(usingSLHW, {slhw.jackPeriodSize},{512});
 				kernelDir_pn.filesDo({ |file|
 					if(file.extension == "wav", {
@@ -487,7 +514,7 @@ SoundLab {
 				});
 				// debug
 				postf("path to kernels: % \npartition size: % \nkernel size: %\n",
-					k_path, partSize, k_size
+					newKernelPath, partSize, k_size
 				);
 				// check that we have enough kernels to match all necessary speakers
 				if( numFoundKernels != numKernelChans, {
@@ -509,14 +536,14 @@ SoundLab {
 				);
 
 				Jconvolver.createSimpleConfigFileFromFolder(
-					kernelFolderPath: k_path, partitionSize: partSize,
+					kernelFolderPath: newKernelPath, partitionSize: partSize,
 					maxKernelSize: k_size, matchFileName: "*.wav",
 					autoConnectToScChannels: nextjconvinbus, autoConnectToSoundcardChannels: jconvHWOutChannel
 				);
 
 				jconvinbus = nextjconvinbus;
 
-				newjconvolver = Jconvolver.newFromFolder(k_path);
+				newjconvolver = Jconvolver.newFromFolder(newKernelPath);
 
 				while( {newjconvolver.isRunning.not and: (trycnt < numtries)}, {
 					trycnt = trycnt+1;
