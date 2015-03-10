@@ -9,7 +9,7 @@ IdentityDictionary(know: true)
 	\numSatChans,			24,
 	\numSubChans, 			4,
 	\defaultDecoderName,	\Sph_18ch_6x6x6, // must match a name in \decAttributeList below
-	\defaultKernelPath,		\basic_balance,
+	\defaultKernelPath,		"desk_full_curtains/k_24_1.365w_18c_5b_0.77t/", // no leading '/'
 	\jconvHWOutChannel,		0,
 	\stereoChanIndex,		[28, 29],
 	\rotateDegree,			-90,	// option to rotate the listening position to this angle
@@ -40,10 +40,22 @@ IdentityDictionary(know: true)
 	\decoderMatricesPath,	"/Users/admin/Documents/Sound_Labs/117/Decoder/117_Decoder_Testing/DecoderMatrices/"
 ])
 
-.put(\kernelSpec,
-	["desk_curtains_screen/medium/",	'desk',	'curtains',	'screen',	'medium'],
-	["desk_curtains/tight/",			'desk',	'curtains',				'tight' ],
-	["open_floor_bare_walls/tight/",									'tight' ],
+// no leading '/' in relative folder path
+.put(\kernelSpec, [
+	["desk_curtains_screen/k_9_1.365w_18c_3b_0.77t/",	'desk',	'curtains',	'screen', 'open',	'reference'],
+	["desk_curtains_screen/k_24_1.365w_18c_5b_0.77t/",	'desk',	'curtains',	'screen', 'medium',	'reference'],
+	["desk_curtains_screen/k_24_1.365w_18c_9b_0.77t/",	'desk',	'curtains',	'screen', 'tight',	'reference'],
+	["desk_curtains_screen/m_9_1.365w_18c_3b_0.77t/",	'desk',	'curtains',	'screen', 'open',	'realtime'],
+	["desk_curtains_screen/m_24_1.365w_18c_5b_0.77t/",	'desk',	'curtains',	'screen', 'medium',	'realtime'],
+	["desk_curtains_screen/m_24_1.365w_18c_9b_0.77t/",	'desk',	'curtains',	'screen', 'tight',	'realtime'],
+
+	["desk_full_curtains/k_9_1.365w_18c_3b_0.77t/",	'desk',	'curtains', 'open',		'reference'],
+	["desk_full_curtains/k_24_1.365w_18c_5b_0.77t/",	'desk',	'curtains',	'medium',	'reference'],
+	["desk_full_curtains/k_24_1.365w_18c_9b_0.77t/",	'desk',	'curtains',	'tight',	'reference'],
+	["desk_full_curtains/m_9_1.365w_18c_3b_0.77t/",	'desk',	'curtains',	'open',		'realtime'],
+	["desk_full_curtains/m_24_1.365w_18c_5b_0.77t/",	'desk',	'curtains',	'medium',	'realtime'],
+	["desk_full_curtains/m_24_1.365w_18c_9b_0.77t/",	'desk',	'curtains',	'tight',	'realtime'],
+	]
 )
 
 /*

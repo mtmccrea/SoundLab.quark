@@ -6,8 +6,8 @@ SoundLabGUI {
 	var <sampleRates, <stereoPending, <rotatePending;
 	var <gainTxt, <gainSl, <muteButton, <attButton, <srMenu, <decMenus,
 		<decMenuLayouts, <horizMenu, <sphereMenu, <domeMenu, <matrixMenu,
-		<discreteMenu, <stereoMenu, <rotateMenu, <correctionMenu, <applyButton,
-		<stateTxt, <postTxt, <sweetSl, <sweetTxt, <sweetSpec;
+		<discreteMenu, <stereoMenu, <rotateMenu, <correctionAttributes, <applyButton, <basicBalanceButton,//<correctionMenu
+		<stateTxt, <postTxt, <sweetSl, <sweetTxt, <sweetSpec. <kernelLayout, <kernelCheckBoxes;
 	var <pendingDecType, <pendingInput, <pendingSR, <pendingKernel;
 
 	var <ampSpec, <oscFuncDict, buildList;
@@ -220,10 +220,30 @@ SoundLabGUI {
 		})
 		;
 		// CORRECTION
-		correctionMenu = WsPopUpMenu.init(wsGUI)
-		.items_(['-'] ++ sl.kernels.sort) // alphabetize
-		.action_({|mn|
-			pendingKernel = if(mn.item != '-', {mn.item},{nil});
+
+		// correctionMenu = WsPopUpMenu.init(wsGUI)
+		// .items_(['-'] ++ sl.kernels.sort) // alphabetize
+		// .action_({|mn|
+		// 	pendingKernel = if(mn.item != '-', {mn.item},{nil});
+		// })
+		// ;
+
+		correctionAttributes = sl.collectKernelAttributes
+		;
+		basicBalanceButton = WsSimpleButton.init(wsGUI)
+		.states_([
+			["Basic Balance", Color.black, Color.white],
+			["Basic Balance Pending", Color.black, Color.gray],
+		])
+		.string_("Basic Balance")
+		.action_({ |but|
+			if( but.value == 1, {
+				kernelCheckBoxes.do(_.value_(false)); // zero out check boxes
+				pendingKernel = \basic_balance;
+				},{
+					pendingKernel = nil;
+				}
+			);
 		})
 		;
 
@@ -264,6 +284,7 @@ SoundLabGUI {
 						pendingKernel.notNil	or:
 						pendingSR.notNil,
 						{
+							var sendKernel;
 							// TODO check here if there's a SR change, if so set state current vars
 							// of soundlab then change sample rate straight away,
 							// no need to update signal chain twice
@@ -271,10 +292,25 @@ SoundLabGUI {
 							pendingDecType = pendingDecType ?? sl.curDecoderPatch.decoderName;
 							("Updating decoder to "++pendingDecType).postln;
 
-							if( pendingKernel.notNil,
-								{ sl.startNewSignalChain(pendingDecType, pendingKernel, updateCond) },
+							// find the kernel
+							if( pendingKernel.notNil, {
+
+								sendKernel = if(pendingKernel != \basic_balance, {
+									var selectedAttributes;
+									// find kernel match to check box states
+									selectedAttributes = correctionAttributes.select{|att, i| kernelCheckBoxes[i].value};
+									sl.config.kernelSpec.select{|att_set, i| att_set.includes(selectedAttributes)}
+									sl.kernelDirPathName.absolutePath ++ pendingKernel;
+									},{ \basic_balance }
+								);
+							});
+
+
+							if( sendKernel.notNil,
+								{ sl.startNewSignalChain( pendingDecType, sendKernel, updateCond ) },
 								{ sl.startNewSignalChain(pendingDecType, completeCondition: updateCond) }
 							);
+
 						},{ updateCond.test_(true).signal }
 					);
 					updateCond.wait; // wait for new signal chain to play
@@ -397,7 +433,8 @@ SoundLabGUI {
 					rotateMenu.valueAction_(0);
 				},
 				\kernel,	{
-					correctionMenu.valueAction_(0);
+					// correctionMenu.valueAction_(0);
+					kernelCheckBoxes.do(_.value_(false)); // clear the kernel boxes
 					this.status_("Kernel updated: " ++ sl.curKernel);
 				},
 				\stateLoaded,	{
@@ -604,15 +641,29 @@ SoundLabGUI {
 						nil,
 
 						// correction
-						WsVLayout( Rect(0,0,0.5,0.1),
+						WsVLayout( Rect(0,0,1,0.1),
 
 							WsStaticText.init(wsGUI, Rect(0,0, 1,0.5))
 							.string_("<strong>Room correction</strong>")
 							.textAlign_(\left)
 							.font_(Font(font, mdFontSize)),
 
-							WsHLayout( Rect(0,0, 1,0.5),
-								correctionMenu.bounds_(Rect(0,0,1/2,1)), 0.5)
+							WsHLayout(
+								kernelLayout = WsHLayout( Rect(0,0, 0.8,1) ), // does this update its real coordinates on canvas?
+								// //correctionMenu.bounds_(Rect(0,0,1/2,1)), 0.5
+								// *{
+								// 	kernelCheckBoxes = correctionAttributes.collect{ WsCheckbox.init(wsGUI, nil) };
+								// 	// return the VLayouts from this function
+								// 	correctionAttributes.collect{ |att, i|
+								// 		VLayout( Rect(0,0,1,1),
+								// 			WsStaticText.init(wsGUI, nil),
+								// 			kernelCheckBoxes[i]
+								// 		);
+								// 	};
+								// }.value
+								// )
+								basicBalanceButton.bounds_(Rect(0,0,0.2, 0.5))
+							)
 						),
 
 						nil,
@@ -641,7 +692,7 @@ SoundLabGUI {
 
 	recallValues {
 		fork {
-			var sweetRad;
+			var sweetRad, kernelCheck;
 			gainSl.value_(sl.globalAmp.ampdb);
 			gainTxt.string_( format(
 				"<strong>Gain: </strong>% dB",
@@ -652,7 +703,26 @@ SoundLabGUI {
 			attButton.value_( if(sl.isAttenuated, {1},{0}) );
 
 			// reload the kernel names in the case of a sample rate change
-			correctionMenu.items_(['-'] ++ sl.kernels.sort);
+			//correctionMenu.items_(['-'] ++ sl.kernels.sort);
+			// set/refresh kernel CheckBoxes
+			kernelLayout.remove;
+			kernelLayout = WsHLayout( kernelLayout.bounds, //bounds are still preserved despite it being removed
+				//correctionMenu.bounds_(Rect(0,0,1/2,1)), 0.5
+				*{
+					kernelCheckBoxes = correctionAttributes.collect{ WsCheckbox.init(wsGUI, nil) };
+					// return the VLayouts from this function
+					correctionAttributes.collect{ |att, i|
+						VLayout( Rect(0,0,1,1),
+							WsStaticText.init(wsGUI, nil),
+							kernelCheckBoxes[i]
+						);
+					};
+				}.value
+			);
+			// put the new layout back in the old one's place
+			wsGUI.layout_(kernelLayout);
+
+			basicBalanceButton.value_(0);
 
 			sweetRad = sl.getDiamByFreq(sl.shelfFreq.round(0.001));
 			sweetSl.value_(sweetRad);
@@ -662,7 +732,7 @@ SoundLabGUI {
 			);
 
 			(	decMenus.values.collect({|dict| dict.menu})
-				++ [srMenu, discreteMenu, stereoMenu, rotateMenu, correctionMenu]
+				++ [srMenu, discreteMenu, stereoMenu, rotateMenu /*, correctionMenu*/]
 			).do{ |menu| menu.value_(0)};
 
 			this.postState;

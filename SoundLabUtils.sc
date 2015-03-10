@@ -25,7 +25,7 @@
 		// Folder structure: /sampleRate/kernelName/ holds
 		// delay, dist, gain .txt files and folders for each "version"
 		// of the kernel, i.e. the various settings: moderate, high correction, min/lin phase, etc
-		kernelDirPath.entries.do({ |sr_pn|
+		kernelDirPathName.entries.do({ |sr_pn|
 			var sr, nm, knm, result;
 
 			(sr_pn.isFolder && (sr_pn.folderName.asInt !=0)).if{
@@ -125,6 +125,16 @@
 		}
 	}
 
+	collectKernelAttributes {
+		attributes = [];
+		config.kernelSpec.do{|k_attributes|
+			// drop the kernel path leaving only user-defined attributes
+			k_attributes.drop(1).do{ |att|
+				if( attributes.includes(att).not, {attributes = attributes.add(att)} )
+			};
+		};
+		^attributes
+	}
 
 	prLoadDiametricDecoderSynth { |decSpecs|
 		var arrayOutIndices, satOutbusNums, subOutbusNums, satDirections, subDirections;
@@ -805,7 +815,7 @@
 
 	prFindKernelDir { |kernelName|
 		var kernelDir_pn;
-		kernelDirPath.folders.do({ |sr_pn|
+		kernelDirPathName.folders.do({ |sr_pn|
 			if( sr_pn.folderName.asInt == server.sampleRate, {
 				sr_pn.folders.do({ |kernel_pn|
 					if( kernel_pn.folderName.asSymbol == kernelName, {

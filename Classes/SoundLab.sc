@@ -10,7 +10,7 @@ SoundLab {
 	var <>xfade = 0.2,  <>debug=true, <kernels;
 	var <globalAmp, <numSatChans, <numSubChans, <totalArrayChans, <numKernelChans, <>rotateDegree, <>xOverHPF, <>xOverLPF, <>shelfFreq;
 	var <hwInCount, <hwInStart;
-	var <config, <labName, <numHardwareOuts, <numHardwareIns, <stereoChanIndex, <>defaultDecoderName, <>defaultKernelPath, <>kernelDirPath, <>decoderMatricesPath;
+	var <config, <labName, <numHardwareOuts, <numHardwareIns, <stereoChanIndex, <>defaultDecoderName, <>defaultKernelPath, <>kernelDirPathName, <>decoderMatricesPath;
 
 	var <server, <gui, <curKernel, <stereoActive, <isMuted, <isAttenuated, <stateLoaded, <rotated;
 	var <clipMonitoring, <curDecoderPatch, rbtTryCnt;
@@ -60,8 +60,8 @@ SoundLab {
 		// note shelfFreq in config takes precedence over listeningDiameter
 		shelfFreq			= config.shelfFreq ?? config.listeningDiameter ?? {400};
 
-		// kernelDirPath = PathName.new(Platform.resourceDir ++ "/sounds/SoundLabKernelsNew/");
-		kernelDirPath = kernelDirPath ?? {
+		// kernelDirPathName = PathName.new(Platform.resourceDir ++ "/sounds/SoundLabKernelsNew/");
+		kernelDirPathName = kernelDirPathName ?? {
 			config.kernelsPath !? {
 				if(config.kernelsPath[0].asSymbol == '/', {//it's absolute path
 					PathName.new(config.kernelsPath);
@@ -151,7 +151,7 @@ SoundLab {
 
 				// get an up-to-date list of the kernels available at this sample rate
 				kernels = [];
-				kernelDirPath.entries.do({ |sr_pn|
+				kernelDirPathName.entries.do({ |sr_pn|
 					var sr, nm, knm, result;
 
 					(sr_pn.isFolder && (sr_pn.folderName.asInt == server.sampleRate)).if{
@@ -162,7 +162,13 @@ SoundLab {
 								knm = kern_pn.folderName;
 								kern_pn.entries.do{ |entry_pn|
 									// kernel folder
-									if(entry_pn.isFolder, {kernels = kernels.add(entry_pn)});
+									if(entry_pn.isFolder, {
+										// could add check here for soundfiles within
+										// to confirm it's a kernel folder
+
+										// kernel stored as String of the path relative to sample rate
+										kernels = kernels.add( knm ++ "/" ++ entry_pn.folderName )
+									});
 								}
 							}
 						})
@@ -300,7 +306,7 @@ SoundLab {
 						{curDecoderPatch.decoderName}, // carried over from reboot/sr change
 						{defaultDecoderName}
 					),
-					if(usingKernels, {curKernel ?? {defaultKernelPath}},{nil}),
+					if(usingKernels, {kernelDirPathName.absolutePath ++ (curKernel ?? {defaultKernelPath})},{nil}),
 					loadCondition
 				);
 				loadCondition.wait; "New Signal Chain Loaded".postln;
