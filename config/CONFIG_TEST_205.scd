@@ -9,7 +9,7 @@ IdentityDictionary(know: true)
 	\numSatChans,			19,
 	\numSubChans, 			2,
 	\defaultDecoderName,	\Horiz_Dodec, // must match a name in \decAttributeList below
-	\defaultKernel,			\basic_balance,
+	\defaultKernelPath,		"desk_full_curtains/k_24_1.365w_18c_5b_0.77t/", // no leading '/'
 	\jconvHWOutChannel,		0,
 	\stereoChanIndex,		[28, 29],
 	\rotateDegree,			-90,	// option to rotate the listening position to this angle
@@ -36,9 +36,30 @@ IdentityDictionary(know: true)
 	\whichMadiOutput,       nil,
 
 	/* file paths */
-	\kernelsPath,          	"/Users/admin/Documents/Sound_Labs/117/Decoder/117_Decoder_Testing/SoundLabKernels/",
+	\kernelsPath,          	"/Users/admin/Documents/Sound_Labs/SoundLabKernels/",
 	\decoderMatricesPath,	"/Users/admin/Documents/Sound_Labs/117/Decoder/117_Decoder_Testing/DecoderMatrices/"
 ])
+
+// no leading '/' in relative folder path
+.put(\kernelSpec, [
+	// [ path relative to \kernelsPath,'degree' (dropdown),  [...dropdown meny attributes], [...check box (true) attributes] ]
+	// note dropdown array size = number of dropdowns
+	// column defines selection within one dropdown.
+	["desk_curtains_screen/k_9_1.365w_18c_3b_0.77t/",	['open',	'reference'],	['desk', 'curtains', 'screen'] ],
+	["desk_curtains_screen/k_24_1.365w_18c_5b_0.77t/",	['medium',	'reference'],	['desk', 'curtains', 'screen'] ],
+	["desk_curtains_screen/k_24_1.365w_18c_9b_0.77t/",	['tight',	'reference'],	['desk', 'curtains', 'screen'] ],
+	["desk_curtains_screen/m_9_1.365w_18c_3b_0.77t/",	['open',	'realtime'],	['desk', 'curtains', 'screen'] ],
+	["desk_curtains_screen/m_24_1.365w_18c_5b_0.77t/",	['medium',	'realtime'], 	['desk', 'curtains', 'screen'] ],
+	["desk_curtains_screen/m_24_1.365w_18c_9b_0.77t/",	['tight',	'realtime'], 	['desk', 'curtains', 'screen'] ],
+
+	["desk_full_curtains/k_9_1.365w_18c_3b_0.77t/",		['open',	'reference'],	['desk', 'curtains'] ],
+	["desk_full_curtains/k_24_1.365w_18c_5b_0.77t/",	['medium',	'reference'],	['desk', 'curtains'] ],
+	["desk_full_curtains/k_24_1.365w_18c_9b_0.77t/",	['tight',	'reference'],	['desk', 'curtains'] ],
+	["desk_full_curtains/m_9_1.365w_18c_3b_0.77t/",		['open',	'realtime'], 	['desk', 'curtains'] ],
+	["desk_full_curtains/m_24_1.365w_18c_5b_0.77t/",	['medium',	'realtime'],	['desk', 'curtains'] ],
+	["desk_full_curtains/m_24_1.365w_18c_9b_0.77t/",	['tight',	'realtime'], 	['desk', 'curtains'] ],
+	]
+)
 
 /*
 Speaker order is assumed to be satellites, subs, stereo (optional).

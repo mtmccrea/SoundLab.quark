@@ -60,7 +60,6 @@ SoundLab {
 		// note shelfFreq in config takes precedence over listeningDiameter
 		shelfFreq			= config.shelfFreq ?? config.listeningDiameter ?? {400};
 
-		// kernelDirPathName = PathName.new(Platform.resourceDir ++ "/sounds/SoundLabKernelsNew/");
 		kernelDirPathName = kernelDirPathName ?? {
 			config.kernelsPath !? {
 				if(config.kernelsPath[0].asSymbol == '/', {//it's absolute path
@@ -146,6 +145,7 @@ SoundLab {
 
 		server.doWhenBooted({
 			fork {
+				var requestKernel;
 				"waiting 2 seconds".postln;
 				2.wait; // give server time to get sorted
 
@@ -301,12 +301,17 @@ SoundLab {
 				};
 				server.sync; // to make sure stereo patchers have started
 
+				requestKernel = if(usingKernels,
+					{ this.checkKernelFolder( curKernel ?? defaultKernelPath ) },
+					{ nil }
+				);
+
 				this.startNewSignalChain(
 					if(curDecoderPatch.notNil,
 						{curDecoderPatch.decoderName}, // carried over from reboot/sr change
 						{defaultDecoderName}
 					),
-					if(usingKernels, {kernelDirPathName.absolutePath ++ (curKernel ?? {defaultKernelPath})},{nil}),
+					requestKernel,
 					loadCondition
 				);
 				loadCondition.wait; "New Signal Chain Loaded".postln;
@@ -318,6 +323,21 @@ SoundLab {
 				if(loadGUI, {this.buildGUI});
 				this.changed(\stateLoaded);
 			}
+		});
+	}
+
+	checkKernelFolder { |pendingKernel|
+		var str;
+		// build the path to the kernel folder
+		str = kernelDirPathName.absolutePath ++ server.sampleRate.asString ++ "/" ++ pendingKernel;
+
+		("checking " ++ str).postln;
+
+		^File.exists(str).if({
+			str
+		},{
+			warn("Folder for this kernel doesn't exist. Check that the folder specified in the config is available at all sample rates.");
+			nil; // return
 		});
 	}
 
@@ -354,7 +374,7 @@ SoundLab {
 
 			if( loadedDelDistGain.isNil					// startup
 				or: nextjconvolver.notNil				// kernel change
-				or: (kernelPath == \basic_balance),	// switching to basic_balance
+				or: (kernelPath == \basic_balance),		// switching to basic_balance
 				{
 					this.prLoadDelDistGain(
 						// nextjconvolver var set in loadJconvolver method above
@@ -378,8 +398,7 @@ SoundLab {
 						testKey = (kpn.allFolders[kpn.allFolders.size-2]).asSymbol;
 
 						if( loadedDelDistGain != testKey,
-							{ warn("nextjconvolver kernel doesn't match the key that
-								sets the delays, distances and gains in the decoder synth");
+							{ warn("nextjconvolver kernel doesn't match the key that sets the delays, distances and gains in the decoder synth");
 								nextjconvolver.free;
 								nextjconvolver = nil;
 								// TODO what happens below when loadJconvolver fails?
@@ -524,8 +543,10 @@ SoundLab {
 				);
 				// check that we have enough kernels to match all necessary speakers
 				if( numFoundKernels != numKernelChans, {
-					"Number of kernels found does not match the numKernelChannels!".warn;
-					this.changed(\reportStatus, "Number of kernels found does not match the numKernelChannels!");
+					var msg;
+					msg = format("Number of kernels found (%) does not match the numKernelChannels (%)!", numFoundKernels, numKernelChans);
+					warn(msg);
+					this.changed(\reportStatus, msg);
 					break.();
 				});
 

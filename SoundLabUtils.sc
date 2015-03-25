@@ -125,15 +125,71 @@
 		}
 	}
 
-	collectKernelAttributes {
+	collectKernelCheckBoxAttributes {
+		var attributes;
 		attributes = [];
 		config.kernelSpec.do{|k_attributes|
-			// drop the kernel path leaving only user-defined attributes
-			k_attributes.drop(1).do{ |att|
+			// drop the kernel path and correction degree leaving only user-defined attributes
+			k_attributes[2].do{ |att|
 				if( attributes.includes(att).not, {attributes = attributes.add(att)} )
 			};
 		};
 		^attributes
+	}
+
+	collectKernelPopUpAttributes {
+		var popups;
+		popups = [[]];
+		config.kernelSpec.do{|k_attributes|
+			var numPopUps;
+
+			numPopUps = k_attributes[1].size;
+
+			// grow popups array if needed
+			if( popups.size < numPopUps, {
+				(numPopUps - popups.size).do{popups = popups.add([])}
+			});
+
+			k_attributes[1].do{ |att, i|
+
+				if( popups[i].includes(att).not, {
+					popups[i] = popups[i].add(att);
+				} )
+			};
+		};
+		^popups
+	}
+
+	getKernelAttributesMatch { |selectedAttributes|
+		var results, numMatches;
+		// gather bools for each kernel spec whether all selected
+		// attributes match, should only be one match
+		results = config.kernelSpec.collect{ |k_attributes|
+			var collAttributes, test1, test2;
+
+			// collect menu and check box attributes for this kernel spec
+			collAttributes = (k_attributes[1] ++ k_attributes[2]);
+
+			// return true if all attributes match, false if not
+			test1 = selectedAttributes.collect({ |att|
+				collAttributes.includes(att)
+			}).includes(false).not;
+			test2 = collAttributes.collect({ |att|
+				selectedAttributes.includes(att)
+			}).includes(false).not;
+
+			(test1 and: test2)
+		};
+
+		postf("selectedAttributes:%\n", selectedAttributes);
+		postf("kernel matching results:\n%\n", results);
+
+		numMatches = results.occurrencesOf(true);
+
+		^case
+		{numMatches == 1} { config.kernelSpec[results.indexOf(true)][0] }
+		{numMatches == 0} { 0 }		// return 0 for no matches
+		{numMatches > 1 } { -1 };	// return -1 for more than one match
 	}
 
 	prLoadDiametricDecoderSynth { |decSpecs|

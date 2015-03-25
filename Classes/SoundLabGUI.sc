@@ -5,9 +5,9 @@ SoundLabGUI {
 	var <decsHoriz, <decsSphere, <decsDome, <discreteRouters, <decsMatrix;
 	var <sampleRates, <stereoPending, <rotatePending;
 	var <gainTxt, <gainSl, <muteButton, <attButton, <srMenu, <decMenus,
-		<decMenuLayouts, <horizMenu, <sphereMenu, <domeMenu, <matrixMenu,
-		<discreteMenu, <stereoMenu, <rotateMenu, <correctionAttributes, <applyButton, <basicBalanceButton,//<correctionMenu
-		<stateTxt, <postTxt, <sweetSl, <sweetTxt, <sweetSpec. <kernelLayout, <kernelCheckBoxes;
+	<decMenuLayouts, <horizMenu, <sphereMenu, <domeMenu, <matrixMenu,
+	<discreteMenu, <stereoMenu, <rotateMenu, <correctionCbAttributes, <correctionPuAttributes, <applyButton, <basicBalanceButton, <kernelMatchStatusTxt, // <correctionMenu,
+	<stateTxt, <postTxt, <sweetSl, <sweetTxt, <sweetSpec, <kernelLayout, <kernelCheckBoxes, <kernelDegreeMenus;
 	var <pendingDecType, <pendingInput, <pendingSR, <pendingKernel;
 
 	var <ampSpec, <oscFuncDict, buildList;
@@ -49,15 +49,15 @@ SoundLabGUI {
 
 				if( dAtts[1] == \discrete, {
 					discreteRouters = discreteRouters.add(dAtts.first);
-					},{
-						switch( dAtts[3], // numDimensions
-							2, { decsHoriz = decsHoriz.add(dAtts.first) },
-							3, {
-								if( dAtts[1] == \dome )
-								{ decsDome = decsDome.add(dAtts.first) }
-								{ decsSphere = decsSphere.add(dAtts.first) };
-							}
-						)
+				},{
+					switch( dAtts[3], // numDimensions
+						2, { decsHoriz = decsHoriz.add(dAtts.first) },
+						3, {
+							if( dAtts[1] == \dome )
+							{ decsDome = decsDome.add(dAtts.first) }
+							{ decsSphere = decsSphere.add(dAtts.first) };
+						}
+					)
 				});
 			};
 
@@ -77,8 +77,9 @@ SoundLabGUI {
 			postString = "";
 			this.initVars(cond);
 			cond.wait;
-
+			"initializing controls".postln;
 			this.initControls;
+			"just before building controls".postln;
 			this.buildControls;	// changed order - build Listeners defines functions
 		}
 	}
@@ -116,6 +117,7 @@ SoundLabGUI {
 			)
 		})
 		;
+
 		// SWEET SPOT DIAMETER
 		sweetTxt = WsStaticText.init(wsGUI, Rect(0,0,1,0.05))
 		.string_("").font_(Font(font, mdFontSize))
@@ -136,12 +138,13 @@ SoundLabGUI {
 					(mn.item == sl.sampleRate.asSymbol).if({
 						this.status_("Requested samplerate is already current.");
 						mn.valueAction_(0); // set back to '-'
-						},{	pendingSR = mn.item.asInt }
+					},{	pendingSR = mn.item.asInt }
 					)
 				}
 			)
 		})
 		;
+
 		// DECODER
 		decMenus = Dictionary();
 
@@ -181,7 +184,7 @@ SoundLabGUI {
 					WsHLayout( nil,
 						WsStaticText.init(wsGUI).string_(
 							decMenus[key].label).font_(Font(font, mdFontSize)
-						), decMenus[key].menu )
+					), decMenus[key].menu )
 				)
 			}
 		};
@@ -219,32 +222,41 @@ SoundLabGUI {
 			)
 		})
 		;
+
 		// CORRECTION
 
-		// correctionMenu = WsPopUpMenu.init(wsGUI)
-		// .items_(['-'] ++ sl.kernels.sort) // alphabetize
-		// .action_({|mn|
-		// 	pendingKernel = if(mn.item != '-', {mn.item},{nil});
-		// })
-		// ;
+		correctionCbAttributes = sl.collectKernelCheckBoxAttributes;
 
-		correctionAttributes = sl.collectKernelAttributes
+		correctionPuAttributes = sl.collectKernelPopUpAttributes;
+
+		kernelDegreeMenus = correctionPuAttributes.collect{ |atts|
+			WsPopUpMenu.init(wsGUI)
+			.items_(["-"]++atts)
+			.action_({ this.respondToKernelSelection })
+		}
 		;
-		basicBalanceButton = WsSimpleButton.init(wsGUI)
+
+		basicBalanceButton = WsButton.init(wsGUI)
 		.states_([
 			["Basic Balance", Color.black, Color.white],
 			["Basic Balance Pending", Color.black, Color.gray],
 		])
-		.string_("Basic Balance")
 		.action_({ |but|
 			if( but.value == 1, {
 				kernelCheckBoxes.do(_.value_(false)); // zero out check boxes
+				kernelDegreeMenus.do(_.value_(0)); // deselect kernel menus
 				pendingKernel = \basic_balance;
-				},{
-					pendingKernel = nil;
-				}
+				this.kernelStatus_("Balance the speaker array, no digital room correction selected.");
+			},{
+				pendingKernel = nil;
+				this.kernelStatus_("No pending kernel change.");
+			}
 			);
 		})
+		;
+
+		kernelMatchStatusTxt = WsStaticText.init(wsGUI)
+		.string_("No pending kernel change.").font_(Font(font, smFontSize))
 		;
 
 		// APPLY
@@ -284,7 +296,7 @@ SoundLabGUI {
 						pendingKernel.notNil	or:
 						pendingSR.notNil,
 						{
-							var sendKernel;
+							var sendKernelPath;
 							// TODO check here if there's a SR change, if so set state current vars
 							// of soundlab then change sample rate straight away,
 							// no need to update signal chain twice
@@ -295,21 +307,56 @@ SoundLabGUI {
 							// find the kernel
 							if( pendingKernel.notNil, {
 
-								sendKernel = if(pendingKernel != \basic_balance, {
-									var selectedAttributes;
-									// find kernel match to check box states
-									selectedAttributes = correctionAttributes.select{|att, i| kernelCheckBoxes[i].value};
-									sl.config.kernelSpec.select{|att_set, i| att_set.includes(selectedAttributes)}
-									sl.kernelDirPathName.absolutePath ++ pendingKernel;
-									},{ \basic_balance }
+								if(pendingKernel == \basic_balance,
+									{ sendKernelPath = \basic_balance },
+									{
+										var selectedAttributes, result;
+										// get check box states
+										selectedAttributes = correctionCbAttributes.select{ |att, i|
+											postf("% = %\n", att, kernelCheckBoxes[i].value);
+											kernelCheckBoxes[i].value.asBoolean;
+										};
+										// get pop up states
+										kernelDegreeMenus.do{ |menu|
+											if(menu.item.asSymbol != '-',
+												selectedAttributes = selectedAttributes.add(menu.item))
+										};
+
+										// find kernel match to selections
+										result = sl.getKernelAttributesMatch(selectedAttributes);
+
+										case
+										{ result.isKindOf(String) }{
+											pendingKernel = result }
+										{ result == 0 }	{
+											var msg = "Kernel will not be updated! No kernel found matching the selected attributes";
+											msg.warn;
+											this.status_( msg );
+											this.kernelStatus_( "Kernel not updated. See status window." );
+
+											pendingKernel = nil;
+										}
+										{ result == -1 }{
+											var msg =  "Kernel will not be updated! More than one kernel found matching the selected attributes, edit the config so that kernel attributes are unique";
+											msg.warn;
+											this.status_( msg );
+											this.kernelStatus_( "Kernel not updated. See status window." );
+
+											pendingKernel = nil;
+										};
+
+										pendingKernel !? {
+											sendKernelPath = sl.checkKernelFolder(pendingKernel);
+											sendKernelPath ?? {
+												this.status_("Folder for this kernel doesn't exist. Check that the folder specified in the config is available at all sample rates.")
+											};
+										};
+
+									}
 								);
 							});
 
-
-							if( sendKernel.notNil,
-								{ sl.startNewSignalChain( pendingDecType, sendKernel, updateCond ) },
-								{ sl.startNewSignalChain(pendingDecType, completeCondition: updateCond) }
-							);
+							sl.startNewSignalChain( pendingDecType, sendKernelPath, updateCond );
 
 						},{ updateCond.test_(true).signal }
 					);
@@ -329,7 +376,7 @@ SoundLabGUI {
 								if( sl.curDecoderPatch.attributes.kind == \discrete, {
 									this.status_("Rotation not available for discrete routing".warn);
 									rotateMenu.valueAction_(0);
-									},{ sl.rotate_(true) }
+								},{ sl.rotate_(true) }
 								)
 							},
 							\off, { sl.rotate_(false) }
@@ -346,6 +393,7 @@ SoundLabGUI {
 			}
 		})
 		;
+		"STATE".postln;
 		// STATE
 		stateTxt = WsStaticText.init(wsGUI).string_("").font_(Font(font, mdFontSize))
 		;
@@ -435,6 +483,7 @@ SoundLabGUI {
 				\kernel,	{
 					// correctionMenu.valueAction_(0);
 					kernelCheckBoxes.do(_.value_(false)); // clear the kernel boxes
+					kernelDegreeMenus.do(_.value_(0)); // set degree menu to the first selection
 					this.status_("Kernel updated: " ++ sl.curKernel);
 				},
 				\stateLoaded,	{
@@ -452,11 +501,49 @@ SoundLabGUI {
 			switch( what,
 				\audioIsRunning, { args[0].not.if(
 					{ this.status_("Audio stopped. Cannot update at this time.") }
-					);
+				);
 				},
 				\stoppingAudio, { this.status_("Audio is stopping - Standby.") }
 			)
 		});
+	}
+
+	respondToKernelSelection {
+
+		var selectedAttributes, result, msg;
+		// get check box states
+		selectedAttributes = correctionCbAttributes.select{ |att, i|
+			postf("% = %\n", att, kernelCheckBoxes[i].value);
+			kernelCheckBoxes[i].value.asBoolean;
+		};
+		// get pop up states
+		kernelDegreeMenus.do{ |menu|
+			if( menu.item.asSymbol != '-', {
+				selectedAttributes = selectedAttributes.add(menu.item)
+			});
+		};
+
+		(selectedAttributes.size == 0).if(
+			{
+				pendingKernel = nil;
+				msg = "No kernel change selected."
+			},{
+				basicBalanceButton.value_(0);
+
+				// set pending kernel to not Nil though not yet a valid kernel
+				// TODO, incorporate this into APPLY action
+				pendingKernel = ("match pending - " ++ selectedAttributes);
+
+				result = sl.getKernelAttributesMatch(selectedAttributes);
+
+				msg = case
+				{result.isKindOf(String)} { "Found kernel match." }
+				{result == 0}  {"No kernel found matching selected criteria."}
+				{result == -1} {"More than one kernel found, refine selected criteria."}
+				;
+		});
+
+		this.kernelStatus_(msg);
 	}
 
 	status_ { |aString|
@@ -475,6 +562,10 @@ SoundLabGUI {
 		};
 		postTxt.string_(newPost);
 		postString = newPost;
+	}
+
+	kernelStatus_ { |aString|
+		kernelMatchStatusTxt.string_(aString)
 	}
 
 	postState {
@@ -499,6 +590,7 @@ SoundLabGUI {
 	/* PAGE LAYOUT */
 
 	buildControls {
+
 		wsGUI.layout_(
 			WsVLayout( Rect(0.025,0.025,0.95,0.95),
 				WsStaticText.init(wsGUI, Rect(0,0,1,0.1)).string_(
@@ -594,7 +686,7 @@ SoundLabGUI {
 						0.05,
 
 						// DECODER / ROUTER selection
-						WsHLayout( Rect(0,0,1,0.7),
+						WsHLayout( Rect(0,0,1,0.6),
 							// ambisonic decoder
 							WsVLayout( Rect(0,0,0.6, 1),
 
@@ -641,29 +733,46 @@ SoundLabGUI {
 						nil,
 
 						// correction
-						WsVLayout( Rect(0,0,1,0.1),
+						WsVLayout( Rect(0,0,1,0.2),
 
-							WsStaticText.init(wsGUI, Rect(0,0, 1,0.5))
+							WsStaticText.init(wsGUI, Rect(0,0, 1,0.3))
 							.string_("<strong>Room correction</strong>")
 							.textAlign_(\left)
 							.font_(Font(font, mdFontSize)),
 
-							WsHLayout(
-								kernelLayout = WsHLayout( Rect(0,0, 0.8,1) ), // does this update its real coordinates on canvas?
-								// //correctionMenu.bounds_(Rect(0,0,1/2,1)), 0.5
-								// *{
-								// 	kernelCheckBoxes = correctionAttributes.collect{ WsCheckbox.init(wsGUI, nil) };
-								// 	// return the VLayouts from this function
-								// 	correctionAttributes.collect{ |att, i|
-								// 		VLayout( Rect(0,0,1,1),
-								// 			WsStaticText.init(wsGUI, nil),
-								// 			kernelCheckBoxes[i]
-								// 		);
-								// 	};
-								// }.value
-								// )
-								basicBalanceButton.bounds_(Rect(0,0,0.2, 0.5))
-							)
+							WsHLayout( Rect(0,0,1, 0.8),
+
+								// correctionMenu.bounds_(Rect(0,0,1/2,1)), 0.5)
+								WsHLayout(
+									Rect(0,0,
+										kernelDegreeMenus.size / (kernelDegreeMenus.size + correctionCbAttributes.size),
+										1),
+									*kernelDegreeMenus.collect(_.bounds_( Rect(0,0.0,1,0.5) ))
+								),
+								0.05,
+
+								kernelLayout = WsHLayout(
+									Rect( 0,0,
+										correctionCbAttributes.size / (kernelDegreeMenus.size + correctionCbAttributes.size),
+										1),
+									*{
+										kernelCheckBoxes = correctionCbAttributes.collect{ |att|
+											WsCheckbox.init(wsGUI, nil)
+										};
+
+										// return the VLayouts from this function
+										correctionCbAttributes.collect{ |att, i|
+											WsVLayout( Rect(0,0,1,1),
+												kernelCheckBoxes[i],
+												WsStaticText.init(wsGUI, nil).string_(att.asString),
+											);
+										};
+									}.value
+								),
+
+								basicBalanceButton.bounds_(Rect(0,0,0.2, 0.8)),
+							),
+							kernelMatchStatusTxt
 						),
 
 						nil,
@@ -674,6 +783,7 @@ SoundLabGUI {
 				)
 			);
 		);
+		"BUILT CONTROLS".postln;
 		this.recallValues; /* this will turn on the defaults */
 		"Interface built.".postln;
 	}
@@ -703,17 +813,23 @@ SoundLabGUI {
 			attButton.value_( if(sl.isAttenuated, {1},{0}) );
 
 			// reload the kernel names in the case of a sample rate change
-			//correctionMenu.items_(['-'] ++ sl.kernels.sort);
+			// correctionMenu.items_(['-'] ++ sl.kernels.sort);
+
 			// set/refresh kernel CheckBoxes
 			kernelLayout.remove;
-			kernelLayout = WsHLayout( kernelLayout.bounds, //bounds are still preserved despite it being removed
+			kernelLayout = WsHLayout(
+				// bounds are still preserved despite it being removed
+				kernelLayout.bounds,
+
 				//correctionMenu.bounds_(Rect(0,0,1/2,1)), 0.5
 				*{
-					kernelCheckBoxes = correctionAttributes.collect{ WsCheckbox.init(wsGUI, nil) };
+					kernelCheckBoxes = correctionCbAttributes.collect{ |att|
+						WsCheckbox.init(wsGUI, Rect(0,0,1,1)) /*action definition below*/
+					};
 					// return the VLayouts from this function
-					correctionAttributes.collect{ |att, i|
-						VLayout( Rect(0,0,1,1),
-							WsStaticText.init(wsGUI, nil),
+					correctionCbAttributes.collect{ |att, i|
+						WsVLayout( Rect(0,0,1,1),
+							WsStaticText.init(wsGUI, nil).string_(att.asString),
 							kernelCheckBoxes[i]
 						);
 					};
@@ -722,7 +838,18 @@ SoundLabGUI {
 			// put the new layout back in the old one's place
 			wsGUI.layout_(kernelLayout);
 
+			// on account of WsCheckbox bug, action needs to be set after it's laid out
+			correctionCbAttributes.do{ |att, i|
+
+				kernelCheckBoxes[i].action_({ |cb|
+					// de-select basic balance
+					cb.value.asBoolean.if{ basicBalanceButton.value_(0) };
+					this.respondToKernelSelection;
+				})
+			};
+
 			basicBalanceButton.value_(0);
+			kernelDegreeMenus.do(_.value_(0));
 
 			sweetRad = sl.getDiamByFreq(sl.shelfFreq.round(0.001));
 			sweetSl.value_(sweetRad);
@@ -732,7 +859,7 @@ SoundLabGUI {
 			);
 
 			(	decMenus.values.collect({|dict| dict.menu})
-				++ [srMenu, discreteMenu, stereoMenu, rotateMenu /*, correctionMenu*/]
+				++ [srMenu, discreteMenu, stereoMenu, rotateMenu] //, correctionMenu
 			).do{ |menu| menu.value_(0)};
 
 			this.postState;
