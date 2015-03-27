@@ -484,7 +484,9 @@ SoundLabGUI {
 					// correctionMenu.valueAction_(0);
 					kernelCheckBoxes.do(_.value_(false)); // clear the kernel boxes
 					kernelDegreeMenus.do(_.value_(0)); // set degree menu to the first selection
-					this.status_("Kernel updated: " ++ sl.curKernel);
+					basicBalanceButton.value_(0);
+					this.kernelStatus_("Now running: " ++ sl.formatKernelStatePost(sl.curKernel).asString);
+					this.status_("Kernel updated: " ++ sl.formatKernelStatePost(sl.curKernel).asString);
 				},
 				\stateLoaded,	{
 					this.initVars;
@@ -572,9 +574,9 @@ SoundLabGUI {
 		stateTxt.string_("<strong>"
 			++ "\t" ++ sl.sampleRate ++ "\n "
 			++ "\t" ++ sl.stereoActive.if({"YES"},{"NO"}) ++ "\n "
+			++ "\t" ++ sl.rotated.if({"YES"},{"NO"}) ++ "\n "
 			++ "\t" ++ sl.curDecoderPatch.decoderName ++ "\n "
-			++ "\t" ++ sl.curKernel ++ "\n "
-			++ "\t" ++ sl.rotated.if({"YES"},{"NO"})
+			++ "\t" ++ sl.formatKernelStatePost(sl.curKernel).asString
 			++ "</strong>"
 		);
 	}
@@ -611,7 +613,7 @@ SoundLabGUI {
 
 						WsHLayout( Rect(0,0,1, 0.3),
 							WsStaticText.init(wsGUI, Rect(0,0,0.5,1)).string_(
-								"Sample Rate: \nStereo channels first: \nDecoder / Router: \nCorrection: \nSound field rotated: \n"
+								"Sample Rate: \nStereo channels first: \nSound field rotated: \nDecoder / Router: \nCorrection: \n"
 							)
 							.textAlign_(\right)
 							.font_(Font(font, mdFontSize))
@@ -847,7 +849,6 @@ SoundLabGUI {
 					this.respondToKernelSelection;
 				})
 			};
-
 			basicBalanceButton.value_(0);
 			kernelDegreeMenus.do(_.value_(0));
 

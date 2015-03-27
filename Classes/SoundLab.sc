@@ -331,8 +331,6 @@ SoundLab {
 		// build the path to the kernel folder
 		str = kernelDirPathName.absolutePath ++ server.sampleRate.asString ++ "/" ++ pendingKernel;
 
-		("checking " ++ str).postln;
-
 		^File.exists(str).if({
 			str
 		},{
@@ -342,83 +340,100 @@ SoundLab {
 	}
 
 	startNewSignalChain { |deocderName, kernelPath, completeCondition|
-		var cond;
-		cond = Condition(false);
+		var cond = Condition(false);
+
 		fork {
+			var testKey;
 			"in startNewSignalChain, kernelPath: \n\t%\n".postf(kernelPath);
 
-			// LOAD JCONVOLVER
-			if( (kernelPath == \basic_balance),
-				{	"changing to basic_balance, usingKernels = false".postln; // debug
+			// if( (kernelPath == \basic_balance),
+			// 	{
+			// 		// setting to basic balance
+			// 		this.setNoKernel;
+			// 		cond.test_(true).signal
+			// 	},{
+			// 		if( kernelPath.notNil,
+			// 			{
+			// 				// load jconvolver
+			// 				usingKernels = true;
+			// 				"loading new jconvolver".postln; // debug
+			// 				this.loadJconvolver(kernelPath, cond); // this sets nextjconvolver var
+			// 			},{
+			// 				// no kernel change, just move one
+			// 				"no new correction specified".postln;
+			// 				cond.test_(true).signal
+			// 			}
+			// 		)
+			// 	}
+			// );
+
+			if( kernelPath.notNil, {
+				if( kernelPath != \basic_balance, {
+					// load jconvolver
+					usingKernels = true;
+					"loading new jconvolver".postln; // debug
+					this.loadJconvolver(kernelPath, cond); // this sets nextjconvolver var
+				},{
+					// setting to basic balance
 					this.setNoKernel;
 					cond.test_(true).signal
-				},{
-					if( kernelPath.notNil, {
-						usingKernels = true;
-						"loading new jconvolver".postln; // debug
-						this.loadJconvolver(kernelPath, cond); // this sets nextjconvolver var
-						// TODO: confirm what happens below when loadJconvolver fails and
-						// nextjconvolver set to nil?
-						},{
-							"no new correction specified".postln;
-							cond.test_(true).signal
-						}
-					)
-				}
-			);
+				})
+			},{
+				// no kernel change, just move one
+				"no new correction specified".postln;
+				cond.test_(true).signal
+			});
 
 			cond.wait;
 			cond.test_(false); // reset the condition to hang when needed later
 
-			// LOAD DELAYS AND GAINS
+
+
+			// Do delays, distances and gains need to be loaded anew?
 
 			if( loadedDelDistGain.isNil					// startup
 				or: nextjconvolver.notNil				// kernel change
 				or: (kernelPath == \basic_balance),		// switching to basic_balance
 				{
-					this.prLoadDelDistGain(
-						// nextjconvolver var set in loadJconvolver method above
-						if( nextjconvolver.notNil,
-							{	nextjconvolver.kernelFolderPath },
-							{	"selecting default dist/gains".postln;
-								\default; // return
-							}
-						),
-						cond
-					);
+					var testKey, delDistGainKey;
+
+					delDistGainKey = if( nextjconvolver.notNil, {
+						// build the key from the kernel path (queried from nextjconvolver to be sure) and sample rate
+						var kpn;
+						kpn = PathName(nextjconvolver.kernelFolderPath);
+						testKey = (this.sampleRate.asString ++ "/" ++ kpn.allFolders[kpn.allFolders.size-2]).asSymbol;
+					},{
+						"selecting default delay/dist/gain".postln;
+						\default;
+					});
+
+					// load delays, distances and gains
+					this.prLoadDelDistGain( delDistGainKey, cond );
 					cond.wait;
 					cond.test_(false);
 
-					nextjconvolver.notNil.if{
-						var testKey, kpn;
+					// if loading delays, distances and gains fails, it will be set to default
+					// in which case nextjconvolver has to be "cancelled"
+					if( nextjconvolver.notNil and: (loadedDelDistGain == \default), {
+						nextjconvolver.free;
+						nextjconvolver = nil;
+						warn( format(
+							"nextjconvolver kernel % doesn't match the key that sets the delays, distances and gains in the decoder synth\n", testKey
+						));
+					});
 
-						kpn = PathName(nextjconvolver.kernelFolderPath);
-
-						// grab the kernel "category" name: one folder up from the kernel folder itself
-						testKey = (kpn.allFolders[kpn.allFolders.size-2]).asSymbol;
-
-						if( loadedDelDistGain != testKey,
-							{ warn("nextjconvolver kernel doesn't match the key that sets the delays, distances and gains in the decoder synth");
-								nextjconvolver.free;
-								nextjconvolver = nil;
-								// TODO what happens below when loadJconvolver fails?
-							}
-						);
-					};
-
-					// LOAD SYNTHDEFS
-					/*	speaker dels, dists, gains must be written before loading synthdefs
-					NOTE: this needs to happen for every new kernel being loaded */
+					// because delays, distances and gains have changed, need to
+					// reload synthdefs
 					"loading synthdefs".postln;
 					this.prLoadSynthDefs(cond);
 					cond.wait;
+					cond.test_(false);
 					"SynthDefs loaded.\n".postln;
-					cond.test_(false); // reset the condition to hang when needed later
 			});
 
 			server.sync; // sync to let all the synths load
 
-			// START DECODER
+			// start new decoder if needed
 			if( nextjconvolver.notNil or: 	// new jconvolver, so new outbus
 				deocderName.notNil,			// requested decoder change
 				{
@@ -427,20 +442,19 @@ SoundLab {
 					newDecName = deocderName ?? {
 						curDecoderPatch !? {curDecoderPatch.decoderName}
 					};
-					postf("New decoder name: %\n", newDecName);
 
 					if( newDecName.notNil, {
+						postf("New decoder starting: %\n", newDecName);
 						this.startDecoder(newDecName, cond)
-						},{ warn(
-							"No decoder name provided and no current decoder name found -
-							NO NEW DECODER STARTED");
-							cond.test_(true).signal;
-						}
-					);
+					},{
+						warn( "No decoder name provided and no current decoder name found -
+NO NEW DECODER STARTED");
+						cond.test_(true).signal;
+					});
+
 				},{ warn("NO NEW DECODER CREATED - no nextjconvolver and/or no decoder name provided!")}
 			);
 			cond.wait;
-			postln("Decoder started.\n");
 
 			// set new state vars based on results from each above step
 			nextjconvolver !? {

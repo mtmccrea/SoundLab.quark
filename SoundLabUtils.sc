@@ -29,7 +29,7 @@
 			var sr, nm, knm, result;
 
 			(sr_pn.isFolder && (sr_pn.folderName.asInt !=0)).if{
-				sr = sr_pn.folderName.asInt;
+				sr = sr_pn.folderName;
 				sr_pn.entries.do({ |kern_pn|
 					kern_pn.isFolder.if{
 						knm = kern_pn.folderName;
@@ -40,17 +40,20 @@
 								{nm.contains("delays")}{
 									debug.if{postf("parsing delays for %, % \n", knm, sr)};
 									compDict.delays.put(
-										(knm++"_"++sr).asSymbol, this.prParseFile(file_pn)
+										// (knm++"_"++sr).asSymbol, this.prParseFile(file_pn)
+										(sr++"/"++knm).asSymbol, this.prParseFile(file_pn)
 									);
 								}{nm.contains("distances")}{
 									debug.if{postf("parsing distances for %, % \n", knm, sr)};
 									compDict.distances.put(
-										(knm++"_"++sr).asSymbol, this.prParseFile(file_pn)
+										// (knm++"_"++sr).asSymbol, this.prParseFile(file_pn)
+										(sr++"/"++knm).asSymbol, this.prParseFile(file_pn)
 									);
 								}{nm.contains("gains")}{
 									debug.if{postf("parsing gains for %, % \n", knm, sr)};
 									compDict.gains.put(
-										(knm++"_"++sr).asSymbol, this.prParseFile(file_pn)
+										// (knm++"_"++sr).asSymbol, this.prParseFile(file_pn)
+										(sr++"/"++knm).asSymbol, this.prParseFile(file_pn)
 									);
 								};
 							});
@@ -98,27 +101,34 @@
 		dependent, and so needs to happen after server has
 		been initialized.
 	*/
-	prLoadDelDistGain { |kernelName, completeCondition|
+	prLoadDelDistGain { |delDistGainKey, completeCondition|
 		fork {
-			var sr, key;
-			sr = this.sampleRate;
-			key = if(kernelName != \default, {(kernelName++"_"++sr).asSymbol},{\default});
+			var key;
 
-			// debug
-			("setting del dist gains to key: "++key).postln;
+			// test that the kernel key returns a result
+			key = if( usingKernels, {
 
-			if( usingKernels.not or:
-				compDict.distances.includesKey(key).not or:
-				compDict.delays.includesKey(key).not or:
-				compDict.gains.includesKey(key).not,
-				{ key = \default }
-			);
+				("trying del dist gains key: "++key).postln; // debug
 
-			spkrDists = compDict.distances.at(key);
-			spkrDels = compDict.delays.at(key);
+				if( compDict.distances.includesKey(delDistGainKey) and:
+					compDict.delays.includesKey(delDistGainKey) and:
+					compDict.gains.includesKey(delDistGainKey),
+					{
+						delDistGainKey
+					},{
+						warn(format("Did not find a matching value in the compDict for the key %\nLoading default delays, distances and gains.\n", delDistGainKey));
+
+						\default;
+					}
+				);
+			},{ \default });
+
+			spkrDists =	compDict.distances.at(key);
+			spkrDels =	compDict.delays.at(key);
 			spkrGains = compDict.gains.at(key);
 
 			this.prCheckArrayData;
+
 			("delays, gains, distances loaded for: " ++ key).postln;
 			loadedDelDistGain = key;
 			completeCondition !? {completeCondition.test_(true).signal};
@@ -190,6 +200,21 @@
 		{numMatches == 1} { config.kernelSpec[results.indexOf(true)][0] }
 		{numMatches == 0} { 0 }		// return 0 for no matches
 		{numMatches > 1 } { -1 };	// return -1 for more than one match
+	}
+
+	formatKernelStatePost { |kPath|
+		var rtn;
+		^if( kPath != \basic_balance,
+			{ var pn, category, attributes;
+				pn = PathName(kPath.asString);
+				category = pn.allFolders[pn.allFolders.size-2];
+				attributes = config.kernelSpec.select({|me| me.at(0)==(category ++ "/" ++ pn.allFolders.last ++ "/")}).at(0).drop(1).flat;
+				format("made this kernel state string %, %", category, attributes);
+				format("% %", category, attributes);
+			},{
+				\basic_balance.asString
+			}
+	);
 	}
 
 	prLoadDiametricDecoderSynth { |decSpecs|

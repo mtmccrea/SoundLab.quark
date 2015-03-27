@@ -42,9 +42,9 @@ IdentityDictionary(know: true)
 
 // no leading '/' in relative folder path
 .put(\kernelSpec, [
-	// [ path relative to \kernelsPath,'degree' (dropdown),  [...dropdown meny attributes], [...check box (true) attributes] ]
-	// note dropdown array size = number of dropdowns
+	// note popup array size = number of popups
 	// column defines selection within one dropdown.
+	// [ path relative to \kernelsPath, 				[...dropdown  attributes],	[...check box (true) attributes] ]
 	["desk_curtains_screen/k_9_1.365w_18c_3b_0.77t/",	['open',	'reference'],	['desk', 'curtains', 'screen'] ],
 	["desk_curtains_screen/k_24_1.365w_18c_5b_0.77t/",	['medium',	'reference'],	['desk', 'curtains', 'screen'] ],
 	["desk_curtains_screen/k_24_1.365w_18c_9b_0.77t/",	['tight',	'reference'],	['desk', 'curtains', 'screen'] ],
