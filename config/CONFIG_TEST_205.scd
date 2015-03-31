@@ -9,7 +9,6 @@ IdentityDictionary(know: true)
 	\numSatChans,			19,
 	\numSubChans, 			2,
 	\defaultDecoderName,	\Horiz_Dodec, // must match a name in \decAttributeList below
-	\defaultKernelPath,		"desk_full_curtains/k_24_1.365w_18c_5b_0.77t/", // no leading '/'
 	\jconvHWOutChannel,		0,
 	\stereoChanIndex,		[28, 29],
 	\rotateDegree,			-90,	// option to rotate the listening position to this angle
@@ -44,21 +43,44 @@ IdentityDictionary(know: true)
 .put(\kernelSpec, [
 	// note popup array size = number of popups
 	// column defines selection within one dropdown.
-	// [ path relative to \kernelsPath, 				[...dropdown  attributes],	[...check box (true) attributes] ]
-	["desk_curtains_screen/k_9_1.365w_18c_3b_0.77t/",	['open',	'reference'],	['desk', 'curtains', 'screen'] ],
-	["desk_curtains_screen/k_24_1.365w_18c_5b_0.77t/",	['medium',	'reference'],	['desk', 'curtains', 'screen'] ],
-	["desk_curtains_screen/k_24_1.365w_18c_9b_0.77t/",	['tight',	'reference'],	['desk', 'curtains', 'screen'] ],
-	["desk_curtains_screen/m_9_1.365w_18c_3b_0.77t/",	['open',	'realtime'],	['desk', 'curtains', 'screen'] ],
-	["desk_curtains_screen/m_24_1.365w_18c_5b_0.77t/",	['medium',	'realtime'], 	['desk', 'curtains', 'screen'] ],
-	["desk_curtains_screen/m_24_1.365w_18c_9b_0.77t/",	['tight',	'realtime'], 	['desk', 'curtains', 'screen'] ],
+	// [ path relative to \kernelsPath, 				[...check box (true) attributes],	[...dropdown  attributes] ]
+	["desk_curtains_screen/k_9_1.365w_18c_3b_0.77t/",	['desk', 'curtains', 'screen'],	['open',	'reference'] ],
+	["desk_curtains_screen/k_24_1.365w_18c_5b_0.77t/",	['desk', 'curtains', 'screen'],	['moderate','reference'] ],
+	["desk_curtains_screen/k_24_1.365w_18c_9b_0.77t/",	['desk', 'curtains', 'screen'],	['tight',	'reference'] ],
+	["desk_curtains_screen/m_9_1.365w_18c_3b_0.77t/",	['desk', 'curtains', 'screen'], ['open',	'realtime'] ],
+	["desk_curtains_screen/m_24_1.365w_18c_5b_0.77t/",	['desk', 'curtains', 'screen'], ['moderate','realtime'] ],
+	["desk_curtains_screen/m_24_1.365w_18c_9b_0.77t/",	['desk', 'curtains', 'screen'], ['tight',	'realtime'] ],
 
-	["desk_full_curtains/k_9_1.365w_18c_3b_0.77t/",		['open',	'reference'],	['desk', 'curtains'] ],
-	["desk_full_curtains/k_24_1.365w_18c_5b_0.77t/",	['medium',	'reference'],	['desk', 'curtains'] ],
-	["desk_full_curtains/k_24_1.365w_18c_9b_0.77t/",	['tight',	'reference'],	['desk', 'curtains'] ],
-	["desk_full_curtains/m_9_1.365w_18c_3b_0.77t/",		['open',	'realtime'], 	['desk', 'curtains'] ],
-	["desk_full_curtains/m_24_1.365w_18c_5b_0.77t/",	['medium',	'realtime'],	['desk', 'curtains'] ],
-	["desk_full_curtains/m_24_1.365w_18c_9b_0.77t/",	['tight',	'realtime'], 	['desk', 'curtains'] ],
-	]
+	["desk_full_curtains/k_9_1.365w_18c_3b_0.77t/",		['desk', 'curtains'], ['open',	'reference'] ],
+	["desk_full_curtains/k_24_1.365w_18c_5b_0.77t/",	['desk', 'curtains'], ['moderate','reference'] ],
+	["desk_full_curtains/k_24_1.365w_18c_9b_0.77t/",	['desk', 'curtains'], ['tight',	'reference'] ],
+	["desk_full_curtains/m_9_1.365w_18c_3b_0.77t/",		['desk', 'curtains'], ['open',	'realtime'] ],
+	["desk_full_curtains/m_24_1.365w_18c_5b_0.77t/",	['desk', 'curtains'], ['moderate','realtime'] ],
+	["desk_full_curtains/m_24_1.365w_18c_9b_0.77t/",	['desk', 'curtains'], ['tight',	'realtime'] ],
+
+	[ "open_floor_bare_walls/k_9_1.365w_18c_3b_0.77t/",		[], ['open',	'reference'] ],
+	[ "open_floor_bare_walls/k_24_1.365w_18c_5b_0.77t/",	[], ['moderate','reference'] ],
+	[ "open_floor_bare_walls/k_24_1.365w_18c_9b_0.77t/",	[], ['tight',	'reference'] ],
+	[ "open_floor_bare_walls/m_9_1.365w_18c_3b_0.77t/", 	[], ['open',	'realtime'] ],
+	[ "open_floor_bare_walls/m_24_1.365w_18c_5b_0.77t/",	[], ['moderate','realtime'] ],
+	[ "open_floor_bare_walls/m_24_1.365w_18c_9b_0.77t/",	[], ['tight',	'realtime'] ],
+
+
+	[ "open_floor_curtains_screen/k_9_1.365w_18c_3b_0.77t/",	['curtains', 'screen'],	['open',	'reference'] ],
+	[ "open_floor_curtains_screen/k_24_1.365w_18c_5b_0.77t/",	['curtains', 'screen'],	['moderate','reference'] ],
+	[ "open_floor_curtains_screen/k_24_1.365w_18c_9b_0.77t/",	['curtains', 'screen'],	['tight',	'reference'] ],
+	[ "open_floor_curtains_screen/m_9_1.365w_18c_3b_0.77t/",	['curtains', 'screen'],	['open',	'realtime'] ],
+	[ "open_floor_curtains_screen/m_24_1.365w_18c_5b_0.77t/",	['curtains', 'screen'],	['moderate','realtime'] ],
+	[ "open_floor_curtains_screen/m_24_1.365w_18c_9b_0.77t/",	['curtains', 'screen'],	['tight',	'realtime'] ],
+
+	[ "open_floor_full_curtains/k_9_1.365w_18c_3b_0.77t/",		['curtains'], ['open',	'reference'] ],
+	[ "open_floor_full_curtains/k_24_1.365w_18c_5b_0.77t/",		['curtains'], ['moderate','reference'] ],
+	[ "open_floor_full_curtains/k_24_1.365w_18c_9b_0.77t/",		['curtains'], ['tight',	'reference'] ],
+	[ "open_floor_full_curtains/m_9_1.365w_18c_3b_0.77t/",		['curtains'], ['open',	'realtime'] ],
+	[ "open_floor_full_curtains/m_24_1.365w_18c_5b_0.77t/",		['curtains'], ['moderate','realtime'] ],
+	[ "open_floor_full_curtains/m_24_1.365w_18c_9b_0.77t/", 	['curtains'], ['tight',	'realtime'] ],
+
+]
 )
 
 /*

@@ -356,10 +356,12 @@ SoundLabGUI {
 								);
 							});
 
+							// sendKernelPath of nil designates no kernel change
 							sl.startNewSignalChain( pendingDecType, sendKernelPath, updateCond );
 
 						},{ updateCond.test_(true).signal }
 					);
+
 					updateCond.wait; // wait for new signal chain to play
 
 					/* Update Stereo routing */
@@ -485,6 +487,7 @@ SoundLabGUI {
 					kernelCheckBoxes.do(_.value_(false)); // clear the kernel boxes
 					kernelDegreeMenus.do(_.value_(0)); // set degree menu to the first selection
 					basicBalanceButton.value_(0);
+
 					this.kernelStatus_("Now running: " ++ sl.formatKernelStatePost(sl.curKernel).asString);
 					this.status_("Kernel updated: " ++ sl.formatKernelStatePost(sl.curKernel).asString);
 				},
@@ -515,7 +518,7 @@ SoundLabGUI {
 		var selectedAttributes, result, msg;
 		// get check box states
 		selectedAttributes = correctionCbAttributes.select{ |att, i|
-			postf("% = %\n", att, kernelCheckBoxes[i].value);
+			// postf("% = %\n", att, kernelCheckBoxes[i].value);
 			kernelCheckBoxes[i].value.asBoolean;
 		};
 		// get pop up states
@@ -744,15 +747,6 @@ SoundLabGUI {
 
 							WsHLayout( Rect(0,0,1, 0.8),
 
-								// correctionMenu.bounds_(Rect(0,0,1/2,1)), 0.5)
-								WsHLayout(
-									Rect(0,0,
-										kernelDegreeMenus.size / (kernelDegreeMenus.size + correctionCbAttributes.size),
-										1),
-									*kernelDegreeMenus.collect(_.bounds_( Rect(0,0.0,1,0.5) ))
-								),
-								0.05,
-
 								kernelLayout = WsHLayout(
 									Rect( 0,0,
 										correctionCbAttributes.size / (kernelDegreeMenus.size + correctionCbAttributes.size),
@@ -771,13 +765,23 @@ SoundLabGUI {
 										};
 									}.value
 								),
+								0.05,
 
+								WsHLayout(
+									Rect(0,0,
+										kernelDegreeMenus.size / (kernelDegreeMenus.size + correctionCbAttributes.size),
+										1),
+									*kernelDegreeMenus.collect(_.bounds_( Rect(0,0.0,1,0.5) ))
+								),
+								0.05,
+								WsStaticText.init(wsGUI, nil).string_("\n-or-").textAlign_('center'),
+								0.05,
 								basicBalanceButton.bounds_(Rect(0,0,0.2, 0.8)),
 							),
 							kernelMatchStatusTxt
 						),
 
-						nil,
+						0.05,
 						// apply button
 						WsHLayout( Rect(0,0,1,0.05),
 							2/3, applyButton)

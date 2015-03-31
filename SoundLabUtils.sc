@@ -108,7 +108,7 @@
 			// test that the kernel key returns a result
 			key = if( usingKernels, {
 
-				("trying del dist gains key: "++key).postln; // debug
+				("trying del dist gains key: "++delDistGainKey).postln; // debug
 
 				if( compDict.distances.includesKey(delDistGainKey) and:
 					compDict.delays.includesKey(delDistGainKey) and:
@@ -135,14 +135,27 @@
 		}
 	}
 
+	checkKernelSpecAtSR { |relativePath|
+		var result;
+		result = File.exists(config.kernelsPath ++ this.sampleRate ++ "/" ++ relativePath);
+		result.not.if{ warn(format("kernel spec entry % not found at this sample rate (%)", relativePath, this.sampleRate)) };
+		^result
+	}
+
 	collectKernelCheckBoxAttributes {
-		var attributes;
+		var attributes, sRate_pn;
 		attributes = [];
+		sRate_pn = PathName( config.kernelsPath ++ this.sampleRate);
 		config.kernelSpec.do{|k_attributes|
-			// drop the kernel path and correction degree leaving only user-defined attributes
-			k_attributes[2].do{ |att|
-				if( attributes.includes(att).not, {attributes = attributes.add(att)} )
-			};
+
+			// check that the kernel spec exists at this SR
+			if( this.checkKernelSpecAtSR(k_attributes[0]), {
+
+				// drop the kernel path and correction degree leaving only user-defined attributes
+				k_attributes[1].do{ |att|
+					if( attributes.includes(att).not, {attributes = attributes.add(att)} )
+				};
+			})
 		};
 		^attributes
 	}
@@ -150,22 +163,24 @@
 	collectKernelPopUpAttributes {
 		var popups;
 		popups = [[]];
+
 		config.kernelSpec.do{|k_attributes|
-			var numPopUps;
 
-			numPopUps = k_attributes[1].size;
+			if( this.checkKernelSpecAtSR(k_attributes[0]), {
+				var numPopUps = k_attributes[2].size;
 
-			// grow popups array if needed
-			if( popups.size < numPopUps, {
-				(numPopUps - popups.size).do{popups = popups.add([])}
+				// grow popups array if needed
+				if( popups.size < numPopUps, {
+					(numPopUps - popups.size).do{popups = popups.add([])}
+				});
+
+				k_attributes[2].do{ |att, i|
+
+					if( popups[i].includes(att).not, {
+						popups[i] = popups[i].add(att);
+					} )
+				};
 			});
-
-			k_attributes[1].do{ |att, i|
-
-				if( popups[i].includes(att).not, {
-					popups[i] = popups[i].add(att);
-				} )
-			};
 		};
 		^popups
 	}
@@ -191,8 +206,8 @@
 			(test1 and: test2)
 		};
 
-		postf("selectedAttributes:%\n", selectedAttributes);
-		postf("kernel matching results:\n%\n", results);
+		// postf("selectedAttributes:%\n", selectedAttributes);
+		// postf("kernel matching results:\n%\n", results);
 
 		numMatches = results.occurrencesOf(true);
 
@@ -208,9 +223,12 @@
 			{ var pn, category, attributes;
 				pn = PathName(kPath.asString);
 				category = pn.allFolders[pn.allFolders.size-2];
-				attributes = config.kernelSpec.select({|me| me.at(0)==(category ++ "/" ++ pn.allFolders.last ++ "/")}).at(0).drop(1).flat;
-				format("made this kernel state string %, %", category, attributes);
-				format("% %", category, attributes);
+				attributes = config.kernelSpec.select({ |me|
+					me.at(0) == (category ++ "/" ++ pn.allFolders.last ++ "/")
+
+				}).at(0).drop(1).flat;
+
+				format("% -  %", category, attributes);
 			},{
 				\basic_balance.asString
 			}

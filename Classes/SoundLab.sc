@@ -10,7 +10,7 @@ SoundLab {
 	var <>xfade = 0.2,  <>debug=true, <kernels;
 	var <globalAmp, <numSatChans, <numSubChans, <totalArrayChans, <numKernelChans, <>rotateDegree, <>xOverHPF, <>xOverLPF, <>shelfFreq;
 	var <hwInCount, <hwInStart;
-	var <config, <labName, <numHardwareOuts, <numHardwareIns, <stereoChanIndex, <>defaultDecoderName, <>defaultKernelPath, <>kernelDirPathName, <>decoderMatricesPath;
+	var <config, <labName, <numHardwareOuts, <numHardwareIns, <stereoChanIndex, <>defaultDecoderName, <>kernelDirPathName, <>decoderMatricesPath;
 
 	var <server, <gui, <curKernel, <stereoActive, <isMuted, <isAttenuated, <stateLoaded, <rotated;
 	var <clipMonitoring, <curDecoderPatch, rbtTryCnt;
@@ -45,7 +45,7 @@ SoundLab {
 		numHardwareOuts		= config.numHardwareOuts;
 		numHardwareIns		= config.numHardwareIns;
 		defaultDecoderName	= config.defaultDecoderName;	// synthDef name
-		defaultKernelPath	= config.defaultKernelPath;
+		// defaultKernelPath	= config.defaultKernelPath;
 		stereoChanIndex		= config.stereoChanIndex;
 		numSatChans			= config.numSatChans;
 		numSubChans			= config.numSubChans;
@@ -175,37 +175,31 @@ SoundLab {
 					}
 				});
 
-				// kernels = compDict.delays.keys.select({ |name|
-				// 	name.asString.contains(server.sampleRate.asString)
-				// });
-				// // reformat to exclude SR
-				// kernels = kernels.collect{|key|
-				// 	var modkey;
-				// 	modkey = key.asString;
-				// 	modkey = modkey.replace("_44100","");
-				// 	modkey = modkey.replace("_48000","");
-				// 	modkey = modkey.replace("_96000","");
-				// 	modkey.asSymbol;
-				// };
-
 				kernels = [\basic_balance] ++ kernels;
 
-				// in the case of a SR change, check to make sure the curKernel is still available
-				// at this sampleRate
-				if( curKernel.notNil )
-				{
-					// TODO: now that kernels list stores pathnames, more specific kernel attribute
-					// checking will be needed to match kernels across sample rate changes
+				// in the case of a SR change, check to make sure the curKernel
+				// is still available at this sampleRate
+				if( curKernel.notNil and: (curKernel != \basic_balance) ){
+					var namedFolder, kernelFolder, pn;
 
-					if( kernels.includes(curKernel).not, {
+					pn = PathName(curKernel.asString);
+					namedFolder = pn.allFolders[pn.allFolders.size-2];
+					kernelFolder = pn.allFolders.last;
+					("testing " ++ (namedFolder ++ "/" ++ kernelFolder)).postln;
+
+					if( kernels.collect(_.asSymbol).includes((namedFolder ++ "/" ++ kernelFolder).asSymbol), {
+						var newPath;
+						// update curKernel to new SR path
+						newPath = format( "%%/%/%/", config.kernelsPath, server.sampleRate, namedFolder, kernelFolder);
+						File.exists(newPath).if({
+							requestKernel = newPath;
+						},{ this.setNoKernel });
+					},{
 						this.changed(\reportStatus,
 							warn("Last kernel wasn't found at this sample rate. Defaulting to basic_balance.")
 						);
-						this.setNoKernel;
 					})
-				}{
-					this.setNoKernel;
-				};
+				}{ this.setNoKernel };
 
 				// kill any running Jconvolvers
 				jconvolver !? {"Stopping a running jconvolver".postln; jconvolver.free};
@@ -301,17 +295,14 @@ SoundLab {
 				};
 				server.sync; // to make sure stereo patchers have started
 
-				requestKernel = if(usingKernels,
-					{ this.checkKernelFolder( curKernel ?? defaultKernelPath ) },
-					{ nil }
-				);
+				postf("STARTUP: starting new signal chain requestKernel: %\n", requestKernel);
 
 				this.startNewSignalChain(
 					if(curDecoderPatch.notNil,
 						{curDecoderPatch.decoderName}, // carried over from reboot/sr change
 						{defaultDecoderName}
 					),
-					requestKernel,
+					requestKernel ?? \basic_balance,
 					loadCondition
 				);
 				loadCondition.wait; "New Signal Chain Loaded".postln;
@@ -339,33 +330,13 @@ SoundLab {
 		});
 	}
 
+	// kernelPath of nil designates no kernel change
 	startNewSignalChain { |deocderName, kernelPath, completeCondition|
 		var cond = Condition(false);
 
 		fork {
 			var testKey;
 			"in startNewSignalChain, kernelPath: \n\t%\n".postf(kernelPath);
-
-			// if( (kernelPath == \basic_balance),
-			// 	{
-			// 		// setting to basic balance
-			// 		this.setNoKernel;
-			// 		cond.test_(true).signal
-			// 	},{
-			// 		if( kernelPath.notNil,
-			// 			{
-			// 				// load jconvolver
-			// 				usingKernels = true;
-			// 				"loading new jconvolver".postln; // debug
-			// 				this.loadJconvolver(kernelPath, cond); // this sets nextjconvolver var
-			// 			},{
-			// 				// no kernel change, just move one
-			// 				"no new correction specified".postln;
-			// 				cond.test_(true).signal
-			// 			}
-			// 		)
-			// 	}
-			// );
 
 			if( kernelPath.notNil, {
 				if( kernelPath != \basic_balance, {
@@ -389,7 +360,7 @@ SoundLab {
 
 
 
-			// Do delays, distances and gains need to be loaded anew?
+			// Load delays, distances and gains anew if needed
 
 			if( loadedDelDistGain.isNil					// startup
 				or: nextjconvolver.notNil				// kernel change
@@ -454,7 +425,11 @@ NO NEW DECODER STARTED");
 
 				},{ warn("NO NEW DECODER CREATED - no nextjconvolver and/or no decoder name provided!")}
 			);
+
 			cond.wait;
+			"past condition before nextjconv stuff".postln;
+			nextjconvolver.postln;
+			"past condition before nextjconv stuff".postln;
 
 			// set new state vars based on results from each above step
 			nextjconvolver !? {
@@ -465,7 +440,7 @@ NO NEW DECODER STARTED");
 				nextjconvolver = nil;				// reset var
 				this.changed(\kernel, curKernel);
 			};
-
+"END".postln;
 			completeCondition !? {completeCondition.test_(true).signal};
 		}
 	}
@@ -518,7 +493,8 @@ NO NEW DECODER STARTED");
 				curDecoderPatch = newDecoderPatch;
 				this.changed(\decoder, curDecoderPatch);
 			};
-			completeCondition !? {completeCondition.test_(true).signal};
+
+			completeCondition !? { completeCondition.test_(true).signal };
 		}
 	}
 
