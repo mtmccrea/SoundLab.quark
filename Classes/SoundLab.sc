@@ -14,7 +14,7 @@ SoundLab {
 
 	var <server, <gui, <curKernel, <stereoActive, <isMuted, <isAttenuated, <stateLoaded, <rotated;
 	var <clipMonitoring, <curDecoderPatch, rbtTryCnt;
-	var <clipListener, <reloadGUIListener, <clipMonDef, <patcherDef;
+	var <clipListener, <reloadGUIListener, <clipMonDef, <patcherDef, <stereoSubPatcherDef;
 	var <patcherGroup, <stereoPatcherSynths, <satPatcherSynths, <subPatcherSynths;
 	var <monitorGroup_ins, <monitorGroup_outs, <monitorSynths_outs, <monitorSynths_ins;
 	var <jconvolver, <nextjconvolver, <jconvinbus, <nextjconvinbus, <jconvHWOutChannel;
@@ -206,10 +206,34 @@ SoundLab {
 				nextjconvolver !? {"Stopping a running jconvolver".postln; nextjconvolver.free};
 
 				patcherDef = CtkSynthDef(\patcher, { arg in_bus=0, out_bus=0;
-					Out.ar(out_bus,
-						In.ar(in_bus, 1)
-					)
+					ReplaceOut.ar(out_bus, In.ar(in_bus, 1))
 				});
+
+				stereoSubPatcherDef = CtkSynthDef(\subpatcher, { arg in_bus=0, out_bus=0;
+					if( numSubChans == 1,
+						{	// summing stereo into 1 sub
+							ReplaceOut.ar(out_bus,
+								In.ar(in_bus, 2).sum * config.defaultSpkrtGainsDB[numSatChans].dbamp
+							)
+						},{ // encoding stereo t b format then decoding to multipl subs
+							var stereoBF = FoaEncode.ar(
+								In.ar(in_bus, 2),
+								FoaEncoderMatrix.newStereo(pi)
+							);
+
+							// simple cardioid mono decoder for each sub direction
+							numSubChans.do{ |i|
+								ReplaceOut.ar( out_bus + i,
+									FoaDecode.ar(stereoBF,
+										FoaDecoderMatrix.newMono(
+											config.spkrAzimuthsRad[numSatChans + i],
+											0, 0.5) // no elevation, cardioid
+									) * config.defaultSpkrtGainsDB[numSatChans+i].dbamp
+								)
+							};
+						});
+				});
+
 				clipMonDef = CtkSynthDef(\clipMonitor, { arg in_bus=0, clipThresh = 0.977;
 					var sig, peak;
 					sig = In.ar(in_bus, 1);
@@ -274,7 +298,13 @@ SoundLab {
 					.in_bus_(hwInStart+i)
 					.out_bus_(stereoChanIndex[i])
 					.play
-				});
+				})
+				// route stereo to subs as well, this synth also does gain comp on sub(s)
+				++ stereoSubPatcherDef.note( addAction: \tail, target: patcherGroup )
+					.in_bus_(hwInStart)
+					.out_bus_(numSatChans)
+					.play
+				;
 				server.sync;
 
 				while(	{stereoPatcherSynths.collect({|synth|synth.isPlaying}).includes(false)},

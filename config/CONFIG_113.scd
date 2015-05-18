@@ -7,7 +7,7 @@ IdentityDictionary(know: true)
 	\numHardwareOuts, 		16,
 	\numHardwareIns, 		16,
 	\numSatChans,			10,
-	\numSubChans, 			2, //eek
+	\numSubChans, 			1, //2, // TODO, this is actually 1
 	\defaultDecoderName,	\Hex,
 	\defaultKernel,			\basic_balance,
 	\jconvHWOutChannel,		0,
@@ -49,13 +49,13 @@ see prLoadSynthDefs for how channel mappings are used
 		1.323, 1.344, 1.362, 1.352, 1.394, 1.353,
 		1.450, 1.469, 1.535,
 		1.755,
-		1.323,1.323  //sub
+		1.323, //1.323  //sub
 	]
 )
 .put(\defaultSpkrGainsDB,
 	[
 		0,0,0,0,0,0,0,0,0,0,
-		0,0 //sub
+		4.8+3, //0 //sub, rolled off 3dB by ears
 	].neg
 )
 .put(\spkrAzimuthsRad,
@@ -63,7 +63,7 @@ see prLoadSynthDefs for how channel mappings are used
 		30, 330, 270, 210, 150, 90, //median
 		0, 240, 120,                //upper
 		0, 							//top
-		0,0       					//sub
+		0, //90 	      			//sub
 	].degrad
 )
 .put(\spkrElevationsRad,
@@ -71,7 +71,7 @@ see prLoadSynthDefs for how channel mappings are used
 		0,0,0,0,0,0,				//median
 		45,45,45,					//upper
 		90,							//top
-		0,0							//sub
+		0, //0						//sub
 	].degrad
 )
 /*
@@ -84,10 +84,10 @@ Array size must equal numDiametricPairsIncludingSubs * 2
 			0,3,3,0,
 			1,4,4,1,
 			2,5,5,2,
-			6,11,
-			7,11,
-			8,11,
-			9,11,
+			6,12, // 12 is a dummy channel
+			7,12,
+			8,12,
+			9,12,
 			10,11,
 			11,10//eek
 		])
@@ -116,7 +116,7 @@ numInChannels: number of input channels into the decoder/router (Int)
 
 		/* --discrete channel routing-- */
 		// thru routing assumes contiguous channels, starting at arrayOutIndices.first
-		[\All, \discrete, \NA, 2, (0..9), 10]
+		[\All, \discrete, \NA, 2, (0..10), 11]
 	]
 )
 ;

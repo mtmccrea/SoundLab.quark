@@ -334,15 +334,16 @@
 					})
 				},
 				// TODO:	this is a quick fix for non-even/non-diametric sub layout
-				// 			Not this likely hasn't been used/tested because 113 specifies
-				//			a false 2nd sub - note for single sub receiving W, boost by 3dB
+				// 			Note this likely hasn't been used/tested because 113 specifies
+				//			a false 2nd sub (i.e. always even)- note for single sub receiving W, boost by 3dB
 				{
 					subOutbusNums.do({ | spkdex, i |
 						var nfc;
 						nfc = FoaNFC.ar( in, spkrDists.at(spkdex) );
 						Out.ar(
 							out_busnum + spkdex,
-							nfc[0] * numSubChans.reciprocal // send W to subs
+							// send W to subs, scaled by 3db, div by num of subs
+							nfc[0] * 2.sqrt * numSubChans.reciprocal
 						) * subgain.dbamp
 					})
 				}
@@ -479,7 +480,7 @@
 						nfc = FoaNFC.ar( in, spkrDists.at(spkdex) );
 						Out.ar(
 							out_busnum + spkdex,
-							nfc[0] * numSubChans.reciprocal // send W to subs
+							nfc[0] * 2.sqrt * numSubChans.reciprocal // send W to subs
 						) * subgain.dbamp
 					})
 				}
@@ -590,7 +591,7 @@
 						);
 						Out.ar(
 							out_busnum + spkdex,
-							nfc[0] * numSubChans.reciprocal // send W to subs
+							nfc[0] * 2.sqrt * numSubChans.reciprocal // send W to subs
 						) * subgain.dbamp
 					})
 				}
@@ -725,7 +726,7 @@
 						);
 						Out.ar(
 							out_busnum + spkdex,
-							nfc[0] * numSubChans.reciprocal // send W to subs
+							nfc[0] * 2.sqrt * numSubChans.reciprocal // send W to subs
 						) * subgain.dbamp
 					});
 				}
@@ -744,14 +745,46 @@
 			SynthDef( decSpecs.synthdefName, {
 				arg in_busnum, fadeTime = 0.3, subgain = 0, gate = 1;
 				var in, env, out;
-				in = In.ar(in_busnum, decSpecs.numInputChans);
+				var azims, elevs, directions, encoder, bf, decoders, sub_decodes;
+
 				env = EnvGen.ar(
 					Env( [0,1,0],[fadeTime, fadeTime],\sin, 1),
 					gate, doneAction: 2 );
-				/* TODO no crossover added to discrete routing yet
-				- see commented-out code below for crossover scheme to be added */
-				// Out.ar( decSpecs.arrayOutIndices.first, in * env );
-				decSpecs.arrayOutIndices.do{ |outbus, i| Out.ar( outbus, in[i] * env ) };
+
+				in = In.ar(in_busnum, decSpecs.numInputChans)  * env;
+				decSpecs.arrayOutIndices.do{ |outbus, i| Out.ar( outbus, in[i] ) };
+
+				// TODO: confirm this BF encode-decode approach
+				// SUBS
+				if( config.numSubChans > 1, {
+					// send the satellite signals to the sub(s) via planewave encoding,
+					// then decode the b-format to mono sub decoders
+					azims = decSpecs.arrayOutIndices.collect{|outdex, i| config.spkrAzimuthsRad[outdex] };
+					elevs = decSpecs.arrayOutIndices.collect{|outdex, i| config.spkrElevationsRad[outdex] };
+					directions = [azims, elevs].lace(azims.size).clump(2);
+
+					encoder = FoaEncoderMatrix.newDirections(directions, nil); // nil = planewave encoding
+					bf = FoaEncode.ar(in, encoder);
+
+					// Mono decode for each sub
+					decoders = config.numSubChans.collect{|i|
+						FoaDecoderMatrix.newMono(
+							config.spkrAzimuthsRad[config.numSatChans+i], // sub azimuth
+							0,  // sub elevation - always 2D
+							0.5 // cardiod decode
+						);
+					};
+
+					sub_decodes = decoders.collect{ |decoder| FoaDecode.ar(bf, decoder); };
+					// TODO add crossover to discrete routing
+					// see commented-out code below for crossover scheme to be added
+					config.numSubChans.do{|i| Out.ar(config.numSatChans+i, sub_decodes[i])};
+				},{
+					if( config.numSubChans == 1, {
+						Out.ar( config.numSatChans, Mix.ar(in) * decSpecs.numInputChans.reciprocal )
+					})
+				}
+				);
 			})
 		);
 
