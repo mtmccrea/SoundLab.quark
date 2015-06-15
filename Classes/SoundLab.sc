@@ -14,7 +14,7 @@ SoundLab {
 
 	var <server, <gui, <curKernel, <stereoActive, <isMuted, <isAttenuated, <stateLoaded, <rotated;
 	var <clipMonitoring, <curDecoderPatch, rbtTryCnt;
-	var <clipListener, <reloadGUIListener, <clipMonDef, <patcherDef, <stereoSubPatcherDef;
+	var <clipListener, <reloadGUIListener, <clipMonDef, <patcherDef, <sterPatcherDef, <stereoSubPatcherDef;
 	var <patcherGroup, <stereoPatcherSynths, <satPatcherSynths, <subPatcherSynths;
 	var <monitorGroup_ins, <monitorGroup_outs, <monitorSynths_outs, <monitorSynths_ins;
 	var <jconvolver, <nextjconvolver, <jconvinbus, <nextjconvinbus, <jconvHWOutChannel;
@@ -209,6 +209,12 @@ SoundLab {
 					ReplaceOut.ar(out_bus, In.ar(in_bus, 1))
 				});
 
+				sterPatcherDef = CtkSynthDef(\patcher, { arg in_bus=0, out_bus=0;
+					// stereo patchers don't use ReplaceOut because often stereo channels are shared with
+					// satellite channels, and ReplaceOut would overwrite the satellite's bus contents
+					Out.ar(out_bus, In.ar(in_bus, 1))
+				});
+
 				stereoSubPatcherDef = CtkSynthDef(\subpatcher, { arg in_bus=0, out_bus=0;
 					if( numSubChans == 1,
 						{	// summing stereo into 1 sub
@@ -294,7 +300,7 @@ SoundLab {
 
 				stereoPatcherSynths = 2.collect({|i|
 					// TAIL so avoid sending from stereo into satellite patcher synths (doubling the output)
-					patcherDef.note( addAction: \tail, target: patcherGroup )
+					sterPatcherDef.note( addAction: \tail, target: patcherGroup )
 					.in_bus_(hwInStart+i)
 					.out_bus_(stereoChanIndex[i])
 					.play
