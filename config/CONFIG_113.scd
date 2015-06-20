@@ -109,14 +109,16 @@ numInChannels: number of input channels into the decoder/router (Int)
 .put(\decAttributeList,
 	[
 		/* --ambisonic decoders-- */
-		[\Hex, \diametric, 'dual', 2, (0..2), 4],
+		[\Hex_2D, \diametric, 'dual', 2, (0..2), 4],
 
 		// domes - half of horizontal speakers plus all dome speakers
 		[\Dome_10ch_6x3x1,	\dome,	'dual', 3,	(0..2)++(6..9), 4	],
 
 		/* --discrete channel routing-- */
 		// thru routing assumes contiguous channels, starting at arrayOutIndices.first
-		[\All, \discrete, \NA, 2, (0..10), 11]
+		[\All, \discrete, \NA, 2, (0..10), 11],			// includes sub as last channel
+		[\Hex, \discrete, \NA, 2, (0..5)++[10], 7],		// includes sub as last channel
+		[\Quad, \discrete, \NA, 2, [0,1,3,4,10], 5]		// includes sub as last channel
 	]
 )
 ;
