@@ -761,7 +761,7 @@
 					// then decode the b-format to mono sub decoders
 					azims = decSpecs.arrayOutIndices.collect{|outdex, i| config.spkrAzimuthsRad[outdex] };
 					elevs = decSpecs.arrayOutIndices.collect{|outdex, i| config.spkrElevationsRad[outdex] };
-					directions = [azims, elevs].lace(azims.size).clump(2);
+					directions = [azims, elevs].lace(azims.size + elevs.size).clump(2);
 
 					encoder = FoaEncoderMatrix.newDirections(directions, nil); // nil = planewave encoding
 					bf = FoaEncode.ar(in, encoder);
@@ -779,13 +779,14 @@
 					// TODO add crossover to discrete routing
 					// see commented-out code below for crossover scheme to be added
 					config.numSubChans.do{|i| Out.ar(config.numSatChans+i, sub_decodes[i])};
-				},{
-					if( config.numSubChans == 1, {
-						Out.ar( config.numSatChans, Mix.ar(in) * decSpecs.numInputChans.reciprocal )
-					})
-				}
+
+					},{
+						if( config.numSubChans == 1, {
+							Out.ar( config.numSatChans, Mix.ar(in) * decSpecs.numInputChans.reciprocal )
+						})
+					}
 				);
-			})
+			});
 		);
 
 		// debug

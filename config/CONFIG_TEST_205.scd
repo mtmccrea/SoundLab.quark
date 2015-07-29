@@ -272,7 +272,7 @@ see prLoadSynthDefs for how channel mappings are used
 	// ]
 )
 .put(\spkrAzimuthsRad, (
-	Array.series(12, 360, -30)
+	Array.series(12, 360, -30).degrad
 	// upper ring
 	++[39.3,323.4,278.3,204.2,159.3,84.2]
 	// overhead
@@ -335,7 +335,7 @@ numInChannels: number of input channels into the decoder/router (Int)
 
 		/* --discrete channel routing-- */
 		// thru routing assumes contiguous channels, starting at arrayOutIndices.first
-		[\All,			\discrete,	\NA,	2,	(0..18),				24	],
+		[\All,			\discrete,	\NA,	2,	(0..20),				21	],
 		[\Hex_Point_Fwd,\discrete,	\NA,	2,	Array.series(6, 0, 2),	6	],
 		[\Hex_Flat_Fwd,	\discrete,	\NA,	2,	[11,1,3,5,7,9],			6	],
 		[\Quad_Square,	\discrete,	\NA,	2,	Array.series(4, 0, 3),	4	],

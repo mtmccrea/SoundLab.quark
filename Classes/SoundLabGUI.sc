@@ -22,14 +22,14 @@ SoundLabGUI {
 		var cond;
 		cond = Condition(false);
 		fork {
-			"INITIALIZING GUI".postln;
+			"INITIALIZING WEB WINDOW".postln;
 			sl.addDependant( this );
 			if( sl.usingSLHW, {
 				slhw = sl.slhw.addDependant(this)
 			});
 
-			" ---------- \n creating new instance of wsGUI \n------------".postln;
-			wsGUI = WsGUI.new(wwwPort);
+			" ---------- \n creating new instance of wsWindow \n------------".postln;
+			wsGUI = WsWindow("Sound Lab Router", isDefault: true, wwwPort: wwwPort, suppressPosting: false);
 			"\n".postln;
 			1.5.wait; // TODO: add condition
 
@@ -80,20 +80,23 @@ SoundLabGUI {
 			"initializing controls".postln;
 			this.initControls;
 			"just before building controls".postln;
-			this.buildControls;	// changed order - build Listeners defines functions
+			this.buildControls;
 		}
 	}
 
 	initControls {
+
 		// GAIN
 		gainTxt = WsStaticText.init(wsGUI, Rect(0,0,1,0.05))
 		.string_("").font_(Font(font, mdFontSize))
 		;
+
 		gainSl = WsEZSlider.init(wsGUI)
 		.controlSpec_(ampSpec)
 		.action_({|sldr|
 			sl.amp_( sldr.value )})
 		;
+
 		// MUTE / ATTENUATE
 		muteButton = WsButton.init(wsGUI)
 		.states_([
@@ -106,6 +109,7 @@ SoundLabGUI {
 			)
 		})
 		;
+
 		attButton = WsButton.init(wsGUI)
 		.states_([
 			["Attenuate", Color.black, Color.fromHexString("#FAFAFA")],
@@ -222,6 +226,7 @@ SoundLabGUI {
 			)
 		})
 		;
+
 
 		// CORRECTION
 
@@ -395,7 +400,7 @@ SoundLabGUI {
 			}
 		})
 		;
-		"STATE".postln;
+
 		// STATE
 		stateTxt = WsStaticText.init(wsGUI).string_("").font_(Font(font, mdFontSize))
 		;
@@ -508,7 +513,7 @@ SoundLabGUI {
 					{ this.status_("Audio stopped. Cannot update at this time.") }
 				);
 				},
-				\stoppingAudio, { this.status_("Audio is stopping - Standby.") }
+				\stoppingAudio, { this.status_("Audio is stopping - Please wait...") }
 			)
 		});
 	}
@@ -598,195 +603,197 @@ SoundLabGUI {
 
 		wsGUI.layout_(
 			WsVLayout( Rect(0.025,0.025,0.95,0.95),
+
 				WsStaticText.init(wsGUI, Rect(0,0,1,0.1)).string_(
 					format("<strong>%\nRouting and Decoding System</strong>",sl.labName))
-				.textAlign_(\center).font_(Font(font, lgFontSize)),
-				WsHLayout( Rect(0,0,1,0.9),
+				.align_(\center).font_(Font(font, lgFontSize)),
 
-					// COLUMN 1
-					WsVLayout( Rect(0,0,0.45,1),
+			WsHLayout( Rect(0,0,1,0.9),
 
-						// current settings
-						WsHLayout( Rect(0,0,1, 0.08),
-							WsStaticText.init(wsGUI, Rect(0,0,1,1)).string_(
-								"<strong>Current System Settings</strong>")
-							.textAlign_(\center).font_(Font(font, mdFontSize))
-							.backgroundColor_(Color.fromHexString("#FFFFCC")),
-						),
+				// COLUMN 1
+				WsVLayout( Rect(0,0,0.45,1),
 
-						WsHLayout( Rect(0,0,1, 0.3),
-							WsStaticText.init(wsGUI, Rect(0,0,0.5,1)).string_(
-								"Sample Rate: \nStereo channels first: \nSound field rotated: \nDecoder / Router: \nCorrection: \n"
-							)
-							.textAlign_(\right)
-							.font_(Font(font, mdFontSize))
-							.backgroundColor_(Color.fromHexString("#FFFFCC")),
-
-							stateTxt.bounds_(Rect(0,0,0.5,1))
-							.backgroundColor_(Color.fromHexString("#FFFFCC")),
-						),
-						0.05,
-
-						// amp controls
-						WsVLayout( Rect(0,0,1,0.15),
-							gainTxt.bounds_(Rect(0,0,1,1/3)),
-							gainSl.bounds_(Rect(0,0,2/3,1/3)),
-							// mute / attenuate
-							WsHLayout( Rect(0,0,0.5,1/3),
-								muteButton, 0.15, attButton
-							)
-						),
-						0.05,
-						// shelf freq / sweet spot size
-						WsVLayout( Rect(0,0,1,0.12),
-							sweetTxt.bounds_(Rect(0,0,1,1/2)),
-							sweetSl.bounds_(Rect(0,0,2/3,1/2))
-						),
-						0.05,
-
-						// post window
-						WsStaticText.init(wsGUI, Rect(0,0,1,0.04))
-						.string_("<strong>Post:</strong>").font_(Font(font, mdFontSize)),
-
-						postTxt.bounds_(Rect(0,0,1,0.5))
-						.backgroundColor_(Color.fromHexString("#F2F2F2"))
+					// current settings
+					WsHLayout( Rect(0,0,1, 0.08),
+						WsStaticText.init(wsGUI, Rect(0,0,1,1)).string_(
+						"<strong>Current System Settings</strong>")
+						.align_(\center).font_(Font(font, mdFontSize))
+						.background_(Color.fromHexString("#FFFFCC")),
 					),
 
+					WsHLayout( Rect(0,0,1, 0.3),
+						WsStaticText.init(wsGUI, Rect(0,0,0.5,1)).string_(
+							"Sample Rate: \nStereo channels first: \nSound field rotated: \nDecoder / Router: \nCorrection: \n"
+						)
+						.align_(\right)
+						.font_(Font(font, mdFontSize))
+						.background_(Color.fromHexString("#FFFFCC")),
 
-					// COLUMN 2
-					WsVLayout( Rect(0,0,0.05,1),
-						// space
+						stateTxt.bounds_(Rect(0,0,0.5,1))
+						.background_(Color.fromHexString("#FFFFCC")),
 					),
+					0.05,
 
-					// COLUMN 3
-					WsVLayout( Rect(0,0,0.45,1),
-						// Change Settings title
-						WsStaticText.init(wsGUI, Rect(0,0,1,0.1)).string_(
-							"<strong>Change Settings</strong>"
-						).textAlign_(\center).font_(Font(font, mdFontSize)),
+					// amp controls
+					WsVLayout( Rect(0,0,1,0.15),
+						gainTxt.bounds_(Rect(0,0,1,1/3)),
+						gainSl.bounds_(Rect(0,0,2/3,1/3)),
+						// mute / attenuate
+						WsHLayout( Rect(0,0,0.5,1/3),
+							muteButton, 0.15, attButton
+						)
+					),
+					0.05,
+					// shelf freq / sweet spot size
+					WsVLayout( Rect(0,0,1,0.12),
+						sweetTxt.bounds_(Rect(0,0,1,1/2)),
+						sweetSl.bounds_(Rect(0,0,2/3,1/2))
+					),
+					0.05,
 
-						// Sample Rate / Stereo layout
-						WsHLayout( Rect(0,0,1,0.15),
-							// stereo
-							WsVLayout( Rect(0,0,0.6,1),
+					// post window
+					WsStaticText.init(wsGUI, Rect(0,0,1,0.04))
+					.string_("<strong>Post:</strong>").font_(Font(font, mdFontSize)),
 
-								WsStaticText.init(wsGUI, Rect(0,0, 1,0.65))
-								.string_(
-									"<strong>Insert STEREO channels before decoder/router?</strong>"
-								)
-								.textAlign_(\left)
-								.font_(Font(font, mdFontSize)),
+					postTxt.bounds_(Rect(0,0,1,0.5))
+					.background_(Color.fromHexString("#F2F2F2"))
+				),
 
-								WsHLayout( Rect(0,0, 1, 0.35), stereoMenu, 2/3)
-							),
-							0.05,
-							// sample rate
-							WsVLayout( Rect(0,0,0.4,1),
-								WsStaticText.init(wsGUI, Rect(0,0,1,1))
-								.string_("<strong>Sample Rate</strong>")
-								.font_(Font(font, mdFontSize)),
-								srMenu.bounds_(Rect(0,0,0.5,1)), 0.05,
-							)
-						),
-						0.05,
 
-						// DECODER / ROUTER selection
-						WsHLayout( Rect(0,0,1,0.6),
-							// ambisonic decoder
-							WsVLayout( Rect(0,0,0.6, 1),
+			// COLUMN 2
+			WsVLayout( Rect(0,0,0.05,1),
+				// space
+			),
 
-								WsVLayout( Rect(0,0, 1, 0.2),
-									WsStaticText.init(wsGUI,Rect(0,0,1,0.08))
-									.string_("<strong>Select an Ambisonic Decoder</strong>")
-									.textAlign_(\left).font_(Font(font, mdFontSize))
-								),
-								WsVLayout( Rect(0,0, 1, 0.8),
-									*decMenuLayouts ++
-									[
-										0.1,
-										WsStaticText.init(wsGUI, Rect(0,0,1,0.15))
-										.string_( format(
-											"Rotate listening position % degrees?",
-											sl.rotateDegree))
-										.textAlign_(\left)
-										.font_(Font(font, mdFontSize)),
-										0.05
-									] ++
-									WsHLayout( nil, rotateMenu, 2/3)
-								),
-							),
-							0.05,
-							// discrete routing
-							WsVLayout( Rect(0,0,0.4, 1),
+			// COLUMN 3
+			WsVLayout( Rect(0,0,0.45,1),
+				// Change Settings title
+				WsStaticText.init(wsGUI, Rect(0,0,1,0.1)).string_(
+					"<strong>Change Settings</strong>"
+				).align_(\center).font_(Font(font, mdFontSize)),
 
-								WsStaticText.init(wsGUI, Rect(0,0,1,0.2))
-								.string_("<strong>Select a Discrete Routing Layout</strong>")
-								.textAlign_(\left)
-								.font_(Font(font, mdFontSize)),
-								0.05,
+				// Sample Rate / Stereo layout
+				WsHLayout( Rect(0,0,1,0.15),
+					// stereo
+					WsVLayout( Rect(0,0,0.6,1),
 
-								WsStaticText.init(wsGUI, Rect(0,0,1,0.15))
-								.string_("Which speakers?")
-								.textAlign_(\left)
-								.font_(Font(font, mdFontSize)),
-								0.05,
-								WsHLayout( Rect(0,0, 1,0.1),
-									discreteMenu.bounds_(Rect(0,0,1/2,1)), 0.5),
-								0.45 // push "which speakers?" and discrete menu together
-							)
-						),
-						nil,
+						WsStaticText.init(wsGUI, Rect(0,0, 1,0.65))
+						.string_(
+							"<strong>Insert STEREO channels before decoder/router?</strong>"
+						)
+						.align_(\left)
+						.font_(Font(font, mdFontSize)),
 
-						// correction
-						WsVLayout( Rect(0,0,1,0.2),
-
-							WsStaticText.init(wsGUI, Rect(0,0, 1,0.3))
-							.string_("<strong>Room correction</strong>")
-							.textAlign_(\left)
-							.font_(Font(font, mdFontSize)),
-
-							WsHLayout( Rect(0,0,1, 0.8),
-
-								kernelLayout = WsHLayout(
-									Rect( 0,0,
-										correctionCbAttributes.size / (kernelDegreeMenus.size + correctionCbAttributes.size),
-										1),
-									*{
-										kernelCheckBoxes = correctionCbAttributes.collect{ |att|
-											WsCheckbox.init(wsGUI, nil)
-										};
-
-										// return the VLayouts from this function
-										correctionCbAttributes.collect{ |att, i|
-											WsVLayout( Rect(0,0,1,1),
-												kernelCheckBoxes[i],
-												WsStaticText.init(wsGUI, nil).string_(att.asString),
-											);
-										};
-									}.value
-								),
-								0.05,
-
-								WsHLayout(
-									Rect(0,0,
-										kernelDegreeMenus.size / (kernelDegreeMenus.size + correctionCbAttributes.size),
-										1),
-									*kernelDegreeMenus.collect(_.bounds_( Rect(0,0.0,1,0.5) ))
-								),
-								0.05,
-								WsStaticText.init(wsGUI, nil).string_("\n-or-").textAlign_('center'),
-								0.05,
-								basicBalanceButton.bounds_(Rect(0,0,0.2, 0.8)),
-							),
-							kernelMatchStatusTxt
-						),
-
-						0.05,
-						// apply button
-						WsHLayout( Rect(0,0,1,0.05),
-							2/3, applyButton)
+						WsHLayout( Rect(0,0, 1, 0.35), stereoMenu, 2/3)
+					),
+					0.05,
+					// sample rate
+					WsVLayout( Rect(0,0,0.4,1),
+						WsStaticText.init(wsGUI, Rect(0,0,1,1))
+						.string_("<strong>Sample Rate</strong>")
+						.font_(Font(font, mdFontSize)),
+						srMenu.bounds_(Rect(0,0,0.5,1)), 0.05,
 					)
-				)
+				),
+				0.05,
+
+				// DECODER / ROUTER selection
+				WsHLayout( Rect(0,0,1,0.6),
+					// ambisonic decoder
+					WsVLayout( Rect(0,0,0.6, 1),
+
+						WsVLayout( Rect(0,0, 1, 0.2),
+							WsStaticText.init(wsGUI,Rect(0,0,1,0.08))
+							.string_("<strong>Select an Ambisonic Decoder</strong>")
+							.align_(\left).font_(Font(font, mdFontSize))
+						),
+						WsVLayout( Rect(0,0, 1, 0.8),
+							*decMenuLayouts ++
+							[
+								0.1,
+								WsStaticText.init(wsGUI, Rect(0,0,1,0.15))
+								.string_( format(
+									"Rotate listening position % degrees?",
+								sl.rotateDegree))
+								.align_(\left)
+								.font_(Font(font, mdFontSize)),
+								0.05
+							] ++
+							WsHLayout( nil, rotateMenu, 2/3)
+						),
+					),
+					0.05,
+					// discrete routing
+					WsVLayout( Rect(0,0,0.4, 1),
+
+						WsStaticText.init(wsGUI, Rect(0,0,1,0.2))
+						.string_("<strong>Select a Discrete Routing Layout</strong>")
+						.align_(\left)
+						.font_(Font(font, mdFontSize)),
+						0.05,
+
+						WsStaticText.init(wsGUI, Rect(0,0,1,0.15))
+						.string_("Which speakers?")
+						.align_(\left)
+						.font_(Font(font, mdFontSize)),
+						0.05,
+						WsHLayout( Rect(0,0, 1,0.1),
+						discreteMenu.bounds_(Rect(0,0,1/2,1)), 0.5),
+						0.45 // push "which speakers?" and discrete menu together
+					)
+				),
+				nil,
+
+				// correction
+				WsVLayout( Rect(0,0,1,0.2),
+
+					WsStaticText.init(wsGUI, Rect(0,0, 1,0.3))
+					.string_("<strong>Room correction</strong>")
+					.align_(\left)
+					.font_(Font(font, mdFontSize)),
+
+					WsHLayout( Rect(0,0,1, 0.8),
+
+						kernelLayout = WsHLayout(
+							Rect( 0,0,
+								correctionCbAttributes.size / (kernelDegreeMenus.size + correctionCbAttributes.size),
+							1),
+							*{
+								kernelCheckBoxes = correctionCbAttributes.collect{ |att|
+									WsCheckbox.init(wsGUI, nil)
+								};
+
+								// return the VLayouts from this function
+								correctionCbAttributes.collect{ |att, i|
+									WsVLayout( Rect(0,0,1,1),
+										kernelCheckBoxes[i],
+										WsStaticText.init(wsGUI, nil).string_(att.asString),
+									);
+								};
+							}.value
+						),
+						0.05,
+
+						WsHLayout(
+							Rect(0,0,
+								kernelDegreeMenus.size / (kernelDegreeMenus.size + correctionCbAttributes.size),
+							1),
+							*kernelDegreeMenus.collect(_.bounds_( Rect(0,0.0,1,0.5) ))
+						),
+						0.05,
+						WsStaticText.init(wsGUI, nil).string_("\n-or-").align_('center'),
+						0.05,
+						basicBalanceButton.bounds_(Rect(0,0,0.2, 0.8)),
+					),
+					kernelMatchStatusTxt
+				),
+
+				0.05,
+				// apply button
+				WsHLayout( Rect(0,0,1,0.05),
+				2/3, applyButton)
+			)
+			)
 			);
 		);
 		"BUILT CONTROLS".postln;
@@ -826,12 +833,12 @@ SoundLabGUI {
 			kernelLayout = WsHLayout(
 				// bounds are still preserved despite it being removed
 				kernelLayout.bounds,
-
-				//correctionMenu.bounds_(Rect(0,0,1/2,1)), 0.5
 				*{
 					kernelCheckBoxes = correctionCbAttributes.collect{ |att|
-						WsCheckbox.init(wsGUI, Rect(0,0,1,1)) /*action definition below*/
+						WsCheckbox.init(wsGUI, Rect(0,0,1,1))
+						/* action definition below */
 					};
+
 					// return the VLayouts from this function
 					correctionCbAttributes.collect{ |att, i|
 						WsVLayout( Rect(0,0,1,1),
@@ -839,7 +846,7 @@ SoundLabGUI {
 							kernelCheckBoxes[i]
 						);
 					};
-				}.value
+				}.value // evalutating this fuction returns the checkbox's VLayouts
 			);
 			// put the new layout back in the old one's place
 			wsGUI.layout_(kernelLayout);
@@ -881,7 +888,7 @@ SoundLabGUI {
 
 /* TESTING
 l = SoundLab(48000, loadGUI:true, useSLHW: false, useKernels: false, configFileName: "CONFIG_117.scd",usingOSX: true)
-l = SoundLab(48000, loadGUI:true, useSLHW: false, useKernels: true, configFileName: "CONFIG_TEST_205.scd", usingOSX: true)
+l = SoundLab(48000, loadGUI:true, useSLHW: false, useKernels: false, configFileName: "CONFIG_TEST_205.scd", usingOSX: true)
 
 l.cleanup
 s.quit

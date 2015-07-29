@@ -219,7 +219,7 @@ SoundLab {
 					if( numSubChans == 1,
 						{	// summing stereo into 1 sub
 							ReplaceOut.ar(out_bus,
-								In.ar(in_bus, 2).sum * config.defaultSpkrtGainsDB[numSatChans].dbamp
+								In.ar(in_bus, 2).sum * config.defaultSpkrGainsDB[numSatChans].dbamp
 							)
 						},{ // encoding stereo t b format then decoding to multipl subs
 							var stereoBF = FoaEncode.ar(
@@ -234,7 +234,7 @@ SoundLab {
 										FoaDecoderMatrix.newMono(
 											config.spkrAzimuthsRad[numSatChans + i],
 											0, 0.5) // no elevation, cardioid
-									) * config.defaultSpkrtGainsDB[numSatChans+i].dbamp
+									) * config.defaultSpkrGainsDB[numSatChans+i].dbamp
 								)
 							};
 						});
@@ -341,6 +341,7 @@ SoundLab {
 					requestKernel ?? \basic_balance,
 					loadCondition
 				);
+
 				loadCondition.wait; "New Signal Chain Loaded".postln;
 				loadCondition.test_(false);
 
@@ -349,6 +350,7 @@ SoundLab {
 				stateLoaded = true;
 				if(loadGUI, {this.buildGUI});
 				this.changed(\stateLoaded);
+
 			}
 		});
 	}
@@ -463,9 +465,6 @@ NO NEW DECODER STARTED");
 			);
 
 			cond.wait;
-			"past condition before nextjconv stuff".postln;
-			nextjconvolver.postln;
-			"past condition before nextjconv stuff".postln;
 
 			// set new state vars based on results from each above step
 			nextjconvolver !? {
