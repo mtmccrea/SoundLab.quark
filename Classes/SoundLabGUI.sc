@@ -22,15 +22,14 @@ SoundLabGUI {
 		var cond;
 		cond = Condition(false);
 		fork {
-			"INITIALIZING WEB WINDOW".postln;
+			"\n*** Initializing Web Window ***".postln;
 			sl.addDependant( this );
 			if( sl.usingSLHW, {
 				slhw = sl.slhw.addDependant(this)
 			});
 
-			" ---------- \n creating new instance of wsWindow \n------------".postln;
 			wsGUI = WsWindow("Sound Lab Router", isDefault: true, wwwPort: wwwPort, suppressPosting: false);
-			"\n".postln;
+
 			1.5.wait; // TODO: add condition
 
 			/*
@@ -42,6 +41,8 @@ SoundLabGUI {
 			decsDome = [];
 			discreteRouters = [];
 			decsMatrix = [];
+
+			"\n\n*** Web control stats: ***\n".postln;
 
 			sl.decAttributeList.do{ |dAtts|
 
@@ -77,9 +78,9 @@ SoundLabGUI {
 			postString = "";
 			this.initVars(cond);
 			cond.wait;
-			"initializing controls".postln;
+			"Initializing ontrols.".postln;
 			this.initControls;
-			"just before building controls".postln;
+			// "just before building controls".postln;
 			this.buildControls;
 		}
 	}
@@ -246,14 +247,14 @@ SoundLabGUI {
 		basicBalanceButton = WsButton.init(wsGUI)
 		.states_([
 			["Basic Balance", Color.black, Color.white],
-			["Basic Balance Pending", Color.black, Color.gray],
+			["Balance Pending", Color.black, Color.gray],
 		])
 		.action_({ |but|
 			if( but.value == 1, {
 				kernelCheckBoxes.do(_.value_(false)); // zero out check boxes
 				kernelDegreeMenus.do(_.value_(0)); // deselect kernel menus
 				pendingKernel = \basic_balance;
-				this.kernelStatus_("Balance the speaker array, no digital room correction selected.");
+				this.kernelStatus_("Balance the speaker array, but with no room correction. Click Apply to balance the speakers.");
 			},{
 				pendingKernel = nil;
 				this.kernelStatus_("No pending kernel change.");
@@ -551,7 +552,7 @@ SoundLabGUI {
 				result = sl.getKernelAttributesMatch(selectedAttributes);
 
 				msg = case
-				{result.isKindOf(String)} { "Found kernel match." }
+				{result.isKindOf(String)} { "Found kernel match. Click Apply to start the correcitoin." }
 				{result == 0}  {"No kernel found matching selected criteria."}
 				{result == -1} {"More than one kernel found, refine selected criteria."}
 				;
@@ -588,7 +589,7 @@ SoundLabGUI {
 			++ "\t" ++ sl.stereoActive.if({"YES"},{"NO"}) ++ "\n "
 			++ "\t" ++ sl.rotated.if({"YES"},{"NO"}) ++ "\n "
 			++ "\t" ++ sl.curDecoderPatch.decoderName ++ "\n "
-			++ "\t" ++ sl.formatKernelStatePost(sl.curKernel).asString
+			++ "\t" ++ sl.formatKernelStatePost(sl.curKernel, short:true).asString
 			++ "</strong>"
 		);
 	}
@@ -640,13 +641,12 @@ SoundLabGUI {
 
 						/* amp controls */
 						WsVLayout( Rect(0,0,1,0.15),
-							gainTxt.bounds_(Rect(0,0,1,1/3)),
-							gainSl.bounds_(Rect(0,0,2/3,1/3)),
-
 							/* mute / attenuate */
-							WsHLayout( Rect(0,0,0.5,1/3),
-								muteButton, 0.15, attButton
-							)
+							WsHLayout( Rect(0,0,1,2/5),
+								gainTxt.bounds_(Rect(0,0,1/3,1)),
+								0.1, muteButton, 0.1, attButton
+							), 1/5,
+							gainSl.bounds_(Rect(0,0,2/3,2/5)),
 						),
 						0.05,
 
@@ -764,6 +764,13 @@ SoundLabGUI {
 							.font_(Font(font, mdFontSize)),
 
 							WsHLayout( Rect(0,0,1, 0.8),
+								WsHLayout(
+									Rect(0,0,
+										kernelDegreeMenus.size / (kernelDegreeMenus.size + correctionCbAttributes.size),
+										1),
+									*kernelDegreeMenus.collect(_.bounds_( Rect(0,0.0,1,0.5) ))
+								),
+								0.05,
 
 								kernelLayout = WsHLayout(
 									Rect( 0,0,
@@ -785,13 +792,6 @@ SoundLabGUI {
 								),
 								0.05,
 
-								WsHLayout(
-									Rect(0,0,
-										kernelDegreeMenus.size / (kernelDegreeMenus.size + correctionCbAttributes.size),
-										1),
-									*kernelDegreeMenus.collect(_.bounds_( Rect(0,0.0,1,0.5) ))
-								),
-								0.05,
 								WsStaticText.init(wsGUI, nil).string_("\n-or-").align_('center'),
 								0.05,
 								basicBalanceButton.bounds_(Rect(0,0,0.2, 0.8)),
@@ -808,9 +808,9 @@ SoundLabGUI {
 				)
 			);
 		);
-		"BUILT CONTROLS".postln;
+		"Controls built.".postln;
 		this.recallValues;				// this will turn on the defaults
-		"Interface built.".postln;
+		"Interface loaded.".postln;
 	}
 
 	initVars { |loadCondition|
@@ -820,7 +820,7 @@ SoundLabGUI {
 		stereoPending = nil;
 		rotatePending = nil;
 
-		postf("\tCurrent decoder: %\n\tCurrent SR: %\n\tCurKernel: %\n",
+		postf("\nCurrent decoder:\t%\nCurrent SR:\t%\nCurKernel:\t%\n",
 			sl.curDecoderPatch.decoderName, sl.sampleRate, sl.curKernel);
 		loadCondition !? {loadCondition.test_(true).signal}
 	}
@@ -897,7 +897,7 @@ SoundLabGUI {
 
 /* TESTING
 l = SoundLab(48000, loadGUI:true, useSLHW: false, useKernels: false, configFileName: "CONFIG_117.scd",usingOSX: true)
-l = SoundLab(48000, loadGUI:true, useSLHW: false, useKernels: false, configFileName: "CONFIG_TEST_205.scd", usingOSX: true)
+l = SoundLab(48000, loadGUI:true, useSLHW: false, useKernels: true, configFileName: "CONFIG_TEST_205.scd", usingOSX: true)
 
 l.cleanup
 s.quit

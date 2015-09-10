@@ -25,7 +25,7 @@ SoundLab {
 	var <decoderLib, <synthLib, <loadedDelDistGain;
 	var <slhw;
 
-	*new { |initSR=96000, loadGUI=true, useSLHW=true, useKernels=true, configFileName="CONFIG_205.scd", usingOSX=false|
+	*new { |initSR=48000, loadGUI=true, useSLHW=true, useKernels=true, configFileName="CONFIG_205.scd", usingOSX=false|
 		^super.newCopyArgs(initSR, loadGUI, useSLHW, useKernels, configFileName, usingOSX).init;
 	}
 
@@ -136,7 +136,7 @@ SoundLab {
 	prLoadServerSide { |argServer|
 		var loadCondition;
 		loadCondition = Condition(false);
-		postln("Loading Server Side ... loading synths, intializing channel counts, groups, and busses."); // debug
+		"\n*** Loading Server Side ***\n".postln;
 
 		server = argServer ?? {
 			"server defaulting because none provided -prLoadServerSide".warn;
@@ -331,7 +331,7 @@ SoundLab {
 				};
 				server.sync; // to make sure stereo patchers have started
 
-				postf("STARTUP: starting new signal chain requestKernel: %\n", requestKernel);
+				postf("Starting new signal chain\nequestKernel: %\n", requestKernel);
 
 				this.startNewSignalChain(
 					if(curDecoderPatch.notNil,
@@ -374,7 +374,7 @@ SoundLab {
 
 		fork {
 			var testKey;
-			"in startNewSignalChain, kernelPath: \n\t%\n".postf(kernelPath);
+			"StartNewSignalChain - kernelPath: \t%\n".postf(kernelPath);
 
 			if( kernelPath.notNil, {
 				if( kernelPath != \basic_balance, {
@@ -412,7 +412,7 @@ SoundLab {
 						kpn = PathName(nextjconvolver.kernelFolderPath);
 						testKey = (this.sampleRate.asString ++ "/" ++ kpn.allFolders[kpn.allFolders.size-2]).asSymbol;
 					},{
-						"selecting default delay/dist/gain".postln;
+						"Selecting default delay/dist/gain.".postln;
 						\default;
 					});
 
@@ -433,11 +433,11 @@ SoundLab {
 
 					// because delays, distances and gains have changed, need to
 					// reload synthdefs
-					"loading synthdefs".postln;
+					"\n*** Loading SynthDefs ***\n".postln;
 					this.prLoadSynthDefs(cond);
 					cond.wait;
 					cond.test_(false);
-					"SynthDefs loaded.\n".postln;
+					"\n*** SynthDefs loaded ***\n".postln;
 			});
 
 			server.sync; // sync to let all the synths load
@@ -475,7 +475,7 @@ NO NEW DECODER STARTED");
 				nextjconvolver = nil;				// reset var
 				this.changed(\kernel, curKernel);
 			};
-"END".postln;
+			"\n*** END ***\n".postln;
 			completeCondition !? {completeCondition.test_(true).signal};
 		}
 	}

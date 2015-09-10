@@ -272,7 +272,7 @@ see prLoadSynthDefs for how channel mappings are used
 	// ]
 )
 .put(\spkrAzimuthsRad, (
-	Array.series(12, 360, -30).degrad
+	Array.series(12, 360, -30)
 	// upper ring
 	++[39.3,323.4,278.3,204.2,159.3,84.2]
 	// overhead

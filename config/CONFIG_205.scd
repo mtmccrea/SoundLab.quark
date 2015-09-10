@@ -9,7 +9,7 @@ IdentityDictionary(know: true)
 	\numSatChans,			19,
 	\numSubChans, 			2,
 	\defaultDecoderName,	\Horiz_Dodec,
-	\defaultKernel,			\basic_balance,
+	// \defaultKernel,			\basic_balance,
 	\jconvHWOutChannel,		66,
 	\stereoChanIndex,		[11, 1],
 	\rotateDegree,			90, // option to rotate the listening position to this angle
@@ -37,7 +37,50 @@ IdentityDictionary(know: true)
 	/* file paths */
 	\kernelsPath,			"/home/audioadmin/Documents/SoundLabSupport/SoundLabKernels",
 	\decoderMatricesPath,	"/home/audioadmin/Documents/SoundLabSupport/DecoderMatrices/",
-	])
+])
+
+// no leading '/' in relative folder path
+.put(\kernelSpec, [
+	// note popup array size = number of popups
+	// column defines selection within one dropdown.
+	// [ path relative to \kernelsPath, 				[...check box (true) attributes],	[...dropdown  attributes] ]
+	["desk_curtains_screen/k_9_1.365w_18c_3b_0.77t/",	['desk', 'curtains', 'screen'],	['open',	'reference'] ],
+	["desk_curtains_screen/k_24_1.365w_18c_5b_0.77t/",	['desk', 'curtains', 'screen'],	['moderate','reference'] ],
+	["desk_curtains_screen/k_24_1.365w_18c_9b_0.77t/",	['desk', 'curtains', 'screen'],	['tight',	'reference'] ],
+	["desk_curtains_screen/m_9_1.365w_18c_3b_0.77t/",	['desk', 'curtains', 'screen'], ['open',	'realtime'] ],
+	["desk_curtains_screen/m_24_1.365w_18c_5b_0.77t/",	['desk', 'curtains', 'screen'], ['moderate','realtime'] ],
+	["desk_curtains_screen/m_24_1.365w_18c_9b_0.77t/",	['desk', 'curtains', 'screen'], ['tight',	'realtime'] ],
+
+	["desk_full_curtains/k_9_1.365w_18c_3b_0.77t/",		['desk', 'curtains'], ['open',	'reference'] ],
+	["desk_full_curtains/k_24_1.365w_18c_5b_0.77t/",	['desk', 'curtains'], ['moderate','reference'] ],
+	["desk_full_curtains/k_24_1.365w_18c_9b_0.77t/",	['desk', 'curtains'], ['tight',	'reference'] ],
+	["desk_full_curtains/m_9_1.365w_18c_3b_0.77t/",		['desk', 'curtains'], ['open',	'realtime'] ],
+	["desk_full_curtains/m_24_1.365w_18c_5b_0.77t/",	['desk', 'curtains'], ['moderate','realtime'] ],
+	["desk_full_curtains/m_24_1.365w_18c_9b_0.77t/",	['desk', 'curtains'], ['tight',	'realtime'] ],
+
+	[ "open_floor_bare_walls/k_9_1.365w_18c_3b_0.77t/",		[], ['open',	'reference'] ],
+	[ "open_floor_bare_walls/k_24_1.365w_18c_5b_0.77t/",	[], ['moderate','reference'] ],
+	[ "open_floor_bare_walls/k_24_1.365w_18c_9b_0.77t/",	[], ['tight',	'reference'] ],
+	[ "open_floor_bare_walls/m_9_1.365w_18c_3b_0.77t/", 	[], ['open',	'realtime'] ],
+	[ "open_floor_bare_walls/m_24_1.365w_18c_5b_0.77t/",	[], ['moderate','realtime'] ],
+	[ "open_floor_bare_walls/m_24_1.365w_18c_9b_0.77t/",	[], ['tight',	'realtime'] ],
+
+
+	[ "open_floor_curtains_screen/k_9_1.365w_18c_3b_0.77t/",	['curtains', 'screen'],	['open',	'reference'] ],
+	[ "open_floor_curtains_screen/k_24_1.365w_18c_5b_0.77t/",	['curtains', 'screen'],	['moderate','reference'] ],
+	[ "open_floor_curtains_screen/k_24_1.365w_18c_9b_0.77t/",	['curtains', 'screen'],	['tight',	'reference'] ],
+	[ "open_floor_curtains_screen/m_9_1.365w_18c_3b_0.77t/",	['curtains', 'screen'],	['open',	'realtime'] ],
+	[ "open_floor_curtains_screen/m_24_1.365w_18c_5b_0.77t/",	['curtains', 'screen'],	['moderate','realtime'] ],
+	[ "open_floor_curtains_screen/m_24_1.365w_18c_9b_0.77t/",	['curtains', 'screen'],	['tight',	'realtime'] ],
+
+	[ "open_floor_full_curtains/k_9_1.365w_18c_3b_0.77t/",		['curtains'], ['open',	'reference'] ],
+	[ "open_floor_full_curtains/k_24_1.365w_18c_5b_0.77t/",		['curtains'], ['moderate','reference'] ],
+	[ "open_floor_full_curtains/k_24_1.365w_18c_9b_0.77t/",		['curtains'], ['tight',	'reference'] ],
+	[ "open_floor_full_curtains/m_9_1.365w_18c_3b_0.77t/",		['curtains'], ['open',	'realtime'] ],
+	[ "open_floor_full_curtains/m_24_1.365w_18c_5b_0.77t/",		['curtains'], ['moderate','realtime'] ],
+	[ "open_floor_full_curtains/m_24_1.365w_18c_9b_0.77t/", 	['curtains'], ['tight',	'realtime'] ],
+
+])
 
 /*
 speaker order is assumed to be satellites, subs, stereo (optional)
@@ -290,7 +333,7 @@ numInChannels: number of input channels into the decoder/router (Int)
 
 		/* --discrete channel routing-- */
 		// thru routing assumes contiguous channels, starting at arrayOutIndices.first
-		[\All,			\discrete,	\NA,	2,	(0..18),				24	],
+		[\All,			\discrete,	\NA,	2,	(0..20),				21	],
 		[\Hex_Point_Fwd,\discrete,	\NA,	2,	Array.series(6, 0, 2),	6	],
 		[\Hex_Flat_Fwd,	\discrete,	\NA,	2,	[11,1,3,5,7,9],			6	],
 		[\Quad_Square,	\discrete,	\NA,	2,	Array.series(4, 0, 3),	4	],
@@ -311,4 +354,20 @@ g = [ 79.4, 79.7, 77.8, 79.2, 78.1, 77.4, 78.8, 78.3, 77.2, 78.8, 78.1, 78.8, 77
 ~gains = (g - g.mean).neg // .neg for db gain applied
 [ -1.121052631579, -1.421052631579, 0.47894736842105, -0.92105263157896, 0.17894736842105, 0.87894736842104, -0.52105263157895, -0.021052631578954, 1.078947368421, -0.52105263157895, 0.17894736842105, -0.52105263157895, 1.278947368421, -0.32105263157895, 0.87894736842104, 1.378947368421, 2.178947368421, -0.72105263157896, -2.421052631579 ].neg
 
+Detailed satellite info:
+// distance HF, MF, LF per speaker
+[
+[1.435, nil, 1.433],[1.437, nil, 1.435],[1.418, nil, 1.415] // floor
+[2.389,2.384,2.400],[2.360,2.358,2.376],[2.285,2.285,2.307],[2.375,2.371,2.391],[2.379,2.377,2.402],[2.335,2.332,2.354], // low (floor)
+[2.042,2.038,2.057],[2.660,2.656,2.673],[2.695,2.693,2.712],[1.931,1.931,1.950],[2.708,2.708,2.725],[2.722,2.720,2.738], // mid
+[2.840,2.834,2.850],[2.886,2.881,2.893],[3.157,3.153,3.168],[2.915,2.912,2.927],[2.901,2.897,2.915],[3.030,3.032,3.053] // upper
+[2.234,nil,2,239],[2.291,nil,2.294],[2.302,nil,2.306] // ceiling
+]
+// elevation HF, MF, LF per speaker
+[
+[-50,nil,-56],[-50,nil,-56],[-52,nil,-58] // floor
+[-35,-33,-28],[-35,-33,-28],[-35,-33,-28],[-35,-33,-28],[-35,-33,-28],[-35,-33,-28], // low (floor)
+[4,1,-4],[-3,-0.5,3],[3,0.5,-3],[-4,-1,4],[3,0.5,-3],[-3,-0.5,3] // mid
+[35,33,30],[35,33,29],[34,32,29],[35,33,30],[35,33,30],[34,32,29] // upper
+[53,nil,56],[52,nil,55],[52,nil,55] // ceiling
 */

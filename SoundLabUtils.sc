@@ -38,21 +38,18 @@
 								nm = file_pn.fileName;
 								case
 								{nm.contains("delays")}{
-									debug.if{postf("parsing delays for %, % \n", knm, sr)};
+									debug.if{postf("\nParsing delays for %, %: ", knm, sr)};
 									compDict.delays.put(
-										// (knm++"_"++sr).asSymbol, this.prParseFile(file_pn)
 										(sr++"/"++knm).asSymbol, this.prParseFile(file_pn)
 									);
 								}{nm.contains("distances")}{
-									debug.if{postf("parsing distances for %, % \n", knm, sr)};
+									debug.if{postf("\nParsing distances for %, %:", knm, sr)};
 									compDict.distances.put(
-										// (knm++"_"++sr).asSymbol, this.prParseFile(file_pn)
 										(sr++"/"++knm).asSymbol, this.prParseFile(file_pn)
 									);
 								}{nm.contains("gains")}{
-									debug.if{postf("parsing gains for %, % \n", knm, sr)};
+									debug.if{postf("\nParsing gains for %, %:", knm, sr)};
 									compDict.gains.put(
-										// (knm++"_"++sr).asSymbol, this.prParseFile(file_pn)
 										(sr++"/"++knm).asSymbol, this.prParseFile(file_pn)
 									);
 								};
@@ -63,9 +60,9 @@
 			}
 		});
 
-		/* azimuth angles (smoothed): */
+		/* azimuth angles */
 		spkrAzims = config.spkrAzimuthsRad;
-		/* elevation angles (smoothed): */
+		/* elevation angles */
 		spkrElevs = config.spkrElevationsRad;
 		// pack azims and elevs into directions [[az0, el0],[az1, el1],..]
 		spkrDirs = [ spkrAzims, spkrElevs ].lace( spkrAzims.size + spkrElevs.size ).clump(2);
@@ -74,7 +71,7 @@
 		// for diametric decoders
 		spkrOppDict = config.spkrOppDict;
 
-		" ************* rig coordinates initialized **************** ".postln;
+		"\n**** rig coordinates initialized ****".postln;
 	}
 
 	prInitDecoderAttributes {
@@ -93,7 +90,7 @@
 			])
 		});
 
-		" ************* decoder attributes initialized **************** ".postln;
+		"\n**** decoder attributes initialized **** ".postln;
 	}
 
 	/*	load speaker delays, distances, gains here because
@@ -129,7 +126,7 @@
 
 			this.prCheckArrayData;
 
-			("delays, gains, distances loaded for: " ++ key).postln;
+			postf("\n*** Delays, gains, distances loaded for:\t% ***", key);
 			loadedDelDistGain = key;
 			completeCondition !? {completeCondition.test_(true).signal};
 		}
@@ -217,7 +214,7 @@
 		{numMatches > 1 } { -1 };	// return -1 for more than one match
 	}
 
-	formatKernelStatePost { |kPath|
+	formatKernelStatePost { |kPath, short=false|
 		var rtn;
 		^if( kPath != \basic_balance,
 			{ var pn, category, attributes;
@@ -228,7 +225,10 @@
 
 				}).at(0).drop(1).flat;
 
-				format("% -  %", category, attributes);
+				short.if(
+					{ format("%", attributes)},
+					{ format("% -  %", category, attributes)}
+				);
 			},{
 				\basic_balance.asString
 			}
@@ -351,7 +351,7 @@
 		});
 
 		decoderLib.add( decSynthDef ); // add the synth to the decoder library
-		postf("added decoder to the decoderLib: (diametric) %\n", decSpecs.synthdefName);
+		postf("% (diametric) added.\n", decSpecs.synthdefName);
 	}
 
 	// NOTE: arrayOutIndices is [half of horiz] ++ [all elevation dome] spkr indices
@@ -489,7 +489,7 @@
 
 		// add the synth to the decoder library
 		decoderLib.add( decSynthDef );
-		postf("added decoder to the decoderLib: (dome) %\n", decSpecs.synthdefName);
+		postf("% (dome) added.\n", decSpecs.synthdefName);
 	}
 
 
@@ -790,7 +790,7 @@
 		);
 
 		// debug
-		"added discrete router to decoderLib".postln;
+		postf("% (discrete) added.\n", decSpecs.synthdefName);
 	}
 
 	// load every possible decoding SynthDef based on decAttList
@@ -816,8 +816,8 @@
 
 						"single", {
 							bandType.filesDo{ |fl|
-								postf( "Found single matrix decoder:\t%\n",
-									fl.fileNameWithoutExtension );
+								// postf( "Found single matrix decoder:\t%\n",
+								// fl.fileNameWithoutExtension );
 								this.prLoadSingleMatrixDecoder(fl); // fl is pathname to matrix file
 							}
 						},
@@ -825,12 +825,12 @@
 						"dual", {
 							bandType.folders.do{ |decNameFldr|
 								var pn_lf, pn_hf;
-								postf( "Found dual matrix decoder:\t\t%\n", decNameFldr.folderName);
+								// postf( "Found dual matrix decoder:\t\t%\n",
+								// decNameFldr.folderName);
 								(decNameFldr.files.size == 2).if({
 									decNameFldr.filesDo{ |fl|
 										var fn;
 										fn = fl.fileNameWithoutExtension;
-										// fn.postln; //debug
 										case
 										{ fn.endsWith("LF") } { pn_lf = fl }
 										{ fn.endsWith("HF") } { pn_hf = fl };
@@ -884,26 +884,26 @@
 	prInitSLHW { |initSR|
 		//for linux
 		slhw = SoundLabHardware.new(
-			false, //useSupernova
+			false, 						//useSupernova
 			config.fixAudioInputGoingToTheDecoder, //fixAudioInputGoingToTheDecoder
-			config.useFireface, //useFireface
-			config.midiPortName, //midiPortName
-			config.cardNameIncludes, //cardNameIncludes
-			config.jackPath, //jackPath
-			numHardwareIns, //serverIns
-			numHardwareOuts * 3, //serverOuts
-			numHardwareOuts, //numHwOutChToConnectTo
-			numHardwareIns, //numHwInChToConnectTo
-			config.firefaceID, //firefaceID
-			config.whichMadiInput, //whichMadiInput
-			config.whichMadiOutput //whichMadiOutput
+			config.useFireface,			//useFireface
+			config.midiPortName,		//midiPortName
+			config.cardNameIncludes,	//cardNameIncludes
+			config.jackPath, 			//jackPath
+			numHardwareIns, 			//serverIns
+			numHardwareOuts * 3, 		//serverOuts
+			numHardwareOuts, 			//numHwOutChToConnectTo
+			numHardwareIns, 			//numHwInChToConnectTo
+			config.firefaceID, 			//firefaceID
+			config.whichMadiInput, 		//whichMadiInput
+			config.whichMadiOutput 		//whichMadiOutput
 		);
 		// slhw = SoundLabHardware.new(false,true,false,nil,nil,"/usr/local/bin/jackdmp",32,128); //for osx
 		slhw.postln;
 		slhw.startAudio(
-			initSR, //newSR
-			config.hwPeriodSize, //periodSize
-			config.hwPeriodNum, //periodNum
+			initSR, 				//newSR
+			config.hwPeriodSize, 	//periodSize
+			config.hwPeriodNum, 	//periodNum
 		);
 		slhw.addDependant(this);
 	}
@@ -974,7 +974,8 @@
 			splt.do({|val, i|
 				// filter out spurious newlines at the end
 				if( val.contains("."), { // floats will have decimal
-					debug.if{("valid float on line: "++i++", ").post; val.asFloat.postln;};
+					// debug.if{postf("%, %; ", i, val.asFloat)};
+					debug.if{postf("% ", i)};
 					data = data.add(val.asFloat);
 				})
 			});
@@ -995,20 +996,22 @@
 			spkrDists.size == spkrDels.size and:
 			spkrDels.size == spkrGains.size and:
 			spkrGains.size == totalArrayChans,
-			{ "OK: array sizes of rig dimensions match".postln },
-			{ "mismatch in rig dimension array sizes!".warn }
+			{ "OK: Array sizes of rig dimensions match!".postln },
+			{ "Mismatch in rig dimension array sizes!".warn }
 		);
 
-		"\nSpeaker Gains, Distances, Delays".postln;
+		"\n**** Speaker Gains, Distances, Delays ****".postln;
+		"Chan: Gain Distance Delay".postln;
 		(numSatChans+numSubChans).do({ |i|
-			postf("chan  %:\t| gain:   %\t| dist:   %\t| del:  %\n",
+			postf("%:\t%\t%\t%\n",
 				i, spkrGains[i], spkrDists[i], spkrDels[i]
 			)
 		});
 
-		"\nSpeaker Directions:".postln;
+		"\n**** Speaker Directions ****".postln;
+		"Chan: Azimuth Elevation".postln;
 		(numSatChans+numSubChans).do({ |i|
-			postf("chan  %:\t| dir: %\n", i, spkrDirs[i].raddeg)
+			postf("%:\t %\n", i, spkrDirs[i].raddeg)
 		});
 	}
 }
