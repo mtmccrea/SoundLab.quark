@@ -209,7 +209,7 @@ SoundLab {
 					ReplaceOut.ar(out_bus, In.ar(in_bus, 1))
 				});
 
-				sterPatcherDef = CtkSynthDef(\patcher, { arg in_bus=0, out_bus=0;
+				sterPatcherDef = CtkSynthDef(\sterpatcher, { arg in_bus=0, out_bus=0;
 					// stereo patchers don't use ReplaceOut because often stereo channels are shared with
 					// satellite channels, and ReplaceOut would overwrite the satellite's bus contents
 					Out.ar(out_bus, In.ar(in_bus, 1))
