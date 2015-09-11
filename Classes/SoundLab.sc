@@ -54,10 +54,9 @@ SoundLab {
 		rotateDegree		= config.rotateDegree ?? {-90};	// default rotation to the right
 		xOverHPF			= config.xOverHPF ?? {80};		// default xover 80Hz if not specified
 		xOverLPF			= config.xOverLPF ?? {80};		// default xover 80Hz if not specified
-		jconvHWOutChannel	= config.jconvHWOutChannel ?? {0};		// default xover 80Hz if not specified
-
+		jconvHWOutChannel	= config.jconvHWOutChannel ?? {0};	// default xover 80Hz if not specified
+		// Note: shelfFreq in config takes precedence over listeningDiameter
 		// default shelf 400Hz (for dual band decoders)
-		// note shelfFreq in config takes precedence over listeningDiameter
 		shelfFreq			= config.shelfFreq ?? config.listeningDiameter ?? {400};
 
 		kernelDirPathName = kernelDirPathName ?? {
@@ -537,7 +536,7 @@ NO NEW DECODER STARTED");
 	loadJconvolver { |newKernelPath, completeCondition, timeout = 5|
 		var kernelDir_pn, partSize, k_size,
 		numFoundKernels = 0, numtries = 50, trycnt=0,
-		newjconvolver, scOutbusConnect;
+		newjconvolver, scOutbusConnect, jconvHWOut;
 		fork {
 			block { |break|
 				kernelDir_pn = PathName(newKernelPath); //this.prFindKernelDir(newKernel);
@@ -587,10 +586,23 @@ NO NEW DECODER STARTED");
 					{numHardwareOuts} // first instance
 				);
 
+				jconvHWOut = if(slhw.whichMadiOutput.isNil,
+					{ jconvHWOutChannel },
+					{
+						var numChannelsPerMADI;
+						numChannelsPerMADI = if(slhw.sampleRate <= 48000, {64},{32});
+						(slhw.whichMadiOutput * numChannelsPerMADI) + 2;
+					}
+				);
+
 				Jconvolver.createSimpleConfigFileFromFolder(
-					kernelFolderPath: newKernelPath, partitionSize: partSize,
-					maxKernelSize: k_size, matchFileName: "*.wav",
-					autoConnectToScChannels: nextjconvinbus, autoConnectToSoundcardChannels: jconvHWOutChannel
+					kernelFolderPath: newKernelPath,
+					partitionSize: partSize,
+					maxKernelSize: k_size,
+					matchFileName: "*.wav",
+					autoConnectToScChannels: nextjconvinbus,
+					autoConnectToSoundcardChannels: jconvHWOut
+					// autoConnectToSoundcardChannels: jconvHWOutChannel
 				);
 
 				jconvinbus = nextjconvinbus;

@@ -37,7 +37,7 @@ SoundLabHardware {
 	var <midiPortName, <cardNameIncludes, jackPath;
 	var serverIns, serverOuts, numHwOutChToConnectTo, numHwInChToConnectTo;
 	var firefaceID;
-	var whichMadiInput, whichMadiOutput;
+	var whichMadiInput, <whichMadiOutput;
 	// var firstOutput = 66, firstInput = 66;//0 for 117, 64 for 205, at 96k!
 	var cardID, <sampleRate, /*<ins, <outs, */midiPort, <server;
 	// var getCardID, setSR, initMIDI, sendSysex, startJack, stopJack, initAll, prStartServer;
