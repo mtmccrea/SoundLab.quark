@@ -903,8 +903,11 @@ l.cleanup
 s.quit
 
 s.options.numOutputBusChannels
-
-x = 4.collect{|i| { Out.ar(l.curDecoderPatch.inbusnum+i,PinkNoise.ar(0.75)* SinOsc.kr(0.2*(i+1)).range(0.1,1))}.play}
+d = CtkSynthDef(\testery, { arg out; Out.ar(out,PinkNoise.ar(0.75)* SinOsc.kr(0.2*(i+1)).range(0.1,1)) })
+x = 4.collect{|i| d.note.out_(l.curDecoderPatch.inbusnum+i).play }
 x.do(_.free)
+
+x = 4.collect{|i| { Out.ar(l.curDecoderPatch.inbusnum+i,PinkNoise.ar(0.75)* SinOsc.kr(0.2*(i+1)).range(0.1,1)) }.play }
+
 s.meter
 */
