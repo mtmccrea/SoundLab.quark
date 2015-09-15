@@ -35,7 +35,7 @@ IdentityDictionary(know: true)
 	\whichMadiOutput,       nil,
 
 	/* file paths */
-	\kernelsPath,          	"/Users/admin/Documents/Sound_Labs/SoundLabKernels/",
+	\kernelsPath,          	"/Users/admin/Documents/Sound_Labs/SoundLabKernels205/",
 	\decoderMatricesPath,	"/Users/admin/Documents/Sound_Labs/117/Decoder/117_Decoder_Testing/DecoderMatrices/"
 ])
 

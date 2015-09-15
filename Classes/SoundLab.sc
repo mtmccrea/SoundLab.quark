@@ -45,7 +45,6 @@ SoundLab {
 		numHardwareOuts		= config.numHardwareOuts;
 		numHardwareIns		= config.numHardwareIns;
 		defaultDecoderName	= config.defaultDecoderName;	// synthDef name
-		// defaultKernelPath	= config.defaultKernelPath;
 		stereoChanIndex		= config.stereoChanIndex;
 		numSatChans			= config.numSatChans;
 		numSubChans			= config.numSubChans;
@@ -56,8 +55,13 @@ SoundLab {
 		xOverLPF			= config.xOverLPF ?? {80};		// default xover 80Hz if not specified
 		jconvHWOutChannel	= config.jconvHWOutChannel ?? {0};	// default xover 80Hz if not specified
 		// Note: shelfFreq in config takes precedence over listeningDiameter
+		// order / pi * 340 / listeningDiameter
 		// default shelf 400Hz (for dual band decoders)
-		shelfFreq			= config.shelfFreq ?? config.listeningDiameter ?? {400};
+		shelfFreq			= config.shelfFreq ?? {
+			if( config.listeningDiameter.notNil,
+				{ 1 / pi * 340 / config.listeningDiameter},
+				{400})
+		};
 
 		kernelDirPathName = kernelDirPathName ?? {
 			config.kernelsPath !? {
@@ -409,6 +413,8 @@ SoundLab {
 						// build the key from the kernel path (queried from nextjconvolver to be sure) and sample rate
 						var kpn;
 						kpn = PathName(nextjconvolver.kernelFolderPath);
+						kpn.allFolders.do(_.postln);
+
 						testKey = (this.sampleRate.asString ++ "/" ++ kpn.allFolders[kpn.allFolders.size-2]).asSymbol;
 					},{
 						"Selecting default delay/dist/gain.".postln;
@@ -580,21 +586,24 @@ NO NEW DECODER STARTED");
 					Jconvolver.jackScOutNameDefault = "scsynth:out";
 					Jconvolver.executablePath_("/usr/local/bin/jconvolver");
 				};
-
+				1.postln;
 				nextjconvinbus = if( jconvinbus.notNil,
 					{(jconvinbus + numHardwareOuts).wrap(1, numHardwareOuts*2)}, // replacing another instance
 					{numHardwareOuts} // first instance
 				);
-
-				jconvHWOut = if(slhw.whichMadiOutput.isNil,
-					{ jconvHWOutChannel },
-					{
-						var numChannelsPerMADI;
-						numChannelsPerMADI = if(slhw.sampleRate <= 48000, {64},{32});
-						(slhw.whichMadiOutput * numChannelsPerMADI) + 2;
-					}
+2.postln;
+				jconvHWOut = if(usingSLHW, {
+					if(slhw.whichMadiOutput.isNil,
+						{ jconvHWOutChannel },
+						{
+							var numChannelsPerMADI;
+							numChannelsPerMADI = if(slhw.sampleRate <= 48000, {64},{32});
+							(slhw.whichMadiOutput * numChannelsPerMADI) + 2;
+						}
+					)
+				},{jconvHWOutChannel}
 				);
-
+3.postln;
 				Jconvolver.createSimpleConfigFileFromFolder(
 					kernelFolderPath: newKernelPath,
 					partitionSize: partSize,
@@ -606,9 +615,9 @@ NO NEW DECODER STARTED");
 				);
 
 				jconvinbus = nextjconvinbus;
-
+4.postln;
 				newjconvolver = Jconvolver.newFromFolder(newKernelPath);
-
+5.postln;
 				while( {newjconvolver.isRunning.not and: (trycnt < numtries)}, {
 					trycnt = trycnt+1;
 					(timeout/numtries).wait;
@@ -620,8 +629,10 @@ NO NEW DECODER STARTED");
 					break.();
 				};
 				nextjconvolver = newjconvolver;
+				6.postln;
 			};
 			completeCondition !? {completeCondition.test_(true).signal};
+			7.postln;
 		}
 	}
 

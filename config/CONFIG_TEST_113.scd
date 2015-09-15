@@ -19,13 +19,14 @@ IdentityDictionary(know: true)
 
 	/* SoundLabHardware settings */
 
-	\useFireface, 			false,
-	\midiPortName,			"External MIDI- MIDI 1",
-	// \midiPortName,			nil, // nil for no MIDI
-	\cardNameIncludes,		"RME",
-	// \cardNameIncludes,		nil, // for OSX
-	\jackPath,				"/usr/bin/jackd",
-	// \jackPath,				"/usr/local/bin/jackdmp", // for osx
+	// \useFireface, 			true,
+	\useFireface, 			false, // for testing
+	// \midiPortName,			"External MIDI- MIDI 1",
+	\midiPortName,			nil, // nil for no MIDI
+	// \cardNameIncludes,		"RME",
+	\cardNameIncludes,		nil, // for OSX
+	// \jackPath,				"/usr/bin/jackd",
+	\jackPath,				"/usr/local/bin/jackdmp", // for osx
 	\fixAudioInputGoingToTheDecoder, true,
 	\hwPeriodSize, 			256,
 	\hwPeriodNum,			1,
@@ -34,8 +35,8 @@ IdentityDictionary(know: true)
 	\whichMadiOutput,       nil,
 
 	/* file paths */
-	\kernelsPath,       "/home/audioadmin/Documents/SoundLabSupport/SoundLabKernels",
-	\decoderMatricesPath, "/home/audioadmin/Documents/SoundLabSupport/DecoderMatrices/"
+	\kernelsPath,          	"/Users/admin/Documents/Sound_Labs/SoundLabKernels113/",
+	\decoderMatricesPath,	nil
 ])
 
 /*
@@ -66,6 +67,27 @@ numInChannels: number of input channels into the decoder/router (Int)
 		[\Quad, \discrete, \NA, 2, [0,1,3,4,10], 5]		// includes sub as last channel
 	]
 )
+
+// no leading '/' in relative folder path
+.put(\kernelSpec, [
+	// note popup array size = number of popups
+	// column defines selection within one dropdown.
+	// [ path relative to \kernelsPath, 	[...check box (true) attributes],	[...dropdown  attributes] ]
+
+	["moderate/m_24_1.365w_18c_5b_0.7t/", 	[],			['moderate','realtime'	] ],
+	["moderate/k_24_1.365w_18c_5b_0.7t/", 	[],			['moderate','reference'	] ],
+	["moderate/m_24_1.365w_18c_5b_0.7t/", 	['desk'],	['moderate','realtime'	] ],
+	["moderate/k_24_1.365w_18c_5b_0.7t/", 	['desk'],	['moderate','reference'	] ],
+	["open/m_9_1.365w_18c_3b_0.7t/", 		[],			['open',	'realtime'	] ],
+	["open/k_9_1.365w_18c_3b_0.7t/", 		[],			['open',	'reference' ] ],
+	["open/m_9_1.365w_18c_3b_0.7t/", 		['desk'],	['open',	'realtime'	] ],
+	["open/k_9_1.365w_18c_3b_0.7t/",	 	['desk'],	['open',	'reference'	] ],
+	["tight/m_24_1.365w_18c_9b_0.7t/", 		[],			['tight',	'realtime'	] ],
+	["tight/k_24_1.365w_18c_9b_0.7t/",	 	[],			['tight',	'reference'	] ],
+	["tight/m_24_1.365w_18c_9b_0.7t/",	 	['desk'],	['tight',	'realtime'	] ],
+	["tight/k_24_1.365w_18c_9b_0.7t/",	 	['desk'],	['tight',	'reference'	] ],
+])
+
 /*
 speaker order is assumed to be satellites, subs, stereo (optional)
 Array size must equal \numSatChans + \numSubChans

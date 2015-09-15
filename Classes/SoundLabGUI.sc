@@ -898,12 +898,13 @@ SoundLabGUI {
 /* TESTING
 l = SoundLab(48000, loadGUI:true, useSLHW: false, useKernels: false, configFileName: "CONFIG_117.scd",usingOSX: true)
 l = SoundLab(48000, loadGUI:true, useSLHW: false, useKernels: true, configFileName: "CONFIG_TEST_205.scd", usingOSX: true)
+l = SoundLab(44100, loadGUI:true, useSLHW: false, useKernels: true, configFileName: "CONFIG_TEST_117.scd", usingOSX: true)
 
 l.cleanup
 s.quit
 
 s.options.numOutputBusChannels
-d = CtkSynthDef(\testery, { arg out; Out.ar(out,PinkNoise.ar(0.75)* SinOsc.kr(0.2*(i+1)).range(0.1,1)) })
+d = CtkSynthDef(\testery, { arg out; Out.ar(out,PinkNoise.ar(0.75)) })
 x = 4.collect{|i| d.note.out_(l.curDecoderPatch.inbusnum+i).play }
 x.do(_.free)
 

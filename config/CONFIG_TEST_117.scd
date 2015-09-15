@@ -9,14 +9,13 @@ IdentityDictionary(know: true)
 	\numSatChans,			24,
 	\numSubChans, 			4,
 	\defaultDecoderName,	\Sph_18ch_6x6x6, // must match a name in \decAttributeList below
-	\defaultKernel,			\basic_balance,
 	\jconvHWOutChannel,		0,
 	\stereoChanIndex,		[28, 29],
 	\rotateDegree,			-90,	// option to rotate the listening position to this angle
 	\xOverHPF,				60,
 	\xOverLPF,				60,
-	\shelfFreq,				60,		// takes predecdence over listening Diameter
-	\listeningDiameter,		1.5,	// sweet spot size in meters
+	\shelfFreq,				nil,		// takes predecdence over listening Diameter
+	\listeningDiameter,		0.5,	// sweet spot size in meters
 
 	/* SoundLabHardware settings */
 
@@ -36,10 +35,73 @@ IdentityDictionary(know: true)
 	\whichMadiOutput,       nil,
 
 	/* file paths */
-	\kernelsPath,          	"/Users/admin/Documents/Sound_Labs/117/Decoder/117_Decoder_Testing/SoundLabKernels/",
-	\decoderMatricesPath,	"/Users/admin/Documents/Sound_Labs/117/Decoder/117_Decoder_Testing/DecoderMatrices/"
+	\kernelsPath,          	"/Users/admin/Documents/Sound_Labs/SoundLabKernels117/",
+	\decoderMatricesPath,	nil
 ])
 
+// no leading '/' in relative folder path
+.put(\kernelSpec, [
+	// note popup array size = number of popups
+	// column defines selection within one dropdown.
+	// [ path relative to \kernelsPath, 	[...check box (true) attributes],	[...dropdown  attributes] ]
+
+	["moderate_no_desk-realtime/m_24_1.365w_18c_5b_0.7t/", 		[],			['moderate','realtime'	] ],
+	["moderate_no_desk-reference/k_24_1.365w_18c_5b_0.7t/", 	[],			['moderate','reference'	] ],
+	["moderate_with_desk-realtime/m_24_1.365w_18c_5b_0.7t/", 	['desk'],	['moderate','realtime'	] ],
+	["moderate_with_desk-reference/k_24_1.365w_18c_5b_0.7t/", 	['desk'],	['moderate','reference'	] ],
+	["open_no_desk-realtime/m_9_1.365w_18c_3b_0.7t/", 			[],			['open',	'realtime'	] ],
+	["open_no_desk-reference/k_9_1.365w_18c_3b_0.7t/", 			[],			['open',	'reference' ] ],
+	["open_with_desk-realtime/m_9_1.365w_18c_3b_0.7t/", 		['desk'],	['open',	'realtime'	] ],
+	["open_with_desk-reference/k_9_1.365w_18c_3b_0.7t/",	 	['desk'],	['open',	'reference'	] ],
+	["tight_no_desk-realtime/m_24_1.365w_18c_9b_0.7t/", 		[],			['tight',	'realtime'	] ],
+	["tight_no_desk-reference/k_24_1.365w_18c_9b_0.7t/",	 	[],			['tight',	'reference'	] ],
+	["tight_with_desk-realtime/m_24_1.365w_18c_9b_0.7t/",	 	['desk'],	['tight',	'realtime'	] ],
+	["tight_with_desk-reference/k_24_1.365w_18c_9b_0.7t/",	 	['desk'],	['tight',	'reference'	] ],
+])
+
+
+/*
+--decoder attributes--
+decoderName, kind, k, dimensions, arrayOutIndices, numInChannels;
+decoderName: unique name as it will show up on GUI (Symbol)
+kind: diametric, discrete (Symbol)
+k: dual (Symbol)
+dimensions 2 or 3 (Int),
+arrayOutIndices (Array of ints):
+		for diametric: specify only the first half of out indexes
+		for dome: specify only the first half of out indexes for horizontal plane, followed by all upper dome out indices
+		for discrete: specify all out indexes
+numInChannels: number of input channels into the decoder/router (Int)
+*/
+.put(\decAttributeList,
+	[
+		/* --ambisonic decoders-- */
+		// spheres - specify half of the array
+		[\Sph_24ch_all,		\diametric,	'dual',	3,	(0..11),			4	],
+		[\Sph_18ch_6x6x6,	\diametric,	'dual',	3,	(3..11),			4	],
+		[\Sph_14ch_HexInBox,\diametric,	'dual',	3,	[3,4,6,7,9,10,11],	4	],
+		[\Sph_12ch_HexInSquare,\diametric,'dual',3,	[5,9,10,11,17],		4	],
+		[\Sph_12ch_6x6,		\diametric,	'dual',	3,	(3..8),				4	],
+		[\Sph_12ch_3x6x3,	\diametric,	'dual',	3,	(0..2)++(9..11),	4	],
+		[\Sph_6ch_2x2x2,	\diametric,	'dual',	3,	[8, 9, 20],			4	],
+
+		// domes - half of horizontal speakers plus all dome speakers
+		[\Dome_15ch_6x6x3,	\dome,		'dual', 3,	(9..11)++(15..23), 	4	],
+		[\Dome_13ch_6x4x3,	\dome,		'dual', 3,	(9..11)++[15,16,18,19,21,22,23], 4],
+		[\Dome_11ch_4x4x3,	\dome,		'dual', 3,	[10,11]++[15,16,18,19,21,22,23], 4],
+		[\Dome_10ch_6x4,	\dome,		'dual', 3,	[10,11]++[15,16,18,19],4],
+		[\Dome_9ch_6x3,		\dome,		'dual', 3,	(9..11)++(21..23), 	4	],
+
+		// horizontal-only
+		[\Horiz_Quad_Rect,	\diametric,	'dual',	2,	[10,11],	4	],
+		[\Horiz_Hex,		\diametric,	'dual',	2,	(9..11),	4	],
+
+		/* --discrete channel routing-- */
+		// thru routing assumes contiguous channels, starting at arrayOutIndices.first
+		[\All,		\discrete,	\NA,	2,	(0..23),	24	],
+		[\Hex,		\discrete,	\NA,	2,	(9..11),	6	],
+	]
+)
 /*
 Speaker order is assumed to be satellites, subs, stereo (optional).
 Stereo not included in these arrays, as there isn't correction for them.
@@ -115,6 +177,7 @@ see prLoadSynthDefs for how channel mappings are used
 		0, 0, 0, 0	// subs
 	].degrad
 )
+
 /*
 each speaker channel and it's opposing channel, alternating
 Array size must equal numDiametricPairsIncludingSubs * 2
@@ -138,49 +201,6 @@ Array size must equal numDiametricPairsIncludingSubs * 2
 			24, 26, 26, 24,
 			25, 27, 27, 25
 		])
-)
-
-/*
---decoder attributes--
-decoderName, kind, k, dimensions, arrayOutIndices, numInChannels;
-decoderName: unique name as it will show up on GUI (Symbol)
-kind: diametric, discrete (Symbol)
-k: dual (Symbol)
-dimensions 2 or 3 (Int),
-arrayOutIndices (Array of ints):
-		for diametric: specify only the first half of out indexes
-		for dome: specify only the first half of out indexes for horizontal plane, followed by all upper dome out indices
-		for discrete: specify all out indexes
-numInChannels: number of input channels into the decoder/router (Int)
-*/
-.put(\decAttributeList,
-	[
-		/* --ambisonic decoders-- */
-		// spheres - specify half of the array
-		[\Sph_24ch_all,		\diametric,	'dual',	3,	(0..11),			4	],
-		[\Sph_18ch_6x6x6,	\diametric,	'dual',	3,	(3..11),			4	],
-		[\Sph_14ch_HexInBox,\diametric,	'dual',	3,	[3,4,6,7,9,10,11],	4	],
-		[\Sph_12ch_HexInSquare,\diametric,'dual',3,	[5,9,10,11,17],		4	],
-		[\Sph_12ch_6x6,		\diametric,	'dual',	3,	(3..8),				4	],
-		[\Sph_12ch_3x6x3,	\diametric,	'dual',	3,	(0..2)++(9..11),	4	],
-		[\Sph_6ch_2x2x2,	\diametric,	'dual',	3,	[8, 9, 20],			4	],
-
-		// domes - half of horizontal speakers plus all dome speakers
-		[\Dome_15ch_6x6x3,	\dome,		'dual', 3,	(9..11)++(15..23), 	4	],
-		[\Dome_13ch_6x4x3,	\dome,		'dual', 3,	(9..11)++[15,16,18,19,21,22,23], 4],
-		[\Dome_11ch_4x4x3,	\dome,		'dual', 3,	[10,11]++[15,16,18,19,21,22,23], 4],
-		[\Dome_10ch_6x4,	\dome,		'dual', 3,	[10,11]++[15,16,18,19],4],
-		[\Dome_9ch_6x3,		\dome,		'dual', 3,	(9..11)++(21..23), 	4	],
-
-		// horizontal-only
-		[\Horiz_Quad_Rect,	\diametric,	'dual',	2,	[10,11],	4	],
-		[\Horiz_Hex,			\diametric,	'dual',	2,	(9..11),	4	],
-
-		/* --discrete channel routing-- */
-		// thru routing assumes contiguous channels, starting at arrayOutIndices.first
-		[\All,		\discrete,	\NA,	2,	(0..23),	24	],
-		[\Hex,		\discrete,	\NA,	2,	(9..11),	6	],
-	]
 )
 ;
 
