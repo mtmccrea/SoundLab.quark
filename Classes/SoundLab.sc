@@ -652,12 +652,10 @@ NO NEW DECODER STARTED");
 			};
 			if( bool,
 				{
-					postln("enabling stereo from stereoRouting");
 					curDecoderPatch.decodersynth.in_busnum_(hwInStart+2);
 					stereoPatcherSynths.do(_.run);
 					stereoActive = true;
 				},{
-					postln("removing stereo from stereoRouting");
 					curDecoderPatch.decodersynth.in_busnum_(hwInStart);
 					stereoPatcherSynths.do(_.pause);
 					stereoActive = false;

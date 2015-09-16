@@ -59,10 +59,7 @@ SoundLabDecoderPatch {
 	}
 
 	shelfFreq_ { |frq|
-		(decType != \discrete).if(
-			{ decodersynth.shelfFreq_(frq) },
-			{ "decoder type is discrete routing, not a dual decoder, so no PsychoShelf".warn } // debug
-		);
+		if( decType != \discrete, { decodersynth.shelfFreq_(frq) });
 	}
 
 	play { |xfade = 0.2|

@@ -227,7 +227,7 @@
 
 				short.if(
 					{ format("%", attributes)},
-					{ format("% -  %", category, attributes)}
+					{ format("%\n%", category, attributes)}
 				);
 			},{
 				\basic_balance.asString
