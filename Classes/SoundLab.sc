@@ -739,7 +739,7 @@ NO NEW DECODER STARTED");
 	}
 
 	getDiamByFreq { |freq, order = 1|
-		^ order / 2pi * 340 / freq;
+		^ order / pi * 340 / freq;
 	}
 
 	clipMonitor_{ | bool = true |
