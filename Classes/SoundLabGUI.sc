@@ -3,7 +3,7 @@ SoundLabGUI {
 	var <sl, <wwwPort;
 	var <slhw, <deviceAddr, <wsGUI;
 	var <decsHoriz, <decsSphere, <decsDome, <discreteRouters, <decsMatrix;
-	var <sampleRates, <stereoPending, <rotatePending;
+	var <sampleRates;
 	var <gainTxt, <gainSl, <muteButton, <attButton, <srMenu, <decMenus,
 	<decMenuLayouts, <horizMenu, <sphereMenu, <domeMenu, <matrixMenu,
 	<discreteMenu, <stereoButton, <rotateButton, <correctionCbAttributes, <correctionPuAttributes, <applyButton, <basicBalanceButton, <kernelMatchStatusTxt,
@@ -489,6 +489,7 @@ SoundLabGUI {
 					kernelCheckBoxes.do(_.value_(false));	// clear the kernel boxes
 					kernelDegreeMenus.do(_.value_(0));		// set degree menu to the first selection
 					basicBalanceButton.value_(0);
+					pendingKernel = nil;
 
 					this.kernelStatus_("Now running:\n" ++ sl.formatKernelStatePost(sl.curKernel).asString);
 					this.status_("Kernel updated: " ++ sl.formatKernelStatePost(sl.curKernel).asString);
@@ -795,8 +796,7 @@ SoundLabGUI {
 		pendingDecType = nil;
 		pendingInput = nil;
 		pendingSR = nil;
-		stereoPending = nil;
-		rotatePending = nil;
+		pendingKernel = nil;
 
 		postf("\nCurrent decoder:\t%\nCurrent SR:\t%\nCurKernel:\t%\n",
 			sl.curDecoderPatch.decoderName, sl.sampleRate, sl.curKernel);
@@ -841,6 +841,7 @@ SoundLabGUI {
 			};
 			basicBalanceButton.value_(0);
 			kernelDegreeMenus.do(_.value_(0));
+
 
 			sweetRad = sl.getDiamByFreq(sl.shelfFreq.round(0.001));
 			sweetSl.value_(sweetRad);
