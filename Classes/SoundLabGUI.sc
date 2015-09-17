@@ -508,10 +508,10 @@ SoundLabGUI {
 		if( who == slhw, {
 			switch( what,
 				\audioIsRunning, { args[0].not.if(
-					{ this.status_("Audio stopped. Cannot update at this time.") }
+					{ this.status_("Audio stopped. Please wait for audio to resume to make further changes.") }
 				);
 				},
-				\stoppingAudio, { this.status_("Audio is stopping - Please wait...") }
+				\stoppingAudio, { this.status_("Audio is stopping...") }
 			)
 		});
 	}
@@ -780,16 +780,20 @@ SoundLabGUI {
 	}
 
 	getKernelLayout {
-				kernelCheckBoxes = correctionCbAttributes.collect{ |att| WsCheckbox.init(wsGUI) };
+		kernelCheckBoxes = correctionCbAttributes.collect{ |att| WsCheckbox.init(wsGUI) };
 
-				// return the VLayouts from this function
-				^correctionCbAttributes.collect{ |att, i|
-					WsVLayout( Rect(0,0,1,1),
-						1/3,
-						WsStaticText.init(wsGUI, Rect(0,0,1,1/3)).string_(att.asString).align_(\center),
-						kernelCheckBoxes[i].bounds_(Rect(0,0,1,1/4)),
-					);
-				};
+		// return the VLayouts from this function
+		^correctionCbAttributes.collect{ |att, i|
+			WsVLayout( Rect(0,0,1,1),
+				1/3,
+				WsStaticText.init(wsGUI, Rect(0,0,1,1/3))
+				.string_(att.asString).align_(\center),
+				WsHLayout( Rect(0,0,1,1/3),
+					0.45, // bump checkbox into center
+					kernelCheckBoxes[i].bounds_(Rect(0,0,0.55,1))
+				)
+			);
+		};
 	}
 
 	initVars { |loadCondition|
