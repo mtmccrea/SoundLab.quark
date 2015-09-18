@@ -7,15 +7,15 @@ IdentityDictionary(know: true)
 	\numHardwareOuts, 		16,
 	\numHardwareIns, 		16,
 	\numSatChans,			10,
-	\numSubChans, 			1, //2, // TODO, this is actually 1
+	\numSubChans, 			1,
 	\defaultDecoderName,	\Hex,
 	\jconvHWOutChannel,		0,
 	\stereoChanIndex,		[0, 1],
 	\rotateDegree,			90, // option to rotate the listening position to this angle
 	\xOverHPF,				80,
 	\xOverLPF,				80,
-	\shelfFreq,				400,	// takes predecdence over listening Diameter
-	\listeningDiameter,		0.5,	// sweet spot size in meters
+	\shelfFreq,				145,	// ~0.75m sweet spot diam, takes predecdence over listening Diameter
+	\listeningDiameter,		0.75,	// sweet spot size in meters
 
 	/* SoundLabHardware settings */
 
@@ -98,17 +98,43 @@ see prLoadSynthDefs for how channel mappings are used
 */
 .put(\defaultSpkrDistances,
 	[
-		1.323, 1.344, 1.362, 1.352, 1.394, 1.353,
-		1.450, 1.469, 1.535,
-		1.755,
-		1.323, //1.323  //sub
+		// 1.323, 1.344, 1.362, 1.352, 1.394, 1.353,
+		// 1.450, 1.469, 1.535,
+		// 1.755,
+		// 1.323, //1.323  //sub
+
+		// DRC-measured
+		1.144934062500,
+		1.162657500000,
+		1.261908750000,
+		1.272542812500,
+		1.283176875000,
+		1.230006562500,
+		1.198104375000,
+		1.297355625000,
+		1.325713125000,
+		1.513581562500,
+		2.055918750000 // sub was a negative distance, abs val here
 	]
 )
 .put(\defaultSpkrGainsDB,
 	[
-		0,0,0,0,0,0,0,0,0,0,
-		4.8+3, //0 //sub, rolled off 3dB by ears
-	].neg
+		// 0,0,0,0,0,0,0,0,0,0,
+		// -4.8-3, //0 //sub, rolled off 3dB by ears
+
+		// DRC-measured
+		-2.818483878592,
+		-3.044959239167,
+		-2.900778895784,
+		-1.688320874699,
+		-2.123619772538,
+		-2.269392052797,
+		-2.027991432347,
+		-0.855174420130,
+		-0.916518816742,
+		0.000000000000,
+		-4.287137751041
+	]
 )
 .put(\spkrAzimuthsRad,
 	[

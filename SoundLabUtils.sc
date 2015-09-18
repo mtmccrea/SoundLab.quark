@@ -313,7 +313,7 @@
 				Out.ar(
 					out_busnum + spkdex, // remap decoder channels to rig channels
 					AtkMatrixMix.ar(
-						FoaNFC.ar( in, spkrDists.at(spkdex) ),
+						FoaNFC.ar( in, spkrDists.at(spkdex).abs ), // NOTE .abs in case of negative distance
 						matrix_dec_sat.matrix.fromRow(i)
 					)
 				)
@@ -327,7 +327,7 @@
 						Out.ar(
 							out_busnum + spkdex,
 							AtkMatrixMix.ar(
-								FoaNFC.ar( in, spkrDists.at(spkdex) ),
+								FoaNFC.ar( in, spkrDists.at(spkdex).abs ),
 								matrix_dec_sub.matrix.fromRow(i)
 							) * subgain.dbamp
 						)
@@ -337,14 +337,24 @@
 				// 			Note this likely hasn't been used/tested because 113 specifies
 				//			a false 2nd sub (i.e. always even)- note for single sub receiving W, boost by 3dB
 				{
-					subOutbusNums.do({ | spkdex, i |
-						var nfc;
-						nfc = FoaNFC.ar( in, spkrDists.at(spkdex) );
-						Out.ar(
-							out_busnum + spkdex,
-							// send W to subs, scaled by 3db, div by num of subs
-							nfc[0] * 2.sqrt * numSubChans.reciprocal
-						) * subgain.dbamp
+					if( numSubChans == 1,
+						{   // No NFC for 1 sub
+							Out.ar(
+								out_busnum + subOutbusNums[0],
+									// send W to subs, scaled by 3db, div by num of subs
+									in[0] * 2.sqrt
+								) * subgain.dbamp
+						},
+						{
+							subOutbusNums.do({ | spkdex, i |
+								var nfc;
+								nfc = FoaNFC.ar( in, spkrDists.at(spkdex).abs );
+								Out.ar(
+									out_busnum + spkdex,
+									// send W to subs, div by num of subs
+									nfc[0] * numSubChans.reciprocal
+								) * subgain.dbamp
+							})
 					})
 				}
 			);
@@ -356,7 +366,6 @@
 
 	// NOTE: arrayOutIndices is [half of horiz] ++ [all elevation dome] spkr indices
 	prLoadDiametricDomeDecoderSynth { |decSpecs|
-
 		var domeOutbusNums, domeOutbusNumsFullHoriz, partialDomeDirections, subOutbusNums, subDirections;
 		var halfHorizDirections, posElevDirections, halfSphereDirections, lowerStartDex, domeEndDex, domeDecoderMatrix;
 		var sphereDecoderMatrix, subDecoderMatrix, decSynthDef;
@@ -456,7 +465,7 @@
 				Out.ar(
 					out_busnum + spkdex, // remap decoder channels to rig channels
 					AtkMatrixMix.ar(
-						FoaNFC.ar( in, spkrDists.at(spkdex) ),
+						FoaNFC.ar( in, spkrDists.at(spkdex).abs ),
 						domeDecoderMatrix.fromRow(i)
 					)
 				)
@@ -468,20 +477,31 @@
 					Out.ar(
 						out_busnum + spkdex,
 						AtkMatrixMix.ar(
-							FoaNFC.ar( in, spkrDists.at(spkdex) ),
+							FoaNFC.ar( in, spkrDists.at(spkdex).abs ),
 							subDecoderMatrix.matrix.fromRow(i)
 						) * subgain.dbamp
 					)
 				})
 				// quick fix for non-even/non-diametric sub layout
 				},{
-					subOutbusNums.do({ |spkdex, i|
-						var nfc;
-						nfc = FoaNFC.ar( in, spkrDists.at(spkdex) );
-						Out.ar(
-							out_busnum + spkdex,
-							nfc[0] * 2.sqrt * numSubChans.reciprocal // send W to subs
-						) * subgain.dbamp
+					if( numSubChans == 1,
+						{   // No NFC for 1 sub
+							Out.ar(
+								out_busnum + subOutbusNums[0],
+								// send W to subs, scaled by 3db, div by num of subs
+								in[0] * 2.sqrt
+							) * subgain.dbamp
+						},
+						{
+							subOutbusNums.do({ | spkdex, i |
+								var nfc;
+								nfc = FoaNFC.ar( in, spkrDists.at(spkdex).abs );
+								Out.ar(
+									out_busnum + spkdex,
+									// send W to subs, scaled by 3db, div by num of subs
+									nfc[0] * numSubChans.reciprocal
+								) * subgain.dbamp
+							})
 					})
 				}
 			);
@@ -555,7 +575,7 @@
 			numSatChans.do({ | spkdex, i |
 				var nfc;
 						(ambiOrder == 1).if( // nfc only supported at first order atm
-							{ nfc = FoaNFC.ar( in, spkrDists.at(spkdex) ) },
+							{ nfc = FoaNFC.ar( in, spkrDists.at(spkdex).abs ) },
 							{ nfc = in }
 						);
 				Out.ar(
@@ -571,7 +591,7 @@
 				subOutbusNums.do({ |spkdex, i|
 					var nfc;
 						(ambiOrder == 1).if( // nfc only supported at first order atm
-							{ nfc = FoaNFC.ar( in, spkrDists.at(spkdex) ) },
+							{ nfc = FoaNFC.ar( in, spkrDists.at(spkdex).abs ) },
 							{ nfc = in }
 						);
 					Out.ar(
@@ -583,16 +603,27 @@
 				})
 				// quick fix for non-even/non-diametric sub layout
 				},{
-					subOutbusNums.do({ |spkdex, i|
-						var nfc;
-						(ambiOrder == 1).if( // nfc only supported at first order atm
-							{ nfc = FoaNFC.ar( in, spkrDists.at(spkdex) ) },
-							{ nfc = in }
-						);
-						Out.ar(
-							out_busnum + spkdex,
-							nfc[0] * 2.sqrt * numSubChans.reciprocal // send W to subs
-						) * subgain.dbamp
+					if( numSubChans == 1,
+						{   // No NFC for 1 sub
+							Out.ar(
+								out_busnum + subOutbusNums[0],
+									// send W to subs, scaled by 3db, div by num of subs
+									in[0] * 2.sqrt
+								) * subgain.dbamp
+						},
+						{
+							subOutbusNums.do({ | spkdex, i |
+								var nfc;
+								(ambiOrder == 1).if( // nfc only supported at first order atm
+									{ nfc = FoaNFC.ar( in, spkrDists.at(spkdex).abs ) },
+									{ nfc = in }
+								);
+								Out.ar(
+									out_busnum + spkdex,
+									// send W to subs, scaled by 3db, div by num of subs
+									nfc[0] * numSubChans.reciprocal
+								) * subgain.dbamp
+							})
 					})
 				}
 			);
@@ -679,7 +710,7 @@
 				var nfc;
 
 				(ambiOrder == 1).if( // nfc only supported at first order atm
-					{ nfc = FoaNFC.ar( in, spkrDists.at(spkdex) ) },
+					{ nfc = FoaNFC.ar( in, spkrDists.at(spkdex).abs ) },
 					{ nfc = in }
 				);
 				// LF
@@ -718,17 +749,28 @@
 				})
 				// quick fix for non-even/non-diametric sub layout
 				},{
-					subOutbusNums.do({ |spkdex, i|
-						var nfc;
-						(ambiOrder == 1).if( // nfc only supported at first order atm
-							{ nfc = FoaNFC.ar( in, spkrDists.at(spkdex) ) },
-							{ nfc = in }
-						);
-						Out.ar(
-							out_busnum + spkdex,
-							nfc[0] * 2.sqrt * numSubChans.reciprocal // send W to subs
-						) * subgain.dbamp
-					});
+					if( numSubChans == 1,
+						{   // No NFC for 1 sub
+							Out.ar(
+								out_busnum + subOutbusNums[0],
+									// send W to subs, scaled by 3db, div by num of subs
+									in[0] * 2.sqrt
+								) * subgain.dbamp
+						},
+						{
+							subOutbusNums.do({ | spkdex, i |
+								var nfc;
+								(ambiOrder == 1).if( // nfc only supported at first order atm
+									{ nfc = FoaNFC.ar( in, spkrDists.at(spkdex).abs ) },
+									{ nfc = in }
+								);
+								Out.ar(
+									out_busnum + spkdex,
+									// send W to subs, scaled by 3db, div by num of subs
+									nfc[0] * numSubChans.reciprocal
+								) * subgain.dbamp
+							})
+					})
 				}
 			);
 

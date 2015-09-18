@@ -213,12 +213,14 @@ SoundLab {
 				});
 
 				sterPatcherDef = CtkSynthDef(\sterpatcher, { arg in_bus=0, out_bus=0;
-					// stereo patchers don't use ReplaceOut because often stereo channels are shared with
-					// satellite channels, and ReplaceOut would overwrite the satellite's bus contents
+					// stereo patchers don't use ReplaceOut because
+					// often stereo channels are shared with
+					// satellite channels, and ReplaceOut would overwrite
+					// the satellite's bus contents
 					Out.ar(out_bus, In.ar(in_bus, 1))
 				});
 
-				stereoSubPatcherDef = CtkSynthDef(\subpatcher, { arg in_bus=0, out_bus=0;
+				stereoSubPatcherDef = CtkSynthDef(\stersubpatcher, { arg in_bus=0, out_bus=0;
 					if( numSubChans == 1,
 						{	// summing stereo into 1 sub
 							ReplaceOut.ar(out_bus,
@@ -308,9 +310,13 @@ SoundLab {
 					.out_bus_(stereoChanIndex[i])
 					.play
 				})
-				// route stereo to subs as well, this synth also does gain comp on sub(s)
+				// route stereo to subs as well,
+				// this synth also does gain comp on sub(s)
+				// add after patcher group to ensure it's the very last synth
+				// so it doesn't
 				++ stereoSubPatcherDef.note( addAction: \tail, target: patcherGroup )
 					.in_bus_(hwInStart)
+				// TODO: this implies no filter correction on stereo sub send, is that OK?
 					.out_bus_(numSatChans)
 					.play
 				;
@@ -413,7 +419,6 @@ SoundLab {
 						// build the key from the kernel path (queried from nextjconvolver to be sure) and sample rate
 						var kpn;
 						kpn = PathName(nextjconvolver.kernelFolderPath);
-						kpn.allFolders.do(_.postln);
 
 						testKey = (this.sampleRate.asString ++ "/" ++ kpn.allFolders[kpn.allFolders.size-2]).asSymbol;
 					},{
@@ -586,12 +591,12 @@ NO NEW DECODER STARTED");
 					Jconvolver.jackScOutNameDefault = "scsynth:out";
 					Jconvolver.executablePath_("/usr/local/bin/jconvolver");
 				};
-				1.postln;
+
 				nextjconvinbus = if( jconvinbus.notNil,
 					{(jconvinbus + numHardwareOuts).wrap(1, numHardwareOuts*2)}, // replacing another instance
 					{numHardwareOuts} // first instance
 				);
-2.postln;
+
 				jconvHWOut = if(usingSLHW, {
 					if(slhw.whichMadiOutput.isNil,
 						{ jconvHWOutChannel },
@@ -603,7 +608,6 @@ NO NEW DECODER STARTED");
 					)
 				},{jconvHWOutChannel}
 				);
-3.postln;
 				Jconvolver.createSimpleConfigFileFromFolder(
 					kernelFolderPath: newKernelPath,
 					partitionSize: partSize,
@@ -615,9 +619,9 @@ NO NEW DECODER STARTED");
 				);
 
 				jconvinbus = nextjconvinbus;
-4.postln;
+
 				newjconvolver = Jconvolver.newFromFolder(newKernelPath);
-5.postln;
+
 				while( {newjconvolver.isRunning.not and: (trycnt < numtries)}, {
 					trycnt = trycnt+1;
 					(timeout/numtries).wait;
@@ -629,10 +633,8 @@ NO NEW DECODER STARTED");
 					break.();
 				};
 				nextjconvolver = newjconvolver;
-				6.postln;
 			};
 			completeCondition !? {completeCondition.test_(true).signal};
-			7.postln;
 		}
 	}
 
