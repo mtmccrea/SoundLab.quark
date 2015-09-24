@@ -12,10 +12,10 @@ IdentityDictionary(know: true)
 	\jconvHWOutChannel,		0,
 	\stereoChanIndex,		[0, 1],
 	\rotateDegree,			90, // option to rotate the listening position to this angle
-	\xOverHPF,				80,
-	\xOverLPF,				80,
-	\shelfFreq,				145,	// ~0.75m sweet spot diam, takes predecdence over listening Diameter
-	\listeningDiameter,		0.75,	// sweet spot size in meters
+	\xOverHPF,				60,
+	\xOverLPF,				60,
+	\shelfFreq,				700,	// ~0.17m sweet spot diam, takes precedence over listening Diameter
+	\listeningDiameter,		0.17,	// sweet spot size in meters
 
 	/* SoundLabHardware settings */
 
@@ -117,7 +117,7 @@ see prLoadSynthDefs for how channel mappings are used
 		1.297355625000,
 		1.325713125000,
 		1.513581562500,
-		2.055918750000 // sub was a negative distance, abs val here
+		0 // sub was a negative distance, zeroed out
 	]
 )
 .put(\defaultSpkrGainsDB,

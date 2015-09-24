@@ -493,6 +493,8 @@
 							) * subgain.dbamp
 						},
 						{
+							// TODO: for odd multi-channel sub layouts
+							// build panto decoder
 							subOutbusNums.do({ | spkdex, i |
 								var nfc;
 								nfc = FoaNFC.ar( in, spkrDists.at(spkdex).abs );
