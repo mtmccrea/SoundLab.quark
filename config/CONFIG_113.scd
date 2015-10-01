@@ -61,37 +61,23 @@ numInChannels: number of input channels into the decoder/router (Int)
 
 		/* --discrete channel routing-- */
 		// thru routing assumes contiguous channels, starting at arrayOutIndices.first
-		[\All, \discrete, \NA, 2, (0..10), 11],			// includes sub as last channel
-		[\Hex, \discrete, \NA, 2, (0..5)++[10], 7],		// includes sub as last channel
+		[\All,  \discrete, \NA, 2, (0..10), 11],		// includes sub as last channel
+		[\Hex,  \discrete, \NA, 2, (0..5)++[10], 7],	// includes sub as last channel
 		[\Quad, \discrete, \NA, 2, [0,1,3,4,10], 5]		// includes sub as last channel
 	]
 )
 
-// no leading '/' in relative folder path
+// no leading '/' in relative folder path, but DO include trailing '/'
 .put(\kernelSpec,
 	// note popup array size = number of popups
 	// column defines selection within one dropdown.
 	// [ path relative to \kernelsPath, 	[...check box (true) attributes],	[...dropdown  attributes] ]
 [
-		["open/k_9_1.365w_18c_3b_0.0t/", 		[], ['open','0.0t'	] ],
-		["open/k_9_1.365w_18c_3b_0.25t/", 		[], ['open','0.25t'	] ],
-		["open/k_9_1.365w_18c_3b_0.5t/", 		[], ['open','0.5t'	] ],
-		["open/k_9_1.365w_18c_3b_0.7t/", 		[], ['open','0.7t'	] ],
-		["open/k_9_1.365w_18c_3b_0.85t/",		[], ['open','0.85t'	] ],
-		["open/k_9_1.365w_18c_3b_1.0t/", 		[], ['open','1.0t'	] ],
-		["moderate/k_24_1.365w_18c_5b_0.0t/", 	[], ['moderate','0.0t'	] ],
-		["moderate/k_24_1.365w_18c_5b_0.25t/", 	[], ['moderate','0.25t'	] ],
-		["moderate/k_24_1.365w_18c_5b_0.5t/", 	[], ['moderate','0.5t'	] ],
-		["moderate/k_24_1.365w_18c_5b_0.7t/", 	[], ['moderate','0.7t'	] ],
-		["moderate/k_24_1.365w_18c_5b_0.85t/",	[], ['moderate','0.85t'	] ],
-		["moderate/k_24_1.365w_18c_5b_1.0t/", 	[], ['moderate','1.0t'	] ],
-		["tight/k_24_1.365w_18c_9b_0.0t/", 		[], ['tight','0.0t'	] ],
-		["tight/k_24_1.365w_18c_9b_0.25t/", 	[], ['tight','0.25t'	] ],
-		["tight/k_24_1.365w_18c_9b_0.5t/", 		[], ['tight','0.5t'	] ],
-		["tight/k_24_1.365w_18c_9b_0.7t/", 		[], ['tight','0.7t'	] ],
-		["tight/k_24_1.365w_18c_9b_0.85t/",		[], ['tight','0.85t'] ],
-		["tight/k_24_1.365w_18c_9b_1.0t/", 		[], ['tight','1.0t'	] ],
+		["open/k_9_1.365w_18c_3b_0.37t/", 		[], ['open','reference'	] ],
+		["open/m_9_1.365w_18c_3b_0.37t/", 		[], ['open','realtime'	] ],
 
+		["moderate/k_24_1.365w_18c_5b_0.37t/", 	[], ['moderate','reference'	] ],
+		["moderate/m_24_1.365w_18c_5b_0.37t/", 	[], ['moderate','realtime'	] ],
 ])
 
 /*
