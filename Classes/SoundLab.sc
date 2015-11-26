@@ -213,18 +213,31 @@ SoundLab {
 				});
 
 				sterPatcherDef = CtkSynthDef(\sterpatcher, { arg in_bus=0, out_bus=0;
+					var in;
 					// stereo patchers don't use ReplaceOut because
 					// often stereo channels are shared with
 					// satellite channels, and ReplaceOut would overwrite
 					// the satellite's bus contents
-					Out.ar(out_bus, In.ar(in_bus, 1))
+
+					// Out.ar(out_bus, In.ar(in_bus, 1))
+					in = In.ar(in_bus, 2);
+
+					2.do{|i|
+						Out.ar( stereoChanIndex[i],
+							// catch if stereo channels weren't measured (like 117,
+							// where they're speakers apart from the ambisonics rig)
+							in[i] * (config.defaultSpkrGainsDB[stereoChanIndex[i]] ?? 0).dbamp;
+						)
+					};
 				});
 
 				stereoSubPatcherDef = CtkSynthDef(\stersubpatcher, { arg in_bus=0, out_bus=0;
 					if( numSubChans == 1,
 						{	// summing stereo into 1 sub
-							ReplaceOut.ar(out_bus,
-								In.ar(in_bus, 2).sum * config.defaultSpkrGainsDB[numSatChans].dbamp
+							Out.ar(out_bus,
+								In.ar(in_bus, 2).sum
+								* (2.sqrt/2)
+								* config.defaultSpkrGainsDB[numSatChans].dbamp
 							)
 						},{ // encoding stereo t b format then decoding to multipl subs
 							var stereoBF = FoaEncode.ar(
@@ -234,12 +247,14 @@ SoundLab {
 
 							// simple cardioid mono decoder for each sub direction
 							numSubChans.do{ |i|
-								ReplaceOut.ar( out_bus + i,
+								Out.ar( out_bus + i,
 									FoaDecode.ar(stereoBF,
 										FoaDecoderMatrix.newMono(
 											config.spkrAzimuthsRad[numSatChans + i],
-											0, 0.5) // no elevation, cardioid
-									) * config.defaultSpkrGainsDB[numSatChans+i].dbamp
+											0, 0.5)   // no elevation, cardioid
+									)
+									* (2/numSubChans) // balance the energy based on the number of subs
+									* config.defaultSpkrGainsDB[numSatChans+i].dbamp
 								)
 							};
 						});
@@ -303,13 +318,15 @@ SoundLab {
 
 				hwInStart = server.options.numOutputBusChannels;
 
-				stereoPatcherSynths = 2.collect({|i|
+				// stereoPatcherSynths = 2.collect({|i|
+				stereoPatcherSynths = 1.collect({|i|
 					// TAIL so avoid sending from stereo into satellite patcher synths (doubling the output)
 					sterPatcherDef.note( addAction: \tail, target: patcherGroup )
 					.in_bus_(hwInStart+i)
-					.out_bus_(stereoChanIndex[i])
+					.out_bus_(stereoChanIndex[i]) // this isn't used now that once synths routes both channels
 					.play
 				})
+
 				// route stereo to subs as well,
 				// this synth also does gain comp on sub(s)
 				// add after patcher group to ensure it's the very last synth

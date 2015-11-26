@@ -796,38 +796,40 @@
 				in = In.ar(in_busnum, decSpecs.numInputChans)  * env;
 				decSpecs.arrayOutIndices.do{ |outbus, i| Out.ar( outbus, in[i] ) };
 
-				// TODO: confirm this BF encode-decode approach
-				// SUBS
-				if( config.numSubChans > 1, {
-					// send the satellite signals to the sub(s) via planewave encoding,
-					// then decode the b-format to mono sub decoders
-					azims = decSpecs.arrayOutIndices.collect{|outdex, i| config.spkrAzimuthsRad[outdex] };
-					elevs = decSpecs.arrayOutIndices.collect{|outdex, i| config.spkrElevationsRad[outdex] };
-					directions = [azims, elevs].lace(azims.size + elevs.size).clump(2);
-
-					encoder = FoaEncoderMatrix.newDirections(directions, nil); // nil = planewave encoding
-					bf = FoaEncode.ar(in, encoder);
-
-					// Mono decode for each sub
-					decoders = config.numSubChans.collect{|i|
-						FoaDecoderMatrix.newMono(
-							config.spkrAzimuthsRad[config.numSatChans+i], // sub azimuth
-							0,  // sub elevation - always 2D
-							0.5 // cardiod decode
-						);
-					};
-
-					sub_decodes = decoders.collect{ |decoder| FoaDecode.ar(bf, decoder); };
-					// TODO add crossover to discrete routing
-					// see commented-out code below for crossover scheme to be added
-					config.numSubChans.do{|i| Out.ar(config.numSatChans+i, sub_decodes[i])};
-
-					},{
-						if( config.numSubChans == 1, {
-							Out.ar( config.numSatChans, Mix.ar(in) * decSpecs.numInputChans.reciprocal )
-						})
-					}
-				);
+				// subs were considered at one point, but decided discrete routing should be
+				// direct speaker feeds only
+				// // TODO: confirm this BF encode-decode approach
+				// // SUBS
+				// if( config.numSubChans > 1, {
+				// 	// send the satellite signals to the sub(s) via planewave encoding,
+				// 	// then decode the b-format to mono sub decoders
+				// 	azims = decSpecs.arrayOutIndices.collect{|outdex, i| config.spkrAzimuthsRad[outdex] };
+				// 	elevs = decSpecs.arrayOutIndices.collect{|outdex, i| config.spkrElevationsRad[outdex] };
+				// 	directions = [azims, elevs].lace(azims.size + elevs.size).clump(2);
+				//
+				// 	encoder = FoaEncoderMatrix.newDirections(directions, nil); // nil = planewave encoding
+				// 	bf = FoaEncode.ar(in, encoder);
+				//
+				// 	// Mono decode for each sub
+				// 	decoders = config.numSubChans.collect{|i|
+				// 		FoaDecoderMatrix.newMono(
+				// 			config.spkrAzimuthsRad[config.numSatChans+i], // sub azimuth
+				// 			0,  // sub elevation - always 2D
+				// 			0.5 // cardiod decode
+				// 		);
+				// 	};
+				//
+				// 	sub_decodes = decoders.collect{ |decoder| FoaDecode.ar(bf, decoder); };
+				// 	// TODO add crossover to discrete routing
+				// 	// see commented-out code below for crossover scheme to be added
+				// 	config.numSubChans.do{|i| Out.ar(config.numSatChans+i, sub_decodes[i])};
+				//
+				// 	},{
+				// 		if( config.numSubChans == 1, {
+				// 			Out.ar( config.numSatChans, Mix.ar(in) * decSpecs.numInputChans.reciprocal )
+				// 		})
+				// 	}
+				// );
 			});
 		);
 
