@@ -82,7 +82,7 @@ numInChannels: number of input channels into the decoder/router (Int)
 		[\Sph_24ch_all,		\diametric,	'dual',	3,	(0..11),			4	],
 		[\Sph_18ch_6x6x6,	\diametric,	'dual',	3,	(3..11),			4	],
 		[\Sph_14ch_HexInBox,\diametric,	'dual',	3,	[3,4,6,7,9,10,11],	4	],
-		[\Sph_12ch_HexInSquare,\diametric,'dual',	3,	[5,9,10,11,17],	4	],
+		[\Sph_10ch_HexInSquare,\diametric,'dual',	3,	[5,9,10,11,17],	4	],
 		[\Sph_12ch_6x6,		\diametric,	'dual',	3,	(3..8),				4	],
 		[\Sph_12ch_3x6x3,	\diametric,	'dual',	3,	(0..2)++(9..11),	4	],
 		[\Sph_6ch_2x2x2,	\diametric,	'dual',	3,	[8, 9, 20],			4	],
