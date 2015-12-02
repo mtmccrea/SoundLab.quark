@@ -846,7 +846,6 @@ SoundLabGUI {
 			basicBalanceButton.value_(0);
 			kernelDegreeMenus.do(_.value_(0));
 
-
 			sweetRad = sl.getDiamByFreq(sl.shelfFreq.round(0.001));
 			sweetSl.value_(sweetRad);
 			sweetTxt.string_( format(
