@@ -19,7 +19,7 @@ IdentityDictionary(know: true)
 
 	/* SoundLabHardware settings */
 
-	\useFireface, 			true,
+	\useFireface, 			true, //2016.01.22 Marcin - testing
 	\midiPortName,			"External MIDI-MADIFXtest MIDI 1", // 205
 	// \midiPortName,			nil, // nil for no MIDI
 	\cardNameIncludes,		"RME", // 205

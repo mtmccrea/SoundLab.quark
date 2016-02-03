@@ -50,7 +50,8 @@ SoundLabHardware {
 	var newJackName, newJackIns, newJackOuts, <jackPeriodSize;
 	var serverInputNameInJack;
 	var fixAudioIn;
-	var <dbusServerPid, <phantomState;
+	var <fireface;
+	var ffPhantomState;
 
 	//remmeber to use update notification at some point!!!!
 
@@ -80,7 +81,7 @@ SoundLabHardware {
 	init {//arg useSupernova, fixAudioInputGoingToTheDecoder;
 		// midiPortName.postln;
 		// useFireface.postln;
-		this.dump;
+		// this.dump;
 		//notification
 		this.changed(\updatingConfiguration, 0.0);
 		//set default synth
@@ -98,7 +99,6 @@ SoundLabHardware {
 		addWaitTime = 0;
 		jackWasStartedBySC = false;
 		fixAudioIn = fixAudioInputGoingToTheDecoder;
-		phantomState = 4.collect({false});
 		// clientsDictionary = Dictionary.new; //not here
 		//init hardware
 		this.prGetCardID;
@@ -122,16 +122,16 @@ SoundLabHardware {
 				this.changed(\updatingConfiguration, 0.0);
 				// if(audioIsRunning, {
 				//for now - do it always, just in case something was running before
-					"stopping audio first...".postln;
+				"stopping audio first...".postln;
 
-					this.prStopAudioFunction;
+				this.prStopAudioFunction;
 					// 6.wait;
 					// "------------- before wait".postln;
-					updatingCondition.wait;
+				updatingCondition.wait;
 				// if(useFireface, { conditinal moved to class
-					this.initFireface; //init fireface here as well
+				this.initFireface; //init fireface here as well
 				// });
-					addWaitTime.wait;
+				addWaitTime.wait;
 			// });
 				// "------------- after wait".postln;
 /*				this.changed(\updatingConfiguration, 0.2);
@@ -160,8 +160,8 @@ SoundLabHardware {
 				// "--before setting jack connections".postln;
 				this.prSetJackConnections;
 				//Fireface - phantom and Routing
-				this.setDefaultFfRouting;
-				this.recallFfPhantom;
+				// this.setFfDefaultRouting; //automatically inside fireface class
+				// this.recallFfPhantom;
 				this.changed(\updatingConfiguration, 0.9);
 				// "--before starting server".postln;
 				this.prStartServer;
@@ -227,12 +227,12 @@ SoundLabHardware {
 		server.quit;
 		// 3.wait;
 		// updatingCondition.wait;
+		//clear Fireface
+		this.clearFireface;
 		//jack
 		this.changed(\updatingConfiguration, 0.6);
 		this.audioIsRunning_(false);//moved here so jack knows we're stopping
 		this.prStopJack;
-		//clear Fireface
-		this.clearFireface;
 		// 1.wait;
 		updatingCondition.wait;
 		1.wait;//just to make sure everything's off
@@ -282,7 +282,7 @@ SoundLabHardware {
 			// MIDIClient.destinations;
 			// MIDI INIT!!!!!! don't forget to connect.... blah
 			midiPort = MIDIOut.newByName(midiPortName, midiPortName);
-			postf("midiPort: %\n", midiPort);
+			// postf("midiPort: %\n", midiPort);
 			try { midiPort.connect(midiPort.port); };
 		});
 		postf("midiPort: %\n", midiPort);
@@ -306,7 +306,7 @@ SoundLabHardware {
 				eof.asArray
 			);
 			// sysexCommand.dump;
-			"sending SysEx: ".post; sysexCommand.postln;
+			// "sending SysEx: ".post; sysexCommand.postln;
 			midiDevice.sysex(sysexCommand);
 		});
 	}
@@ -340,7 +340,7 @@ SoundLabHardware {
 		// " -i"++ins.asString++ //needs to be exact as MADI expects, not needed?
 		// " -o"++outs.asString;
 		// " -o"++ins.asString; //needs to be exact as MADI expects, not needed?
-		"run jack command ".post; cmd.postln;
+		// "run jack command ".post; cmd.postln;
 		cmd.unixCmdGetStdOutThruOsc({|line|
 			"from jack: ".post; line.postln;
 			this.prParseJackOutput(line);
@@ -598,8 +598,8 @@ SoundLabHardware {
 				// msgBack2 = cmd2.unixCmdGetStdOut; // set proper speed mode on madi
 				// msgBack2.postln;
 				if(cardNameIncludes.notNil, {
-					cmds.postln;
-					cmds.do(_.unixCmd);
+					// cmds.postln;
+					cmds.do(_.unixCmd(postOutput: false));
 				});//run commands only if card name provided -> assuming we're on linux
 				// "after cmds".postln;
 				// server params
@@ -614,7 +614,8 @@ SoundLabHardware {
 				//fireface here as well
 
 				6.wait;//wait for clocks to get in sync - not sure if we need that much...
-				this.setFfSampleRate(sampleRate);
+				// this.setFfSampleRate(sampleRate);
+				if(useFireface, {this.fireface.sampleRate_(sampleRate);});
 				updatingCondition.test = true;
 				updatingCondition.signal;
 				this.changed(\sampleRate, sampleRate);
@@ -625,13 +626,13 @@ SoundLabHardware {
 	}
 
 	prSampleRateIsCorrectOrNil {arg newSR;
-		"newSR in prSampleRateIsCorrectOrNil: ".post; newSR.postln;
+		// "newSR in prSampleRateIsCorrectOrNil: ".post; newSR.postln;
 		if(newSR.notNil, {
 			if([44100, 48000, 88200, 96000].includes(newSR), {
-				"prSampleRateIsCorrectOrNil: true".postln;
+				// "prSampleRateIsCorrectOrNil: true".postln;
 				^true;
 				}, {
-					"prSampleRateIsCorrectOrNil: false".postln;
+					// "prSampleRateIsCorrectOrNil: false".postln;
 					^false;
 			});
 		}, {
@@ -642,133 +643,352 @@ SoundLabHardware {
 	//fireface
 	initFireface {
 		if(useFireface, {
-			// this.clearFireface;
-			"Starting ffado-dbus-server for Fireface".postln;
-			dbusServerPid = "exec ffado-dbus-server".unixCmd({|msg|
-				dbusServerPid = nil;
-				"Dbus server finished".postln;
-			}); //needs to be run each time fireface disconnects
-			//so to be safe: record the pid of the process, and kill/restart it on each sampleRate change / audio restart, that way user can bring the device back if needed.
-			//also, set autoSync shortly afterwards here, so we don't have to remember
-			{this.setFfAutoSync(true)}.defer(2);
+			// fireface = Fireface.new(firefaceID, ffPhantomState)
+			fireface = Fireface.new(firefaceID) //not recalling phantom
 		});
 	}
 
 	clearFireface {
+		if(useFireface, {
+			// if(fireface.notNil, {
+			// 	ffPhantomState = this.fireface.phantomState;
+			// }); //not recalling phantom
+			this.fireface.clear;
+		});
+	}
+
+	ffPhantom_ {|channel = 0/*0-3*/, state /*bool or 0-1*/|
+		if(useFireface, {
+			fireface.phantom_(channel, state);
+		});
+	}
+
+	ffPhantom {
+		if(useFireface, {
+			^this.fireface.phantomState;
+		});
+	}
+}
+
+//putting Fireface methods to its own class
+
+//TODO: add methods for setting front/back inputs, possibly level?
+
+Fireface {
+	var <id, <phantomState;
+	var <dbusServerPid, <autoSync;
+	var <pollingRoutine, <lastUnixCmdTime = 0, <dbusServerAliveTime = 60;
+	var <lastUpdateTime;
+
+	*new {|id = "000a3500c1da0056", phantomState|
+		^super.newCopyArgs(id, phantomState).init;
+	}
+
+	init {
+		phantomState ?? {phantomState = 4.collect({false})};
+		if(this.isActive.not, {
+			"initializint fireface".postln;
+			this.prStartFireface;
+			}, {
+				"Fireface dbus server seems already running, NOT initializing".postln;
+		});
+	}
+
+	prStartFireface { //eventually add msg queuing here?
+		"Starting ffado-dbus-server for Fireface".postln;
+		dbusServerPid = "exec ffado-dbus-server".unixCmd({|msg|
+			dbusServerPid = nil;
+			"Dbus server finished".postln;
+		}); //needs to be run each time fireface disconnects
+		{
+			this.autoSync_(true);
+			this.setDefaultRouting;
+			this.setDefaultSources;
+			this.recallPhantom;
+			this.prStartPolling
+		}.defer(2); //more time?
+	}
+
+	isActive {
+		if(dbusServerPid.notNil, {
+			^true;
+			}, {
+				^false;
+		});
+	}
+
+	clear {
+		"clearing fireface".postln;
+		// "pollingRoutine: ".postln;
+		// pollingRoutine.dump;
+		pollingRoutine.stop;
+		// pollingRoutine.isPlaying.postln;
 		if(dbusServerPid.notNil, {
 			"killing pid ".post; dbusServerPid.postln;
-			("killing pid " ++ dbusServerPid).postln;
+			// ("killing pid " ++ dbusServerPid).postln;
 			("kill -9 " ++ dbusServerPid).unixCmd;
 		});
 	}
 
-	setFfMatrixGain {|inbus = 6 /*mic: 6-9*/, outbus = 12/*ADAT: 12-19(27)*/, gain = 1, post = true|
+	setMatrixGain {|inbus = 6 /*mic: 6-9*/, outbus = 12/*ADAT: 12-19(27)*/, gain = 1, post = false|
 		var dbusCmd, gainRaw;
-		if(useFireface, {
-			gainRaw = gain * 16384;
-			dbusCmd = "dbus-send --print-reply --dest=org.ffado.Control /org/ffado/Control/DeviceManager/" ++ firefaceID ++ "/Mixer/InputFaders org.ffado.Control.Element.MatrixMixer.setValue int32:" ++ outbus.asString ++ " int32:" ++ inbus.asString ++ " double:" ++ gainRaw.asString;
-			// dbusCmd.postln;
-			dbusCmd.unixCmd(postOutput: post);
-		});
+		gainRaw = gain * 16384;
+		// dbusCmd = "dbus-send --print-reply --dest=org.ffado.Control /org/ffado/Control/DeviceManager/" ++ id ++ "/Mixer/InputFaders org.ffado.Control.Element.MatrixMixer.setValue int32:" ++ outbus.asString ++ " int32:" ++ inbus.asString ++ " double:" ++ gainRaw.asString;
+		this.sendDBus("Mixer/InputFaders", "MatrixMixer", "setValue", "int32:" ++ outbus.asString ++ " int32:" ++ inbus.asString ++ " double:" ++ gainRaw.asString, post);
+		// dbusCmd.postln;
+		// dbusCmd.unixCmd(postOutput: post);
+		// this.prUnixCmdFfActive(dbusCmd, post: post);
 	}
 
-	setDefaultFfRouting {
+	setDefaultRouting {
 		var micRoutings;
-		if(useFireface, {
-			"Setting Fireface default routing".postln;
-			micRoutings = [
-				[6, 12],
-				[7, 13],
-				[8, 14],
-				[9, 15],
-				[0, 16], //line
-				[1, 17],
-				[2, 18],
-				[3, 19]
-			];
-			26.do({|inInc|
-				26.do({|outInc|
-					if(micRoutings.any({|item| item == [inInc, outInc]}), {
-						this.setFfMatrixGain(inInc, outInc, 1, false); //full gain for predefined routings
-						}, {
-							this.setFfMatrixGain(inInc, outInc, 0, false); //mute others
-					});
-				});
-			});
-		});
-	}
-
-	ffPhantom {|channel = 0/*0-3*/, state /*bool or 0-1*/|
-		var phantomRawValue, rawValuesArray, dbusCmd;
-		if(useFireface, {
-			if(state.notNil, {
-				"Setting Fireface phantom".postln;
-				//store in the class
-				phantomState[channel] = state.asBoolean;
-
-				/*
-				mic 7 on -> 65537
-				mic 7 off -> 65536
-				mic 8 on -> 131074
-				mic 8 off -> 131072
-				mic 9 on -> 262148
-				mic 9 off -> 262144
-				mic 10 on -> 524296
-				mic 10 off -> 524288
-				*/
-				//method call sender=:1.88 -> dest=:1.89 serial=220138 path=/org/ffado/Control/DeviceManager/ ++ firefaceID ++ /Control/Phantom; interface=org.ffado.Control.Element.Discrete; member=setValue
-
-				// int32 524296
-
-				rawValuesArray = [
-					[65536, 65537],
-					[131072, 131074],
-					[262144, 262148],
-					[524288, 524296]
-				];
-				phantomRawValue = rawValuesArray[channel][state.asInteger];
-				// phantomRawValue.postln;
-				dbusCmd = "dbus-send --print-reply --dest=org.ffado.Control /org/ffado/Control/DeviceManager/" ++ firefaceID ++ "/Control/Phantom org.ffado.Control.Element.Discrete.setValue int32:" ++ phantomRawValue.asString;
-				// dbusCmd.postln;
-				dbusCmd.unixCmd(postOutput: false);
-				^[channel, state];
+		"Setting Fireface default routing".postln;
+		micRoutings = [
+			[6, 12], //mic
+			[7, 13],
+			[8, 14],
+			[9, 15],
+			[0, 16], //line
+			[1, 17],
+			[2, 18],
+			[3, 19]
+		];
+		26.do({|inInc|
+			26.do({|outInc|
+				if(micRoutings.any({|item| item == [inInc, outInc]}), {
+					this.setMatrixGain(inInc, outInc, 1, false); //full gain for predefined routings
 				}, {
-					^phantomState[channel];
-			});
-		});
-	}
-
-	recallFfPhantom {
-		if(useFireface, {
-			phantomState.do({|state, inc|
-				if(state.notNil, {
-					this.ffPhantom(inc, state);
+					this.setMatrixGain(inInc, outInc, 0, false); //mute others
 				});
 			});
 		});
 	}
 
-	setFfAutoSync {|val = true|
-		var dbusCmd;
-		if(useFireface, {
-			"Setting Fireface AutoSync".postln;
-			//method call sender=:1.88 -> dest=:1.89 serial=291689 path=/org/ffado/Control/DeviceManager/000a35009caf3c69/Control/Clock_mode; interface=org.ffado.Control.Element.Discrete; member=setValue
-			// int32 1
-			dbusCmd = "dbus-send --print-reply --dest=org.ffado.Control /org/ffado/Control/DeviceManager/" ++ firefaceID ++ "/Control/Clock_mode org.ffado.Control.Element.Discrete.setValue int32:" ++ val.asInteger.asString;
+	phantom_ {|channel = 0/*0-3*/, state /*bool or 0-1*/|
+		var phantomRawValue, rawValuesArray, dbusCmd;
+		if(state.notNil, {
+			"Setting Fireface phantom".postln;
+			//store in the class
+			phantomState[channel] = state.asBoolean;
+
+			/*
+			mic 7 on -> 65537
+			mic 7 off -> 65536
+			mic 8 on -> 131074
+			mic 8 off -> 131072
+			mic 9 on -> 262148
+			mic 9 off -> 262144
+			mic 10 on -> 524296
+			mic 10 off -> 524288
+			*/
+			//method call sender=:1.88 -> dest=:1.89 serial=220138 path=/org/ffado/Control/DeviceManager/ ++ id ++ /Control/Phantom; interface=org.ffado.Control.Element.Discrete; member=setValue
+
+			// int32 524296
+
+			rawValuesArray = [
+				[65536, 65537],
+				[131072, 131074],
+				[262144, 262148],
+				[524288, 524296]
+			];
+			phantomRawValue = rawValuesArray[channel][state.asInteger];
+			// phantomRawValue.postln;
+			// dbusCmd = "dbus-send --print-reply --dest=org.ffado.Control /org/ffado/Control/DeviceManager/" ++ id ++ "/Control/Phantom org.ffado.Control.Element.Discrete.setValue int32:" ++ phantomRawValue.asString;
 			// dbusCmd.postln;
-			dbusCmd.unixCmd(postOutput: false);
+			// dbusCmd.unixCmd(postOutput: false);
+			this.sendDBus("Control/Phantom", "Discrete", "setValue", "int32:" ++ phantomRawValue.asString);
+			^[channel, state];
+		}, {
+			^phantomState[channel];
 		});
 	}
 
-	setFfSampleRate {|sr = 48000|
-		var dbusCmd;
-		if(useFireface, {
-			"Setting Fireface samplerate".postln;
-			// cmd = "ffado-test SetSamplerate " ++ sr.asString;
-			// cmd.unixCmd; //now using dbus
-			dbusCmd = "dbus-send --print-reply --dest=org.ffado.Control /org/ffado/Control/DeviceManager/" ++ firefaceID ++ "/Control/sysclock_freq org.ffado.Control.Element.Discrete.setValue int32:" ++ sr.asInteger.asString;
-			// dbusCmd.postln;
-			dbusCmd.unixCmd(postOutput: false);
+	phantom {|channel = 0/*0-3*/|
+		if(channel.notNil, {
+			^phantomState[channel];
+		}, {
+			^phantomState
 		});
+	}
+
+	recallPhantom {
+		phantomState.do({|state, inc|
+			if(state.notNil, {
+				this.phantom_(inc, state);
+			});
+		});
+	}
+
+	autoSync_ {|val = true|
+		var dbusCmd;
+		"Setting Fireface AutoSync".postln;
+		//method call sender=:1.88 -> dest=:1.89 serial=291689 path=/org/ffado/Control/DeviceManager/000a35009caf3c69/Control/Clock_mode; interface=org.ffado.Control.Element.Discrete; member=setValue
+		// int32 1
+		// dbusCmd = "dbus-send --print-reply --dest=org.ffado.Control /org/ffado/Control/DeviceManager/" ++ id ++ "/Control/Clock_mode org.ffado.Control.Element.Discrete.setValue int32:" ++ val.asInteger.asString;
+		// dbusCmd.postln;
+		// dbusCmd.unixCmd(postOutput: false);
+
+		this.sendDBus("Control/Clock_mode", "Discrete", "setValue", "int32:" ++ val.asInteger.asString);
+		autoSync = val;
+	}
+
+	sampleRate_{|sr = 48000|
+		if(autoSync, {
+			Routine.run({ //NOTE: to properly switch samplerate from "single speed" to "double speed" (48k -> 96k), switch to clock master first, then swtich sample rate, then switch back to autosync
+				this.autoSync_(false);//set to master to enforce proper single speed/double speed selection
+				0.5.wait;
+				this.prSampleRate_(sr);
+				0.5.wait;
+				this.autoSync_(true); //back to proper autosync
+			})
+			},{
+				this.prSampleRate_(sr); //set right away if it's in master mode
+		});
+	}
+
+	prSampleRate_ {|sr = 48000|
+		var dbusCmd, sampleRateNumber;
+		"Setting Fireface samplerate".postln;
+		// cmd = "ffado-test SetSamplerate " ++ sr.asString;
+		// cmd.unixCmd; //now using dbus
+		// dbusCmd = "dbus-send --print-reply --dest=org.ffado.Control /org/ffado/Control/DeviceManager/" ++ id ++ "/Control/sysclock_freq org.ffado.Control.Element.Discrete.setValue int32:" ++ sr.asInteger.asString;
+		// dbusCmd.postln;
+		// dbusCmd.unixCmd(postOutput: false);
+		sampleRateNumber = [32000, 44100, 48000, 64000, 88200, 96000, 128000, 176400, 192000].indexOf(sr);
+		"sampleRateNumber: ".post; sampleRateNumber.postln;
+		if(sampleRateNumber.notNil, {
+			this.sendDBus("Control/sysclock_freq", "Discrete", "setValue", "int32:" ++ sr.asInteger.asString);
+			this.sendDBus("Generic/SamplerateSelect", "Enum", "select", "int32:" ++ sampleRateNumber.asInteger.asString);
+		}, {
+				"Fireface: no proper sampleRate provided, valid are: [32000, 44100, 48000, 64000, 88200, 96000, 128000, 176400, 192000]".warn;
+		});
+	}
+
+	inputSource_ {|channel = 0/*0, 6, 7*/, source = 'front' /*'front', 'rear', 'front+rear'*/| //note 0-based numbering; also inconsistent with phantom ch number...
+		var dbusCmd, chanName, sourceNumber;
+		channel.switch(
+			0, {chanName = "Chan1_source"},
+			6, {chanName = "Chan7_source"},
+			7, {chanName = "Chan8_source"},
+			{"Wrong channel number, possible are 0, 6, 7".warn}
+		);
+		source.switch(
+			'front', {sourceNumber = 0},
+			'rear', {sourceNumber = 1},
+			'front+rear', {sourceNumber = 2},
+			{"Wrong source, possible are 'front', 'rear', 'front+rear'".warn}
+		);
+		if(chanName.notNil && sourceNumber.notNil, {
+			// "Setting input source".postln;
+			this.sendDBus("Control/" ++ chanName, "Discrete", "setValue", "int32:" ++ sourceNumber.asInteger.asString);
+		});
+	}
+
+	setDefaultSources { //0 - rear, 6,7 - front
+		[[0, 'rear'], [6, 'front'], [7, 'front']].do({|thisInput|
+			this.inputSource_(thisInput[0], thisInput[1])
+		});
+	}
+
+
+	//also uise this to detect when the interface gets disconnected and close/restart dbus server
+
+/*	getStatus {|path = \SamplerateSelect, interface = \Element, member = \canChangeValue, value, post = true| /*these can be Symbols or Strings; value needs to be in the format int32:0*/
+		var dbusCmd;
+		if(post, {"Getting Fireface status".postln;});
+		dbusCmd = "dbus-send --print-reply --dest=org.ffado.Control /org/ffado/Control/DeviceManager/" ++ id ++ "/Generic/" ++ path.asString ++ " org.ffado.Control.Element." ++ interface.asString ++ "." ++ member.asString;
+		value !? {dbusCmd = dbusCmd + value};
+		// dbusCmd.postln;
+		dbusCmd.unixCmd(postOutput: post);
+	}*/
+
+	sendDBus {|path = "Generic/SamplerateSelect", interface = "MatrixMixer", member = "setValue", value, post = false, synchronous = false, updateLastCmdTime = true| /*path, interface, member - these can be Symbols or Strings; value needs to be in the format 'int32:0 int32:1' etc; synchronous will return (synchronously) value from the command; updateLastCmdTime should be set to true for all messages except continuous polling*/
+		//eventually add queuing here
+		^this.prSendDBus(path, interface, member, value, post, synchronous, updateLastCmdTime)
+	}
+
+	prSendDBus {|path = "Generic/SamplerateSelect", interface = "MatrixMixer", member = "setValue", value, post = false, synchronous = false, updateLastCmdTime = true|
+		var dbusCmd;
+		dbusCmd = "dbus-send --print-reply --dest=org.ffado.Control /org/ffado/Control/DeviceManager/" ++ id ++ "/" ++ path.asString ++ " org.ffado.Control.Element." ++ interface.asString ++ "." ++ member.asString;
+		value !? {dbusCmd = dbusCmd + value};
+		if(updateLastCmdTime, {lastUnixCmdTime = thisThread.seconds});
+		if(post, {"Sending DBus command: ".post; dbusCmd.postln;}); //get rid of that eventually
+		if(synchronous, {
+			^dbusCmd.unixCmdGetStdOut;
+		}, {
+			^dbusCmd.unixCmd(postOutput: post);
+		});
+	}
+
+	//for keeping dbus server alive, we need to polll its status continuously (?)
+	//following methods are used for that
+	//example
+	//dbus-send --print-reply --dest=org.ffado.Control /org/ffado/Control/DeviceManager/000a3500c1da0056/Generic/SamplerateSelect org.ffado.Control.Element.Element.canChangeValue
+	prStartPolling {
+		fork{
+			pollingRoutine !? {pollingRoutine.stop}; //just in case
+			10.wait; //needed?
+			pollingRoutine = Routine.run({
+				var frequency = 1; //Hz - 1Hz should be enough
+				inf.do({|inc|
+					// if((inc % (frequency * 60)) == 0, { //post every minute
+					// 	"------".postln;
+					// 	Date.getDate.postln;
+					// 	"Continuously polling from ffado-dbus-server".postln;
+					// 	"Frequency: ".post; frequency.post; "Hz".postln;
+					// 	"Iteration: ".post; inc.postln;
+					// 	"------".postln;
+					// });
+					lastUpdateTime = Date.getDate;
+					[
+						["Generic/SamplerateSelect", "Element", "canChangeValue"],
+						["Generic/ClockSelect", "Element", "canChangeValue"],
+						["Generic/Nickname", "Element", "canChangeValue"],
+						["Generic/StreamingStatus", "Enum", "selected"],
+						["Generic/StreamingStatus", "Enum", "getEnumLabel", "int32:0"],
+						["Generic/SamplerateSelect", "Enum", "count"],
+						["Generic/SamplerateSelect", "Enum", "getEnumLabel", "int32:0"],
+					].do({|arr|
+						// arr.postln;
+						this.sendDBus(arr[0], arr[1], arr[2], arr[3], false, updateLastCmdTime: false);
+					});
+					// if((thisThread.seconds - lastUnixCmdTime) > dbusServerAliveTime, {
+					// 	this.clear;
+					// 	pollingRoutine.stop;
+					// 	}, {
+					// 		frequency.reciprocal.wait;
+					// })
+					frequency.reciprocal.wait;
+				})
+			});
+		};
 	}
 }
+//checking ffado-dbus-server status - continuous polling from a regular ffado mixer frontend
+//dump:
+/*
+method call sender=:1.761 -> dest=:1.762 serial=117851 path=/org/ffado/Control/DeviceManager/000a3500c1da0056/Generic/SamplerateSelect; interface=org.ffado.Control.Element.Element; member=canChangeValue
+method return sender=:1.762 -> dest=:1.761 reply_serial=117851
+   boolean true
+method call sender=:1.761 -> dest=:1.762 serial=117852 path=/org/ffado/Control/DeviceManager/000a3500c1da0056/Generic/ClockSelect; interface=org.ffado.Control.Element.Element; member=canChangeValue
+method return sender=:1.762 -> dest=:1.761 reply_serial=117852
+   boolean true
+method call sender=:1.761 -> dest=:1.762 serial=117853 path=/org/ffado/Control/DeviceManager/000a3500c1da0056/Generic/Nickname; interface=org.ffado.Control.Element.Element; member=canChangeValue
+method return sender=:1.762 -> dest=:1.761 reply_serial=117853
+   boolean false
+method call sender=:1.761 -> dest=:1.762 serial=117854 path=/org/ffado/Control/DeviceManager/000a3500c1da0056/Generic/StreamingStatus; interface=org.ffado.Control.Element.Enum; member=selected
+method return sender=:1.762 -> dest=:1.761 reply_serial=117854
+   int32 0
+method call sender=:1.761 -> dest=:1.762 serial=117855 path=/org/ffado/Control/DeviceManager/000a3500c1da0056/Generic/StreamingStatus; interface=org.ffado.Control.Element.Enum; member=getEnumLabel
+   int32 0
+method return sender=:1.762 -> dest=:1.761 reply_serial=117855
+   string "Idle"
+method call sender=:1.761 -> dest=:1.762 serial=117856 path=/org/ffado/Control/DeviceManager/000a3500c1da0056/Generic/SamplerateSelect; interface=org.ffado.Control.Element.Enum; member=count
+method return sender=:1.762 -> dest=:1.761 reply_serial=117856
+   int32 1
+method call sender=:1.761 -> dest=:1.762 serial=117857 path=/org/ffado/Control/DeviceManager/000a3500c1da0056/Generic/SamplerateSelect; interface=org.ffado.Control.Element.Enum; member=getEnumLabel
+   int32 0
+method return sender=:1.762 -> dest=:1.761 reply_serial=117857
+   string "48000"
+
+*/

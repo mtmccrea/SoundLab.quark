@@ -52,7 +52,7 @@ OscPipe {
 						lastIdIndex = lastIdIndex + 1; //just in case
 				});
 		});
-		("OscPipe - adding new id: " ++ id).postln;
+		// ("OscPipe - adding new id: " ++ id).postln;
 		//get vars
 		// namedPipe = tempdir ++ id;
 		slashId = "/" ++ id;
@@ -69,7 +69,7 @@ OscPipe {
 		if(isPipe.not, {
 			// "it's not a pipe".postln;
 			// schellCmdToOsc.postln;
-			"OscPipe: running command and getting stdOut through OSC".postln;
+			// "OscPipe: running command and getting stdOut through OSC".postln;
 			pid = schellCmdToOsc.unixCmd({|code, pid|
 				// "OscPipe: process has exited, full command:".postln;
 				// schellCmdToOsc.postln;
