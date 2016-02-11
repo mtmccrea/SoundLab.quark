@@ -274,7 +274,7 @@ SoundLabHardware {
 	}
 
 	prInitMIDI {
-		"ini here".postln;
+		// "init here".postln;
 		// init MIDI
 		if(midiPortName.notNil, {
 			// "now ini here".postln;
@@ -676,53 +676,130 @@ SoundLabHardware {
 
 Fireface {
 	var <id, <phantomState;
-	var <dbusServerPid, <autoSync;
-	var <pollingRoutine, <lastUnixCmdTime = 0, <dbusServerAliveTime = 60;
+	var <dbusServerPid, <autoSync = true;
+	var <pollingRoutine, <lastUnixCmdTime = 0, <>dbusServerAliveTime = 300;
 	var <lastUpdateTime;
+	var <active = false;
+	var <starting = false;
+	var <messageQueue;
 
 	*new {|id = "000a3500c1da0056", phantomState|
 		^super.newCopyArgs(id, phantomState).init;
 	}
 
-	init {
+	init { //called when class is initialized
 		phantomState ?? {phantomState = 4.collect({false})};
-		if(this.isActive.not, {
+		messageQueue = List.new;
+		if(this.active.not, {
 			"initializint fireface".postln;
-			this.prStartFireface;
+			// this.prStartFireface;
+			// starting = true;
+			this.prStartDbusServer;
+			{this.prInitDefaults}.defer(2);
 			}, {
-				"Fireface dbus server seems already running, NOT initializing".postln;
+				// "Fireface dbus server seems already running, NOT initializing".postln;
+				"Fireface seems already initialized, NOT starting DBus server".postln;
 		});
 	}
 
-	prStartFireface { //eventually add msg queuing here?
+	reinit { //called when settings are being set after the dbus server has been shut down due to inactivity
+		if(this.active.not, {
+			// "restarting fireface".postln;
+			starting = true;
+			this.prStartDbusServer;
+			{this.sendQueuedMessages}.defer(1); //how's that delay? enough?
+			}, {
+				"Fireface dbus server seems already running, NOT initializing".postln;
+		});
+
+	}
+
+	prStartDbusServer {
 		"Starting ffado-dbus-server for Fireface".postln;
+		starting = true;
 		dbusServerPid = "exec ffado-dbus-server".unixCmd({|msg|
 			dbusServerPid = nil;
 			"Dbus server finished".postln;
 		}); //needs to be run each time fireface disconnects
-		{
-			this.autoSync_(true);
-			this.setDefaultRouting;
-			this.setDefaultSources;
-			this.recallPhantom;
-			this.prStartPolling
-		}.defer(2); //more time?
+		this.prStartPolling;//start with the server
 	}
 
-	isActive {
-		if(dbusServerPid.notNil, {
-			^true;
-			}, {
-				^false;
+	prInitDefaults{
+		"initializing defaults".postln;
+		// {
+		this.autoSync_(true);
+		this.setDefaultRouting;
+		this.setDefaultSources;
+		this.recallPhantom;
+		// this.prStartPolling; //moved to prStartDbusServer
+		active = true;
+		starting = false;
+		this.sendQueuedMessages;
+	// }.defer(2); //more time?
+	}
+
+	sendQueuedMessages{
+		"Fireface: sending queued messages".postln;
+		active = true;
+		starting = false;
+		Routine.run({
+			// "in routine".postln;
+			while({messageQueue.size > 0}, {
+				var path, interface, member, value, post, synchronous, updateLastCmdTime;
+				// "in while loop".postln;
+				// "messageQueue.size: ".post; messageQueue.size.postln;
+				// try {
+					// "messageQueue[0]: ".post; messageQueue[0].postln;
+					// #path, interface, member, value, post, synchronous, updateLastCmdTime = messageQueue[0];
+					#path, interface, member, value, post, synchronous, updateLastCmdTime = messageQueue.pop; //changed because of erratic errors with removeAt(0)
+				// "args to be send: ".post; [path, interface, member, value, post, synchronous, updateLastCmdTime].postln;
+				// if([path, interface, member, value, post, synchronous, updateLastCmdTime].includes(nil).not, {
+				this.prSendDBus(path, interface, member, value, post, synchronous, updateLastCmdTime);
+				// }, {
+				// "Nil present in args to be sent".warn;
+							// "Args: ".post; [path, interface, member, value, post, synchronous, updateLastCmdTime].postln;
+				// "messageQueue[0]: ".post; messageQueue[0].postln;
+			// });
+					// "ready to remove".postln;
+					// messageQueue.removeAt(0);
+					// "messageQueue.size: ".post; messageQueue.size.postln;
+				// } {
+				// 	"sendQueuedMessages failed...".warn;
+				// 	"messageQueue.size: ".post; messageQueue.size.postln;
+				// 	"args to be send: ".post; [path, interface, member, value, post, synchronous, updateLastCmdTime].postln;
+				// 	"messageQueue[0]: ".post; messageQueue[0].postln;
+				// 	// messageQueue.removeAt(0); //remove still!
+				// 	// messageQueue.dump;
+				// };
+				0.05.wait;
+			});
+			"Fireface: all queued messages sent".postln;
 		});
 	}
 
-	clear {
+	// isActive {
+	// 	if(dbusServerPid.notNil, {
+	// 		^true;
+	// 		}, {
+	// 			^false;
+	// 	});
+	// }
+
+	clear { //clear and stop routine
+		this.prClear;
+		pollingRoutine.stop;
+	}
+
+	prClear { //clear, don't stop the routine (to be used by the routine)
+
+		active = false;
 		"clearing fireface".postln;
+		// "dbusServerPid: ".post; dbusServerPid.postln;
 		// "pollingRoutine: ".postln;
 		// pollingRoutine.dump;
-		pollingRoutine.stop;
+		// pollingRoutine.stop;
 		// pollingRoutine.isPlaying.postln;
+		// "dbusServerPid: ".post; dbusServerPid.postln;
 		if(dbusServerPid.notNil, {
 			"killing pid ".post; dbusServerPid.postln;
 			// ("killing pid " ++ dbusServerPid).postln;
@@ -730,7 +807,7 @@ Fireface {
 		});
 	}
 
-	setMatrixGain {|inbus = 6 /*mic: 6-9*/, outbus = 12/*ADAT: 12-19(27)*/, gain = 1, post = false|
+	setMatrixGain {|inbus = 6 /*mic: 6-9*/, outbus = 12/*ADAT: 12-19(27)*/, gain = 1, post = true|
 		var dbusCmd, gainRaw;
 		gainRaw = gain * 16384;
 		// dbusCmd = "dbus-send --print-reply --dest=org.ffado.Control /org/ffado/Control/DeviceManager/" ++ id ++ "/Mixer/InputFaders org.ffado.Control.Element.MatrixMixer.setValue int32:" ++ outbus.asString ++ " int32:" ++ inbus.asString ++ " double:" ++ gainRaw.asString;
@@ -766,7 +843,7 @@ Fireface {
 
 	phantom_ {|channel = 0/*0-3*/, state /*bool or 0-1*/|
 		var phantomRawValue, rawValuesArray, dbusCmd;
-		if(state.notNil, {
+		// if(state.notNil, {
 			"Setting Fireface phantom".postln;
 			//store in the class
 			phantomState[channel] = state.asBoolean;
@@ -797,10 +874,10 @@ Fireface {
 			// dbusCmd.postln;
 			// dbusCmd.unixCmd(postOutput: false);
 			this.sendDBus("Control/Phantom", "Discrete", "setValue", "int32:" ++ phantomRawValue.asString);
-			^[channel, state];
-		}, {
-			^phantomState[channel];
-		});
+			// ^[channel, state];
+			// }, {
+			// ^phantomState[channel];
+		// });
 	}
 
 	phantom {|channel = 0/*0-3*/|
@@ -833,17 +910,26 @@ Fireface {
 	}
 
 	sampleRate_{|sr = 48000|
-		if(autoSync, {
-			Routine.run({ //NOTE: to properly switch samplerate from "single speed" to "double speed" (48k -> 96k), switch to clock master first, then swtich sample rate, then switch back to autosync
+		var inc = 0;
+		Routine.run({
+			while({active.not && (inc < 10)}, { //
+				"fireface sampleRate_: waiting for activation".postln;
+				2.wait;
+				inc = inc + 1;
+			});
+			if(autoSync && active, {
+				"setting fireface samplerate".postln;
+				//NOTE: to properly switch samplerate from "single speed" to "double speed" (48k -> 96k), switch to clock master first, then swtich sample rate, then switch back to autosync
 				this.autoSync_(false);//set to master to enforce proper single speed/double speed selection
 				0.5.wait;
 				this.prSampleRate_(sr);
 				0.5.wait;
 				this.autoSync_(true); //back to proper autosync
-			})
-			},{
-				this.prSampleRate_(sr); //set right away if it's in master mode
+				},{
+					this.prSampleRate_(sr); //set right away if it's in master mode
+			});
 		});
+
 	}
 
 	prSampleRate_ {|sr = 48000|
@@ -855,7 +941,7 @@ Fireface {
 		// dbusCmd.postln;
 		// dbusCmd.unixCmd(postOutput: false);
 		sampleRateNumber = [32000, 44100, 48000, 64000, 88200, 96000, 128000, 176400, 192000].indexOf(sr);
-		"sampleRateNumber: ".post; sampleRateNumber.postln;
+		// "sampleRateNumber: ".post; sampleRateNumber.postln;
 		if(sampleRateNumber.notNil, {
 			this.sendDBus("Control/sysclock_freq", "Discrete", "setValue", "int32:" ++ sr.asInteger.asString);
 			this.sendDBus("Generic/SamplerateSelect", "Enum", "select", "int32:" ++ sampleRateNumber.asInteger.asString);
@@ -904,7 +990,15 @@ Fireface {
 
 	sendDBus {|path = "Generic/SamplerateSelect", interface = "MatrixMixer", member = "setValue", value, post = false, synchronous = false, updateLastCmdTime = true| /*path, interface, member - these can be Symbols or Strings; value needs to be in the format 'int32:0 int32:1' etc; synchronous will return (synchronously) value from the command; updateLastCmdTime should be set to true for all messages except continuous polling*/
 		//eventually add queuing here
-		^this.prSendDBus(path, interface, member, value, post, synchronous, updateLastCmdTime)
+		if(active, {
+			this.prSendDBus(path, interface, member, value, post, synchronous, updateLastCmdTime);
+			}, {
+				// messageQueue.add([path, interface, member, value, post, synchronous, updateLastCmdTime]);
+				messageQueue.addFirst([path, interface, member, value, post, synchronous, updateLastCmdTime]); //changed to include in front and remove from the end because of erratic errors...
+				if(starting.not, {
+					this.reinit;
+				});
+		});
 	}
 
 	prSendDBus {|path = "Generic/SamplerateSelect", interface = "MatrixMixer", member = "setValue", value, post = false, synchronous = false, updateLastCmdTime = true|
@@ -927,19 +1021,24 @@ Fireface {
 	prStartPolling {
 		fork{
 			pollingRoutine !? {pollingRoutine.stop}; //just in case
-			10.wait; //needed?
+			5.wait; //needed, so we don't shut down too quickly
 			pollingRoutine = Routine.run({
 				var frequency = 1; //Hz - 1Hz should be enough
-				inf.do({|inc|
-					// if((inc % (frequency * 60)) == 0, { //post every minute
+				var inc = 0;
+				// inf.do({|inc|
+				while({(thisThread.seconds - lastUnixCmdTime) < dbusServerAliveTime}, {
+					// if((inc % (frequency * 10)) == 0, { //post every minute
 					// 	"------".postln;
 					// 	Date.getDate.postln;
 					// 	"Continuously polling from ffado-dbus-server".postln;
 					// 	"Frequency: ".post; frequency.post; "Hz".postln;
 					// 	"Iteration: ".post; inc.postln;
+					// 	"thisThread.seconds - lastUnixCmdTime: ".post; (thisThread.seconds - lastUnixCmdTime).round(1).postln;
 					// 	"------".postln;
 					// });
+					// inc = inc + 1;//manual increment
 					lastUpdateTime = Date.getDate;
+					//query the backend
 					[
 						["Generic/SamplerateSelect", "Element", "canChangeValue"],
 						["Generic/ClockSelect", "Element", "canChangeValue"],
@@ -953,13 +1052,16 @@ Fireface {
 						this.sendDBus(arr[0], arr[1], arr[2], arr[3], false, updateLastCmdTime: false);
 					});
 					// if((thisThread.seconds - lastUnixCmdTime) > dbusServerAliveTime, {
+					// 	"routine timeout, clearing".postln;
 					// 	this.clear;
 					// 	pollingRoutine.stop;
 					// 	}, {
 					// 		frequency.reciprocal.wait;
 					// })
 					frequency.reciprocal.wait;
-				})
+				});
+				"routine timeout, clearing".postln;
+				this.prClear;
 			});
 		};
 	}
