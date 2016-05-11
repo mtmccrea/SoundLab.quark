@@ -7,7 +7,8 @@ SoundLabGUI {
 	var <gainTxt, <gainSl, <muteButton, <attButton, <srMenu, <decMenus,
 	<decMenuLayouts, <horizMenu, <sphereMenu, <domeMenu, <matrixMenu,
 	<discreteMenu, <stereoButton, <rotateButton, <correctionCbAttributes, <correctionPuAttributes, <applyButton, <basicBalanceButton, <kernelMatchStatusTxt,
-	<stateTxt, <postTxt, <sweetSl, <sweetTxt, <sweetSpec, <kernelLayout, <kernelCheckBoxes, <kernelDegreeMenus;
+	<stateTxt, <postTxt, <sweetSl, <sweetTxt, <sweetSpec, <kernelLayout, <kernelCheckBoxes, <kernelDegreeMenus,
+	<phantomTxt, <phantomCheckbox0, <phantomCheckbox1, <phantomCheckbox2, <phantomCheckbox3;
 	var <pendingDecType, <pendingInput, <pendingSR, <pendingKernel;
 
 	var <ampSpec, <oscFuncDict, buildList;
@@ -157,6 +158,21 @@ SoundLabGUI {
 			)
 		})
 		;
+
+		if(sl.slhw.useFireface, {
+			/* Phantom setting */
+			phantomTxt = WsStaticText.init(wsGUI, Rect(0,0,1,0.05))
+			.string_("").font_(Font(font, mdFontSize))
+			;
+			phantomCheckbox0 = WsCheckbox.init(wsGUI, Rect(0,0,0.15,0.5))
+			;
+			phantomCheckbox1 = WsCheckbox.init(wsGUI, Rect(0,0,0.15,0.5))
+			;
+			phantomCheckbox2 = WsCheckbox.init(wsGUI, Rect(0,0,0.15,0.5))
+			;
+			phantomCheckbox3 = WsCheckbox.init(wsGUI, Rect(0,0,0.15,0.5))
+			;
+		});
 
 		/* SWEET SPOT DIAMETER */
 		sweetTxt = WsStaticText.init(wsGUI, Rect(0,0,1,0.05))
@@ -502,6 +518,11 @@ SoundLabGUI {
 				\stoppingAudio, { this.status_("Audio is stopping - Standby.") },
 				\reportError,	{ this.status_(args[0]) },
 				\reportStatus,	{ this.status_(args[0]) }
+				// \phantom,	{ //not finished
+				// 	var channel, state;
+				// 	channel = args[0];
+				// 	state = arts[1]
+				// },
 			);
 			this.postState;
 		});
@@ -657,6 +678,15 @@ SoundLabGUI {
 							0.1, stereoButton, 0.2, rotateButton, 0.1
 						),
 						0.05,
+
+						/* phantom */
+						if(sl.slhw.useFireface, {
+							WsHLayout( Rect(0,0,1,0.1),
+								phantomTxt.string_("<strong>Fireface input phantom:</strong>"), 0.01, phantomCheckbox0, 0.01, phantomCheckbox1, 0.01, phantomCheckbox2, 0.01, phantomCheckbox3, 0.1
+							)
+						}),
+						0.05,
+
 
 						/* post window */
 						WsStaticText.init(wsGUI, Rect(0,0,1,0.07))
@@ -856,6 +886,38 @@ SoundLabGUI {
 			(	decMenus.values.collect({|dict| dict.menu})
 				++ [srMenu, discreteMenu]
 			).do{ |menu| menu.value_(0)};
+
+			// on account of WsCheckbox bug (?), action needs to be set after it's laid out
+			if(sl.slhw.useFireface, {
+				phantomCheckbox0.action_({ |cb|
+					if(cb.value.asBoolean, {
+						sl.slhw.ffPhantom_(0, 1)
+					}, {
+						sl.slhw.ffPhantom_(0, 0)
+					});
+				});
+				phantomCheckbox1.action_({ |cb|
+					if(cb.value.asBoolean, {
+						sl.slhw.ffPhantom_(1, 1)
+					}, {
+						sl.slhw.ffPhantom_(1, 0)
+					});
+				});
+				phantomCheckbox2.action_({ |cb|
+					if(cb.value.asBoolean, {
+						sl.slhw.ffPhantom_(2, 1)
+					}, {
+						sl.slhw.ffPhantom_(2, 0)
+					});
+				});
+				phantomCheckbox3.action_({ |cb|
+					if(cb.value.asBoolean, {
+						sl.slhw.ffPhantom_(3, 1)
+					}, {
+						sl.slhw.ffPhantom_(3, 0)
+					});
+				});
+			});
 
 			this.postState;
 		}

@@ -37,7 +37,10 @@ SoundLabHardware {
 	var <midiPortName, <cardNameIncludes, jackPath;
 	var serverIns, serverOuts, numHwOutChToConnectTo, numHwInChToConnectTo;
 	var firefaceID;
-	var whichMadiInput, <whichMadiOutput;
+	var <whichMadiInput, <whichMadiOutput;
+	var <whichMadiInputForStereo;
+	var <stereoInputArrayOffset;
+	var <stereoOutputArrayOffset;
 	// var firstOutput = 66, firstInput = 66;//0 for 117, 64 for 205, at 96k!
 	var cardID, <sampleRate, /*<ins, <outs, */midiPort, <server;
 	// var getCardID, setSR, initMIDI, sendSysex, startJack, stopJack, initAll, prStartServer;
@@ -67,10 +70,13 @@ SoundLabHardware {
 		numHwOutChToConnectTo = 32,
 		numHwInChToConnectTo = 32,
 		firefaceID = "000a3500c1da0056",//117: 000a35009caf3c69, 205: 000a3500c1da0056
-		whichMadiInput = 2,
-		whichMadiOutput = 2;//nil for regular MADI, 0-2 for MADIFX
+		whichMadiInput = 2, //not nil will assume 205 and turn on stereo in from fireface... Marcin 2016.02
+		whichMadiOutput = 2,//nil for regular MADI, 0-2 for MADIFX
+		whichMadiInputForStereo = 1, //for permanent stereo in from Fireface
+		stereoInputArrayOffset = [4, 5, 6, 7], //stereo inputs
+		stereoOutputArrayOffset = [11, 1]; //stero outputs
 		// ^super.newCopyArgs(shellCommand, receiveAction, exitAction, id).init(false);
-		^super.newCopyArgs(useSupernova, fixAudioInputGoingToTheDecoder, useFireface, midiPortName, cardNameIncludes, jackPath, serverIns, serverOuts, numHwOutChToConnectTo, numHwInChToConnectTo, firefaceID, whichMadiInput, whichMadiOutput).init;
+		^super.newCopyArgs(useSupernova, fixAudioInputGoingToTheDecoder, useFireface, midiPortName, cardNameIncludes, jackPath, serverIns, serverOuts, numHwOutChToConnectTo, numHwInChToConnectTo, firefaceID, whichMadiInput, whichMadiOutput, whichMadiInputForStereo, stereoInputArrayOffset, stereoOutputArrayOffset).init;
 	}
 
 	*killJack {
@@ -515,7 +521,27 @@ SoundLabHardware {
 /*		if((sampleRate > 48000) && fixAudioIn, {
 			"SC_JACK_DEFAULT_INPUTS".setenv("".ccatList(16.collect({|inc| "system:capture_" ++ (inc + 1).asString})).replace(" ", "").replace("[", "").replace("]", "").drop(1)); //connect only 16 ins so rme input doesn't get into the decoder
 		});*/ //this was needed for 117 with Presonus
-		"SC_JACK_DEFAULT_INPUTS".setenv("".ccatList(numHwInChToConnectTo.collect({|inc| "system:capture_" ++ (inc + 1 + inOffset).asString})).replace(" ", "").replace("[", "").replace("]", "").drop(1))
+		"SC_JACK_DEFAULT_INPUTS".setenv("".ccatList(numHwInChToConnectTo.collect({|inc| "system:capture_" ++ (inc + 1 + inOffset).asString})).replace(" ", "").replace("[", "").replace("]", "").drop(1));
+
+		//stereo in from Fireface
+		if(whichMadiInput.notNil, { //assuming 205
+			this.prConnectInToOutInJack((whichMadiInputForStereo * numChannelsPerMADI) + 2 + stereoInputArrayOffset, (whichMadiOutput * numChannelsPerMADI) + 2 + stereoOutputArrayOffset)
+		});
+	}
+
+	prJackConnect {|input = "system:capture_1", output = "system:playback_1"|
+		("jack_connect" + input + output).unixCmd;
+	}
+
+	prJackDisonnect {|input = "system:capture_1", output = "system:playback_1"|
+		("jack_disconnect" + input + output).unixCmd;
+	}
+
+	prConnectInToOutInJack {|inArray = ([0]), outArray = ([0]), inName = "system:capture_", outName = "system:playback_"| //use 0-based in/out numbers
+		outArray = outArray.wrapExtend(inArray.size);
+		inArray.do({|thisIn, inc|
+			this.prJackConnect(inName ++ (thisIn + 1).asString, outName ++ (outArray[inc] + 1).asString)
+		});
 	}
 
 	prStartServer {
@@ -677,7 +703,7 @@ SoundLabHardware {
 Fireface {
 	var <id, <phantomState;
 	var <dbusServerPid, <autoSync = true;
-	var <pollingRoutine, <lastUnixCmdTime = 0, <>dbusServerAliveTime = 300;
+	var <pollingRoutine, <lastUnixCmdTime = 0, <>dbusServerAliveTime = 60;
 	var <lastUpdateTime;
 	var <active = false;
 	var <starting = false;
@@ -697,7 +723,6 @@ Fireface {
 			this.prStartDbusServer;
 			{this.prInitDefaults}.defer(2);
 			}, {
-				// "Fireface dbus server seems already running, NOT initializing".postln;
 				"Fireface seems already initialized, NOT starting DBus server".postln;
 		});
 	}
@@ -707,21 +732,46 @@ Fireface {
 			// "restarting fireface".postln;
 			starting = true;
 			this.prStartDbusServer;
-			{this.sendQueuedMessages}.defer(1); //how's that delay? enough?
+			{
+				// this.sendQueuedMessages;
+				this.prInitDefaults; //this sends queued messages as well
+			}.defer(1); //how's that delay? enough?
 			}, {
 				"Fireface dbus server seems already running, NOT initializing".postln;
 		});
 
 	}
 
+	// prStartDbusServer {
+	// 	"Starting ffado-dbus-server for Fireface".postln;
+	// 	starting = true;
+	// 	dbusServerPid = "exec ffado-dbus-server".unixCmd({|msg|
+	// 		dbusServerPid = nil;
+	// 		"Dbus server finished".postln;
+	// 	}); //needs to be run each time fireface disconnects
+	// 	// dbusServerPid = "exec ffado-dbus-server".unixCmdGetStdOutThruOsc({|line|
+	// 	// 	"from dbus server: ".post; line.postln;
+	// 	// 	}, {|msg|
+	// 	// 		dbusServerPid = nil;
+	// 	// 		"Dbus server finished".postln;
+	// 	// });
+	// 	this.prStartPolling;//start with the server
+	// }
+
 	prStartDbusServer {
 		"Starting ffado-dbus-server for Fireface".postln;
 		starting = true;
-		dbusServerPid = "exec ffado-dbus-server".unixCmd({|msg|
+		dbusServerPid = "exec ffado-mixer".unixCmd({|msg| //use ffado mixer
 			dbusServerPid = nil;
 			"Dbus server finished".postln;
 		}); //needs to be run each time fireface disconnects
-		this.prStartPolling;//start with the server
+		// dbusServerPid = "exec ffado-dbus-server".unixCmdGetStdOutThruOsc({|line|
+		// 	"from dbus server: ".post; line.postln;
+		// 	}, {|msg|
+		// 		dbusServerPid = nil;
+		// 		"Dbus server finished".postln;
+		// });
+		// this.prStartPolling;//start with the server
 	}
 
 	prInitDefaults{
@@ -748,29 +798,12 @@ Fireface {
 				var path, interface, member, value, post, synchronous, updateLastCmdTime;
 				// "in while loop".postln;
 				// "messageQueue.size: ".post; messageQueue.size.postln;
-				// try {
-					// "messageQueue[0]: ".post; messageQueue[0].postln;
-					// #path, interface, member, value, post, synchronous, updateLastCmdTime = messageQueue[0];
-					#path, interface, member, value, post, synchronous, updateLastCmdTime = messageQueue.pop; //changed because of erratic errors with removeAt(0)
+				// "messageQueue[0]: ".post; messageQueue[0].postln;
+				// #path, interface, member, value, post, synchronous, updateLastCmdTime = messageQueue[0];
+				#path, interface, member, value, post, synchronous, updateLastCmdTime = messageQueue.pop; //changed because of erratic errors with removeAt(0)
 				// "args to be send: ".post; [path, interface, member, value, post, synchronous, updateLastCmdTime].postln;
 				// if([path, interface, member, value, post, synchronous, updateLastCmdTime].includes(nil).not, {
 				this.prSendDBus(path, interface, member, value, post, synchronous, updateLastCmdTime);
-				// }, {
-				// "Nil present in args to be sent".warn;
-							// "Args: ".post; [path, interface, member, value, post, synchronous, updateLastCmdTime].postln;
-				// "messageQueue[0]: ".post; messageQueue[0].postln;
-			// });
-					// "ready to remove".postln;
-					// messageQueue.removeAt(0);
-					// "messageQueue.size: ".post; messageQueue.size.postln;
-				// } {
-				// 	"sendQueuedMessages failed...".warn;
-				// 	"messageQueue.size: ".post; messageQueue.size.postln;
-				// 	"args to be send: ".post; [path, interface, member, value, post, synchronous, updateLastCmdTime].postln;
-				// 	"messageQueue[0]: ".post; messageQueue[0].postln;
-				// 	// messageQueue.removeAt(0); //remove still!
-				// 	// messageQueue.dump;
-				// };
 				0.05.wait;
 			});
 			"Fireface: all queued messages sent".postln;
@@ -1008,7 +1041,7 @@ Fireface {
 		if(updateLastCmdTime, {lastUnixCmdTime = thisThread.seconds});
 		if(post, {"Sending DBus command: ".post; dbusCmd.postln;}); //get rid of that eventually
 		if(synchronous, {
-			^dbusCmd.unixCmdGetStdOut;
+			^dbusCmd.systemCmd; //this returns exic code synchronously
 		}, {
 			^dbusCmd.unixCmd(postOutput: post);
 		});
@@ -1027,16 +1060,16 @@ Fireface {
 				var inc = 0;
 				// inf.do({|inc|
 				while({(thisThread.seconds - lastUnixCmdTime) < dbusServerAliveTime}, {
-					// if((inc % (frequency * 10)) == 0, { //post every minute
-					// 	"------".postln;
-					// 	Date.getDate.postln;
-					// 	"Continuously polling from ffado-dbus-server".postln;
-					// 	"Frequency: ".post; frequency.post; "Hz".postln;
-					// 	"Iteration: ".post; inc.postln;
-					// 	"thisThread.seconds - lastUnixCmdTime: ".post; (thisThread.seconds - lastUnixCmdTime).round(1).postln;
-					// 	"------".postln;
-					// });
-					// inc = inc + 1;//manual increment
+					if((inc % (frequency * 60)) == 0, { //post every minute
+						"------".postln;
+						Date.getDate.postln;
+						"Continuously polling from ffado-dbus-server".postln;
+						"Frequency: ".post; frequency.post; "Hz".postln;
+						"Iteration: ".post; inc.postln;
+						"time since dbus server start: ".post; (thisThread.seconds - lastUnixCmdTime).round(1).postln;
+						"------".postln;
+					});
+					inc = inc + 1;//manual increment
 					lastUpdateTime = Date.getDate;
 					//query the backend
 					[
