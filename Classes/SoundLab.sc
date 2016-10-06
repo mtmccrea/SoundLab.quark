@@ -212,7 +212,7 @@ SoundLab {
 					ReplaceOut.ar(out_bus, In.ar(in_bus, 1))
 				});
 
-				sterPatcherDef = CtkSynthDef(\sterpatcher, { arg in_bus=0, out_bus=0;
+				sterPatcherDef = CtkSynthDef(\sterpatcher, { arg in_bus=0, out_bus=0, amp=1;
 					var in;
 					// stereo patchers don't use ReplaceOut because
 					// often stereo channels are shared with
@@ -226,12 +226,14 @@ SoundLab {
 						Out.ar( stereoChanIndex[i],
 							// catch if stereo channels weren't measured (like 117,
 							// where they're speakers apart from the ambisonics rig)
-							in[i] * (config.defaultSpkrGainsDB[stereoChanIndex[i]] ?? 0).dbamp;
+							in[i]
+							* (config.defaultSpkrGainsDB[stereoChanIndex[i]] ?? 0).dbamp
+							* amp
 						)
 					};
 				});
 
-				stereoSubPatcherDef = CtkSynthDef(\stersubpatcher, { arg in_bus=0, out_bus=0;
+				stereoSubPatcherDef = CtkSynthDef(\stersubpatcher, { arg in_bus=0, out_bus=0, amp=1;
 					if( numSubChans == 1,
 						{	// summing stereo into 1 sub
 							Out.ar(out_bus,
@@ -255,6 +257,7 @@ SoundLab {
 									)
 									* (2/numSubChans) // balance the energy based on the number of subs
 									* config.defaultSpkrGainsDB[numSatChans+i].dbamp
+									* amp
 								)
 							};
 						});
@@ -330,7 +333,7 @@ SoundLab {
 				// route stereo to subs as well,
 				// this synth also does gain comp on sub(s)
 				// add after patcher group to ensure it's the very last synth
-				// so it doesn't
+				// so it doesn't overwrite any busses
 				++ stereoSubPatcherDef.note( addAction: \tail, target: patcherGroup )
 					.in_bus_(hwInStart)
 				// TODO: this implies no filter correction on stereo sub send, is that OK?
@@ -694,7 +697,7 @@ NO NEW DECODER STARTED");
 				this.changed(\mute, 0);
 				if( isAttenuated,
 					{this.attenuate},
-					{ curDecoderPatch.compsynth.masterAmp_(globalAmp) }
+					{curDecoderPatch.compsynth.masterAmp_(globalAmp)}
 				);
 			}
 		)
@@ -704,13 +707,13 @@ NO NEW DECODER STARTED");
 		if(bool,
 			{
 				if( isMuted.not )
-				{ curDecoderPatch.compsynth.masterAmp_(att_dB.dbamp) };
+				{curDecoderPatch.compsynth.masterAmp_(att_dB.dbamp)};
 
 				isAttenuated = true;
 				this.changed(\attenuate, 1);
 			},{
 				if( isMuted.not )
-				{ curDecoderPatch.compsynth.masterAmp_(globalAmp) };
+				{curDecoderPatch.compsynth.masterAmp_(globalAmp)};
 
 				isAttenuated = false;
 				this.changed(\attenuate, 0);
@@ -720,7 +723,7 @@ NO NEW DECODER STARTED");
 
 	rotate_ { |bool|
 		block({ |break|
-			(rotated == bool).if{ break.("rotation setting already current".warn) };
+			(rotated == bool).if{break.("rotation setting already current".warn)};
 			(curDecoderPatch.decType == \discrete).if{
 				this.changed(\reportStatus, "routing is discrete, no rotation");
 				break.("routing is discrete, no rotation".warn);
@@ -743,6 +746,7 @@ NO NEW DECODER STARTED");
 		// only update amp if not muted or att
 		if( isAttenuated.not && isMuted.not, {
 			curDecoderPatch.compsynth.masterAmp_(ampnorm);
+			stereoPatcherSynths.do(_.amp_(ampnorm));
 		});
 		globalAmp = ampnorm; // normalized, not dB
 		this.changed(\amp, globalAmp);
@@ -763,8 +767,8 @@ NO NEW DECODER STARTED");
 
 	clipMonitor_{ | bool = true |
 		if( bool,
-			{ (monitorSynths_ins ++ monitorSynths_outs).do(_.play); clipMonitoring = true; },
-			{ (monitorSynths_ins ++ monitorSynths_outs).do(_.free);	clipMonitoring = false; }
+			{(monitorSynths_ins ++ monitorSynths_outs).do(_.play); clipMonitoring = true;},
+			{(monitorSynths_ins ++ monitorSynths_outs).do(_.free); clipMonitoring = false;}
 		);
 	}
 
@@ -774,12 +778,12 @@ NO NEW DECODER STARTED");
 		this.prClearServerSide(cond);
 		cond.wait;
 		if(usingSLHW,
-			{ slhw.startAudio(newSR) },
-			{ this.changed(\stoppingAudio); this.prInitDefaultHW(newSR) }
+			{slhw.startAudio(newSR)},
+			{this.changed(\stoppingAudio); this.prInitDefaultHW(newSR)}
 		)
 	}
 
-	sampleRate { if(usingSLHW, {^slhw.server.sampleRate}, {^server.sampleRate}) }
+	sampleRate {if(usingSLHW, {^slhw.server.sampleRate}, {^server.sampleRate})}
 
 	setNoKernel {
 		curKernel = \basic_balance;
@@ -819,7 +823,7 @@ NO NEW DECODER STARTED");
 		if ( gui.notNil, {gui.cleanup} );
 	}
 
-	free { this.cleanup }
+	free {this.cleanup}
 }
 
 /* ------ TESTING ---------
