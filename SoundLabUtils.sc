@@ -86,7 +86,8 @@
 				\dimensions, attributes[3],
 				\arrayOutIndices, attributes[4],
 				\numInputChans, attributes[5],
-				\synthdefName, (attributes[0]).asSymbol
+				\synthdefName, (attributes[0]).asSymbol,
+				\decGain, attributes[6]
 			])
 		});
 
@@ -316,6 +317,7 @@
 						FoaNFC.ar( in, spkrDists.at(spkdex).abs ), // NOTE .abs in case of negative distance
 						matrix_dec_sat.matrix.fromRow(i)
 					)
+					* decSpecs.decGain.dbamp
 				)
 			});
 
@@ -329,7 +331,9 @@
 							AtkMatrixMix.ar(
 								FoaNFC.ar( in, spkrDists.at(spkdex).abs ),
 								matrix_dec_sub.matrix.fromRow(i)
-							) * subgain.dbamp
+							)
+							* subgain.dbamp
+							* decSpecs.decGain.dbamp
 						)
 					})
 				},
@@ -341,9 +345,11 @@
 						{   // No NFC for 1 sub
 							Out.ar(
 								out_busnum + subOutbusNums[0],
-									// send W to subs, scaled by 3db, div by num of subs
-									in[0] * 2.sqrt
-								) * subgain.dbamp
+								// send W to subs, scaled by 3db, div by num of subs
+								in[0] * 2.sqrt
+								* subgain.dbamp
+								* decSpecs.decGain.dbamp
+							)
 						},
 						{
 							subOutbusNums.do({ | spkdex, i |
@@ -353,7 +359,9 @@
 									out_busnum + spkdex,
 									// send W to subs, div by num of subs
 									nfc[0] * numSubChans.reciprocal
-								) * subgain.dbamp
+									* subgain.dbamp
+									* decSpecs.decGain.dbamp
+								)
 							})
 					})
 				}
@@ -468,6 +476,7 @@
 						FoaNFC.ar( in, spkrDists.at(spkdex).abs ),
 						domeDecoderMatrix.fromRow(i)
 					)
+					* decSpecs.decGain.dbamp
 				)
 			});
 
@@ -479,32 +488,38 @@
 						AtkMatrixMix.ar(
 							FoaNFC.ar( in, spkrDists.at(spkdex).abs ),
 							subDecoderMatrix.matrix.fromRow(i)
-						) * subgain.dbamp
+						)
+						* subgain.dbamp
+						* decSpecs.decGain.dbamp
 					)
 				})
 				// quick fix for non-even/non-diametric sub layout
 				},{
-					if( numSubChans == 1,
-						{   // No NFC for 1 sub
+				if( numSubChans == 1,
+					{   // No NFC for 1 sub
+						Out.ar(
+							out_busnum + subOutbusNums[0],
+							// send W to subs, scaled by 3db, div by num of subs
+							in[0] * 2.sqrt
+							* subgain.dbamp
+							* decSpecs.decGain.dbamp
+						)
+					},
+					{
+						// TODO: for odd multi-channel sub layouts
+						// build panto decoder
+						subOutbusNums.do({ | spkdex, i |
+							var nfc;
+							nfc = FoaNFC.ar( in, spkrDists.at(spkdex).abs );
 							Out.ar(
-								out_busnum + subOutbusNums[0],
+								out_busnum + spkdex,
 								// send W to subs, scaled by 3db, div by num of subs
-								in[0] * 2.sqrt
-							) * subgain.dbamp
-						},
-						{
-							// TODO: for odd multi-channel sub layouts
-							// build panto decoder
-							subOutbusNums.do({ | spkdex, i |
-								var nfc;
-								nfc = FoaNFC.ar( in, spkrDists.at(spkdex).abs );
-								Out.ar(
-									out_busnum + spkdex,
-									// send W to subs, scaled by 3db, div by num of subs
-									nfc[0] * numSubChans.reciprocal
-								) * subgain.dbamp
-							})
-					})
+								nfc[0] * numSubChans.reciprocal
+								* subgain.dbamp
+								* decSpecs.decGain.dbamp
+							)
+						})
+				})
 				}
 			);
 		});
@@ -796,7 +811,9 @@
 					gate, doneAction: 2 );
 
 				in = In.ar(in_busnum, decSpecs.numInputChans)  * env;
-				decSpecs.arrayOutIndices.do{ |outbus, i| Out.ar( outbus, in[i] ) };
+				decSpecs.arrayOutIndices.do{ |outbus, i|
+					Out.ar(outbus, in[i] * decSpecs.decGain.dbamp)
+				};
 
 				// subs were considered at one point, but decided discrete routing should be
 				// direct speaker feeds only

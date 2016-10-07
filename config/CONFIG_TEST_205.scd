@@ -16,6 +16,7 @@ IdentityDictionary(know: true)
 	\xOverLPF,				60,
 	\shelfFreq,				60,		// takes predecdence over listening Diameter
 	\listeningDiameter,		1.5,	// sweet spot size in meters
+	\stereoGain,			-3,		// gain on stereo bus in dB, to balance with decoders
 
 	/* SoundLabHardware settings */
 
@@ -319,27 +320,28 @@ arrayOutIndices (Array of ints):
 		for diametric: specify only the first half of out indexes
 		for discrete: specify all out indexes
 numInChannels: number of input channels into the decoder/router (Int)
+gain: decoder gain in dB
 */
 .put(\decAttributeList,
 	[
 		/* --ambisonic decoders-- */
-		[\Horiz_Dodec,			\diametric,	'dual',		2,	(0..5),		4	],
-		[\Horiz_Hex_Point,		\diametric,	'dual',		2,	[0,2,4],	4	],
-		[\Horiz_Hex_Flat,		\diametric,	'dual',		2,	[11,1,3],	4	],
-		[\Horiz_Quad_Long,		\diametric,	'dual',		2,	[11,1],		4	],
-		[\Horiz_Quad_Cross,		\diametric,	'dual',		2,	[0,3],		4	],
+		[\Horiz_Dodec,			\diametric,	'dual',		2,	(0..5),		4, 9 ],
+		[\Horiz_Hex_Point,		\diametric,	'dual',		2,	[0,2,4],	4, 9 ],
+		[\Horiz_Hex_Flat,		\diametric,	'dual',		2,	[11,1,3],	4, 9 ],
+		[\Horiz_Quad_Long,		\diametric,	'dual',		2,	[11,1],		4, 9 ],
+		[\Horiz_Quad_Cross,		\diametric,	'dual',		2,	[0,3],		4, 9 ],
 
 		// domes - half of horizontal speakers plus all dome speakers
-		[\Dome_19ch_12x6x1,	\dome,		'dual', 	3,	(0..5)++(12..18), 		4	],
-		[\Dome_13ch_6x6x1,	\dome,		'dual', 	3,	[0, 2, 4]++(12..18), 	4	],
+		[\Dome_19ch_12x6x1,	\dome,		'dual', 	3,	(0..5)++(12..18), 		4, 9 ],
+		[\Dome_13ch_6x6x1,	\dome,		'dual', 	3,	[0, 2, 4]++(12..18), 	4, 9 ],
 
 		/* --discrete channel routing-- */
 		// thru routing assumes contiguous channels, starting at arrayOutIndices.first
-		[\All,			\discrete,	\NA,	2,	(0..20),				21	],
-		[\Hex_Point_Fwd,\discrete,	\NA,	2,	Array.series(6, 0, 2),	6	],
-		[\Hex_Flat_Fwd,	\discrete,	\NA,	2,	[11,1,3,5,7,9],			6	],
-		[\Quad_Square,	\discrete,	\NA,	2,	Array.series(4, 0, 3),	4	],
-		[\Quad_Rect,	\discrete,	\NA,	2,	[11, 1, 5, 7],			4	]
+		[\All,			\discrete,	\NA,	2,	(0..31),				32, 0 ], // includes additional channels from converter not connected to speakers
+		[\Hex_Point_Fwd,\discrete,	\NA,	2,	Array.series(6, 0, 2) ++ [19,20],	8, 0 ],  // include sub chans
+		[\Hex_Flat_Fwd,	\discrete,	\NA,	2,	[11,1,3,5,7,9] ++ [19,20],			8, 0 ],  // include sub chans
+		[\Quad_Square,	\discrete,	\NA,	2,	Array.series(4, 0, 3) ++ [19,20],	6, 0 ],  // include sub chans
+		[\Quad_Rect,	\discrete,	\NA,	2,	[11, 1, 5, 7] ++ [19,20],			6, 0 ]   // include sub chans
 	]
 )
 ;

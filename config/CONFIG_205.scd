@@ -16,6 +16,7 @@ IdentityDictionary(know: true)
 	\xOverLPF,				60,
 	\shelfFreq,				60,	// takes predecdence over listening Diameter
 	\listeningDiameter,		2,	// sweet spot size in meters
+	\stereoGain,			-3,		// gain on stereo bus in dB, to balance with decoders
 
 	/* SoundLabHardware settings */
 
@@ -320,23 +321,23 @@ numInChannels: number of input channels into the decoder/router (Int)
 .put(\decAttributeList,
 	[
 		/* --ambisonic decoders-- */
-		[\Horiz_Dodec,			\diametric,	'dual',		2,	(0..5),		4	],
-		[\Horiz_Hex_Point,		\diametric,	'dual',		2,	[0,2,4],	4	],
-		[\Horiz_Hex_Flat,		\diametric,	'dual',		2,	[11,1,3],	4	],
-		[\Horiz_Quad_Long,		\diametric,	'dual',		2,	[11,1],		4	],
-		[\Horiz_Quad_Cross,		\diametric,	'dual',		2,	[0,3],		4	],
+		[\Horiz_Dodec,			\diametric,	'dual',		2,	(0..5),		4, 9 ],
+		[\Horiz_Hex_Point,		\diametric,	'dual',		2,	[0,2,4],	4, 9 ],
+		[\Horiz_Hex_Flat,		\diametric,	'dual',		2,	[11,1,3],	4, 9 ],
+		[\Horiz_Quad_Long,		\diametric,	'dual',		2,	[11,1],		4, 9 ],
+		[\Horiz_Quad_Cross,		\diametric,	'dual',		2,	[0,3],		4, 9 ],
 
 		// domes - half of horizontal speakers plus all dome speakers
-		[\Dome_19ch_12x6x1,	\dome,		'dual', 	3,	(0..5)++(12..18), 		4	],
-		[\Dome_13ch_6x6x1,	\dome,		'dual', 	3,	[0, 2, 4]++(12..18), 	4	],
+		[\Dome_19ch_12x6x1,	\dome,		'dual', 	3,	(0..5)++(12..18), 		4, 9 ],
+		[\Dome_13ch_6x6x1,	\dome,		'dual', 	3,	[0, 2, 4]++(12..18), 	4, 9 ],
 
 		/* --discrete channel routing-- */
 		// thru routing assumes contiguous channels, starting at arrayOutIndices.first
-		[\All,			\discrete,	\NA,	2,	(0..31),				32	],
-		[\Hex_Point_Fwd,\discrete,	\NA,	2,	Array.series(6, 0, 2),	6	],
-		[\Hex_Flat_Fwd,	\discrete,	\NA,	2,	[11,1,3,5,7,9],			6	],
-		[\Quad_Square,	\discrete,	\NA,	2,	Array.series(4, 0, 3),	4	],
-		[\Quad_Rect,	\discrete,	\NA,	2,	[11, 1, 5, 7],			4	]
+		[\All,			\discrete,	\NA,	2,	(0..31),				32, 0 ], // includes additional channels from converter not connected to speakers
+		[\Hex_Point_Fwd,\discrete,	\NA,	2,	Array.series(6, 0, 2) ++ [19,20],	8, 0 ],  // include sub chans
+		[\Hex_Flat_Fwd,	\discrete,	\NA,	2,	[11,1,3,5,7,9] ++ [19,20],			8, 0 ],  // include sub chans
+		[\Quad_Square,	\discrete,	\NA,	2,	Array.series(4, 0, 3) ++ [19,20],	6, 0 ],  // include sub chans
+		[\Quad_Rect,	\discrete,	\NA,	2,	[11, 1, 5, 7] ++ [19,20],			6, 0 ]   // include sub chans
 	]
 )
 ;
@@ -348,25 +349,8 @@ d.size
 ~delays = (d - d.minItem)/344
 
 // measured gains
-g = [ 79.4, 79.7, 77.8, 79.2, 78.1, 77.4, 78.8, 78.3, 77.2, 78.8, 78.1, 78.8, 77.0, 78.6, 77.4, 76.9, 76.1, 79, 80.7]
+g = [ 79.4, 79.7, 77.8, 79.2, 78.1, 77.4, 78.8, 78.3, 77.2, 78.8, 78.1, 78.8, 77.0, 78.6, 77.4, 76.9, 76.1, 79, 80.7].size
 // target the average gain
 ~gains = (g - g.mean).neg // .neg for db gain applied
 [ -1.121052631579, -1.421052631579, 0.47894736842105, -0.92105263157896, 0.17894736842105, 0.87894736842104, -0.52105263157895, -0.021052631578954, 1.078947368421, -0.52105263157895, 0.17894736842105, -0.52105263157895, 1.278947368421, -0.32105263157895, 0.87894736842104, 1.378947368421, 2.178947368421, -0.72105263157896, -2.421052631579 ].neg
-
-Detailed satellite info:
-// distance HF, MF, LF per speaker
-[
-[1.435, nil, 1.433],[1.437, nil, 1.435],[1.418, nil, 1.415] // floor
-[2.389,2.384,2.400],[2.360,2.358,2.376],[2.285,2.285,2.307],[2.375,2.371,2.391],[2.379,2.377,2.402],[2.335,2.332,2.354], // low (floor)
-[2.042,2.038,2.057],[2.660,2.656,2.673],[2.695,2.693,2.712],[1.931,1.931,1.950],[2.708,2.708,2.725],[2.722,2.720,2.738], // mid
-[2.840,2.834,2.850],[2.886,2.881,2.893],[3.157,3.153,3.168],[2.915,2.912,2.927],[2.901,2.897,2.915],[3.030,3.032,3.053] // upper
-[2.234,nil,2,239],[2.291,nil,2.294],[2.302,nil,2.306] // ceiling
-]
-// elevation HF, MF, LF per speaker
-[
-[-50,nil,-56],[-50,nil,-56],[-52,nil,-58] // floor
-[-35,-33,-28],[-35,-33,-28],[-35,-33,-28],[-35,-33,-28],[-35,-33,-28],[-35,-33,-28], // low (floor)
-[4,1,-4],[-3,-0.5,3],[3,0.5,-3],[-4,-1,4],[3,0.5,-3],[-3,-0.5,3] // mid
-[35,33,30],[35,33,29],[34,32,29],[35,33,30],[35,33,30],[34,32,29] // upper
-[53,nil,56],[52,nil,55],[52,nil,55] // ceiling
 */

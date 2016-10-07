@@ -1,6 +1,6 @@
 SoundLabDecoderPatch {
 	// copyArgs
-	var <sl, <decoderName, <inbusnum, <outbusnum, <loadCondition;
+	var <sl, <decoderName, inbusnum, <outbusnum, <loadCondition;
 	var <server, <group, <decodersynth, <compsynth, <attributes, <decType;
 
 	*new { |soundlab, decoderName, inbusnum, outbusnum, loadCondition|
@@ -74,4 +74,7 @@ SoundLabDecoderPatch {
 			group.free;
 		}
 	}
+
+	// NOTE: this changes with the stereo setting, so ask the synth
+	inbusnum {^decodersynth.in_busnum}
 }

@@ -19,6 +19,7 @@ IdentityDictionary(know: true)
 	\xOverLPF,				60,
 	\shelfFreq,				60,		// takes predecdence over listening Diameter
 	\listeningDiameter,		1.5,	// sweet spot size in meters
+	\stereoGain,			-3,		// gain on stereo bus in dB, to balance with decoders
 
 	/* SoundLabHardware settings */
 
@@ -79,29 +80,31 @@ numInChannels: number of input channels into the decoder/router (Int)
 	[
 		/* --ambisonic decoders-- */
 		// spheres - specify half of the array
-		[\Sph_24ch_all,		\diametric,	'dual',	3,	(0..11),			4	],
-		[\Sph_18ch_6x6x6,	\diametric,	'dual',	3,	(3..11),			4	],
-		[\Sph_14ch_HexInBox,\diametric,	'dual',	3,	[3,4,6,7,9,10,11],	4	],
-		[\Sph_10ch_HexInSquare,\diametric,'dual',	3,	[5,9,10,11,17],	4	],
-		[\Sph_12ch_6x6,		\diametric,	'dual',	3,	(3..8),				4	],
-		[\Sph_12ch_3x6x3,	\diametric,	'dual',	3,	(0..2)++(9..11),	4	],
-		[\Sph_6ch_2x2x2,	\diametric,	'dual',	3,	[8, 9, 20],			4	],
+		[\Sph_24ch_all,		\diametric,	'dual',	3,	(0..11),			4, 9 ],
+		[\Sph_18ch_6x6x6,	\diametric,	'dual',	3,	(3..11),			4, 9 ],
+		[\Sph_14ch_HexInBox,\diametric,	'dual',	3,	[3,4,6,7,9,10,11],	4, 9 ],
+		[\Sph_10ch_HexInSquare,\diametric,'dual',	3,	[5,9,10,11,17],	4, 9 ],
+		[\Sph_12ch_6x6,		\diametric,	'dual',	3,	(3..8),				4, 9 ],
+		[\Sph_12ch_3x6x3,	\diametric,	'dual',	3,	(0..2)++(9..11),	4, 9 ],
+		[\Sph_6ch_2x2x2,	\diametric,	'dual',	3,	[8, 9, 20],			4, 9 ],
 
 		// domes - half of horizontal speakers plus all dome speakers
-		[\Dome_15ch_6x6x3,	\dome,		'dual', 3,	(9..11)++(15..23), 	4	],
-		[\Dome_13ch_6x4x3,	\dome,		'dual', 3,	(9..11)++[15,16,18,19,21,22,23], 4],
-		[\Dome_11ch_4x4x3,	\dome,		'dual', 3,	[10,11]++[15,16,18,19,21,22,23], 4],
-		[\Dome_10ch_6x4,	\dome,		'dual', 3,	[10,11]++[15,16,18,19],4],
-		[\Dome_9ch_6x3,		\dome,		'dual', 3,	(9..11)++(21..23), 	4	],
+		[\Dome_15ch_6x6x3,	\dome,		'dual', 3,	(9..11)++(15..23), 	4, 9 ],
+		[\Dome_13ch_6x4x3,	\dome,		'dual', 3,	(9..11)++[15,16,18,19,21,22,23], 4, 9 ],
+		[\Dome_11ch_4x4x3,	\dome,		'dual', 3,	[10,11]++[15,16,18,19,21,22,23], 4, 9 ],
+		[\Dome_10ch_6x4,	\dome,		'dual', 3,	[10,11]++[15,16,18,19],4, 9 ],
+		[\Dome_9ch_6x3,		\dome,		'dual', 3,	(9..11)++(21..23), 	4, 9 ],
 
 		// horizontal-only
-		[\Horiz_Quad_Rect,	\diametric,	'dual',	2,	[10,11],	4	],
-		[\Horiz_Hex,		\diametric,	'dual',	2,	(9..11),	4	],
+		[\Horiz_Quad_Rect,	\diametric,	'dual',	2,	[10,11],	4, 9 ],
+		[\Horiz_Hex,		\diametric,	'dual',	2,	(9..11),	4, 9 ],
 
 		/* --discrete channel routing-- */
 		// thru routing assumes contiguous channels, starting at arrayOutIndices.first
-		[\All,				\discrete,	\NA,	2,	(0..23),	24	],
-		[\Hex,				\discrete,	\NA,	2,	(9..14),	6	]
+		[\All,				\discrete,	\NA,	2,	(0..27),					28, 0 ], // includes subs
+		[\Hex_faceForward,	\discrete,	\NA,	2,	(9..14)++(24..27),			10, 0 ], // includes subs
+		[\Hex_faceRight,	\discrete,	\NA,	2,	(10..14)++[9]++(24..27),	10, 0 ], // includes subs
+		[\LongQuad_faceRight,\discrete,	\NA,	2,	[10, 11, 13, 14]++(24..27),	8,  0 ], // includes subs
 	]
 )
 
@@ -119,7 +122,7 @@ see prLoadSynthDefs for how channel mappings are used
 		2.0098378125, 2.6266134375, 2.665605, 1.9247653125, 2.6833284375, 2.6939625,
 		2.800303125, 2.8534734375, 3.1228696875, 2.885375625, 2.8676521875, 2.99171625,
 		2.2083403125, 2.2721446875, 2.2792340625,
-		2.1941615625, 4.6896215625, 2.5238175, 5.182333125
+		2.1941615625, 4.6896215625, 2.5238175, 5.182333125,
 
 		// // laser-measured
 		// 1.425, 1.429, 1.41, // floor

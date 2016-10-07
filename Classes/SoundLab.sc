@@ -17,7 +17,7 @@ SoundLab {
 	var <clipListener, <reloadGUIListener, <clipMonDef, <patcherDef, <sterPatcherDef, <stereoSubPatcherDef;
 	var <patcherGroup, <stereoPatcherSynths, <satPatcherSynths, <subPatcherSynths;
 	var <monitorGroup_ins, <monitorGroup_outs, <monitorSynths_outs, <monitorSynths_ins;
-	var <jconvolver, <nextjconvolver, <jconvinbus, <nextjconvinbus, <jconvHWOutChannel;
+	var <jconvolver, <nextjconvolver, <jconvinbus, <nextjconvinbus, <jconvHWOutChannel, <stereoGain;
 
 	// SoundLabUtils
 	var <compDict, <decAttributes, <decAttributeList, <matrixDecoderNames;
@@ -54,6 +54,7 @@ SoundLab {
 		xOverHPF			= config.xOverHPF ?? {80};		// default xover 80Hz if not specified
 		xOverLPF			= config.xOverLPF ?? {80};		// default xover 80Hz if not specified
 		jconvHWOutChannel	= config.jconvHWOutChannel ?? {0};	// default xover 80Hz if not specified
+		stereoGain			= config.stereoGain ?? 0;		// gain in dB to balance stereo with decoders
 		// Note: shelfFreq in config takes precedence over listeningDiameter
 		// order / pi * 340 / listeningDiameter
 		// default shelf 400Hz (for dual band decoders)
@@ -229,6 +230,7 @@ SoundLab {
 							in[i]
 							* (config.defaultSpkrGainsDB[stereoChanIndex[i]] ?? 0).dbamp
 							* amp
+							* stereoGain.dbamp
 						)
 					};
 				});
@@ -240,6 +242,7 @@ SoundLab {
 								In.ar(in_bus, 2).sum
 								* (2.sqrt/2)
 								* config.defaultSpkrGainsDB[numSatChans].dbamp
+								* stereoGain.dbamp
 							)
 						},{ // encoding stereo t b format then decoding to multipl subs
 							var stereoBF = FoaEncode.ar(
@@ -258,6 +261,7 @@ SoundLab {
 									* (2/numSubChans) // balance the energy based on the number of subs
 									* config.defaultSpkrGainsDB[numSatChans+i].dbamp
 									* amp
+									* stereoGain.dbamp
 								)
 							};
 						});
@@ -745,8 +749,8 @@ NO NEW DECODER STARTED");
 		ampnorm = amp_dB.dbamp;
 		// only update amp if not muted or att
 		if( isAttenuated.not && isMuted.not, {
-			curDecoderPatch.compsynth.masterAmp_(ampnorm);
-			stereoPatcherSynths.do(_.amp_(ampnorm));
+			curDecoderPatch.compsynth.masterAmp_(ampnorm); // set decoder amp
+			stereoPatcherSynths.do(_.amp_(ampnorm)); // set stereo channels amp (including subs)
 		});
 		globalAmp = ampnorm; // normalized, not dB
 		this.changed(\amp, globalAmp);
@@ -835,11 +839,16 @@ s.options.numWireBufs_(64*8);
 // if using the convolution system and you intend to switch between kernel sets
 // and default (no convolution) settings
 
-InterfaceJS.nodePath = "/usr/local/bin/node";
+// InterfaceJS.nodePath = "/usr/local/bin/node";
 
 //initSR=96000, loadGUI=true, useSLHW=true, useKernels=true, configFileName="CONFIG_205.scd"
-l = SoundLab(48000, loadGUI:true, useSLHW:false, useKernels:false, configFileName:"CONFIG_TEST.scd")
+// l = SoundLab(44100, loadGUI:true, useSLHW:false, useKernels:false, configFileName:"CONFIG_TEST_205.scd")
+// l = SoundLab(44100, loadGUI:true, useSLHW:false, useKernels:false, configFileName:"CONFIG_TEST_117.scd")
+l = SoundLab(44100, loadGUI:true, useSLHW:false, useKernels:false, configFileName:"CONFIG_TEST_113.scd")
 )
+
+Open in browser:
+http://localhost:8080/
 
 l.rotated
 l.rotateDegree
@@ -855,8 +864,11 @@ l.decoderLib.dict.keys
 l.free
 s.quit
 
-
+// test signal
+// test b-format
 x = {Out.ar(l.curDecoderPatch.inbusnum, 4.collect{PinkNoise.ar * SinOsc.kr(rrand(3.0, 5.0).reciprocal).range(0.0, 0.15)})}.play
+// test discrete
+x = {Out.ar(l.curDecoderPatch.inbusnum, 5.collect{PinkNoise.ar * SinOsc.kr(rrand(3.0, 5.0).reciprocal).range(0.0, 0.15)})}.play
 x.free
 s.scope
 s.meter
