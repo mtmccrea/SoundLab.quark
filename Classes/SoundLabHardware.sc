@@ -346,7 +346,7 @@ SoundLabHardware {
 		// " -i"++ins.asString++ //needs to be exact as MADI expects, not needed?
 		// " -o"++outs.asString;
 		// " -o"++ins.asString; //needs to be exact as MADI expects, not needed?
-		// "run jack command ".post; cmd.postln;
+		"run jack command ".post; cmd.postln;
 		cmd.unixCmdGetStdOutThruOsc({|line|
 			"from jack: ".post; line.postln;
 			this.prParseJackOutput(line);
