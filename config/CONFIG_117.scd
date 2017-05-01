@@ -101,10 +101,15 @@ numInChannels: number of input channels into the decoder/router (Int)
 
 		/* --discrete channel routing-- */
 		// thru routing assumes contiguous channels, starting at arrayOutIndices.first
-		[\All,				\discrete,	\NA,	2,	(0..27),					28, 0 ], // includes subs
-		[\Hex_faceForward,	\discrete,	\NA,	2,	(9..14)++(24..27),			10, 0 ], // includes subs
-		[\Hex_faceRight,	\discrete,	\NA,	2,	(10..14)++[9]++(24..27),	10, 0 ], // includes subs
-		[\LongQuad_faceRight,\discrete,	\NA,	2,	[10, 11, 13, 14]++(24..27),	8,  0 ], // includes subs
+		// includes subs
+		[\All,				\discrete,	\NA,	2,	(0..27),					28, 0 ],
+		[\Hex_faceForward,	\discrete,	\NA,	2,	(9..14)++(24..27),			10, 0 ],
+		[\Hex_faceRight,	\discrete,	\NA,	2,	(10..14)++[9]++(24..27),	10, 0 ],
+		[\LongQuad_faceRight,\discrete,	\NA,	2,	[10, 11, 13, 14]++(24..27),	8,  0 ],
+		// counter-clockwise
+		[\Hex_faceForward_ccw,	\discrete,	\NA,	2,	(9..14).reverse.rotate++(24..27),			10, 0 ],
+		[\Hex_faceRight_ccw,	\discrete,	\NA,	2,	((10..14)++[9]).reverse.rotate++(24..27),	10, 0 ],
+		[\LongQuad_faceRight_ccw,\discrete,	\NA,	2,	[10, 11, 13, 14].reverse.rotate++(24..27),	8,  0 ],
 	]
 )
 

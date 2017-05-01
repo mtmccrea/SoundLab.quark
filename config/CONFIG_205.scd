@@ -30,7 +30,7 @@ IdentityDictionary(know: true)
 	\fixAudioInputGoingToTheDecoder, true,
 	\hwPeriodSize, 			256,
 	\hwPeriodNum,			1,
-	\firefaceID,            "000a3500c1da0056",
+	\firefaceID,            "000a35002dd2c77a", //"000a3500c1da0056",
 	\whichMadiInput,        2,
 	\whichMadiOutput,       2,
 
@@ -333,11 +333,18 @@ numInChannels: number of input channels into the decoder/router (Int)
 
 		/* --discrete channel routing-- */
 		// thru routing assumes contiguous channels, starting at arrayOutIndices.first
-		[\All,			\discrete,	\NA,	2,	(0..31),				32, 0 ], // includes additional channels from converter not connected to speakers
-		[\Hex_Point_Fwd,\discrete,	\NA,	2,	Array.series(6, 0, 2) ++ [19,20],	8, 0 ],  // include sub chans
-		[\Hex_Flat_Fwd,	\discrete,	\NA,	2,	[11,1,3,5,7,9] ++ [19,20],			8, 0 ],  // include sub chans
-		[\Quad_Square,	\discrete,	\NA,	2,	Array.series(4, 0, 3) ++ [19,20],	6, 0 ],  // include sub chans
-		[\Quad_Rect,	\discrete,	\NA,	2,	[11, 1, 5, 7] ++ [19,20],			6, 0 ]   // include sub chans
+		// includes additional channels from converter not connected to speakers
+		[\All,			\discrete,	\NA,	2,	(0..31),				32, 0 ],
+		// clockwise, include sub chans
+		[\Hex_Point_cw,   \discrete, \NA,	2,	Array.series(6, 0, 2) ++ [19,20],	8, 0 ],
+		[\Hex_Flat_cw,	  \discrete, \NA,	2,	[11,1,3,5,7,9] ++ [19,20],			8, 0 ],
+		[\Quad_Square_cw, \discrete, \NA,	2,	Array.series(4, 0, 3) ++ [19,20],	6, 0 ],
+		[\Quad_Rect_cw,   \discrete, \NA,	2,	[11, 1, 5, 7] ++ [19,20],			6, 0 ],
+		// counter-clockwise, include sub chans
+		[\Hex_Point_ccw,  \discrete, \NA,	2,	Array.series(6, 0, 2).reverse.rotate ++ [19,20],	8, 0 ],
+		[\Hex_Flat_ccw,	  \discrete, \NA,	2,	[11,1,3,5,7,9].reverse.rotate ++ [19,20],			8, 0 ],
+		[\Quad_Square_ccw,\discrete, \NA,	2,	Array.series(4, 0, 3).reverse.rotate ++ [19,20],	6, 0 ],
+		[\Quad_Rect_ccw,  \discrete, \NA,	2,	[11, 1, 5, 7].reverse.rotate ++ [19,20],			6, 0 ]
 	]
 )
 ;

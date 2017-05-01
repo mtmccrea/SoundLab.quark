@@ -28,8 +28,8 @@ Changelog....?
 2013.12.05
 -added fireface control
 	//fireface IDs
-	//000a3500c1da0056 //205
-	//000a35009caf3c69 //117
+	//000a35002dd2c77a // 000a3500c1da0056 //old, dead 205
+	//000a35009caf3c69 // 117
 */
 
 SoundLabHardware {
