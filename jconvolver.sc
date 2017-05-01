@@ -4,6 +4,12 @@
 //config file
 //path in config file relative to config file
 
+/* Jconvolver's max size!
+0x00100000 // from jconfig file in jconvolver source
+"100000".asHexIfPossible
+"100000".asHexIfPossible / s.sampleRate
+*/
+
 Jconvolver {
 	classvar <>jackScOutNameDefault = "SuperCollider:out_"; // for supernova: "supernova:output_"
 	classvar <>jackScInNameDefault = "SuperCollider:in_"; // for supernova: "supernova:input_"
