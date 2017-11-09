@@ -13,7 +13,7 @@ IdentityDictionary(know: true)
 	\numSubChans, 			4,
 	\defaultDecoderName,	\Sph_24ch_all, // must match a name in \decAttributeList below
 	\jconvHWOutChannel,		0,
-	\stereoChanIndex,		[28, 29],
+	\stereoChanIndex,		[10, 11],
 	\rotateDegree,			-90, // option to rotate the listening position to this angle
 	\xOverHPF,				60,
 	\xOverLPF,				60,
@@ -23,7 +23,7 @@ IdentityDictionary(know: true)
 
 	/* SoundLabHardware settings */
 
-	\useFireface, 			true,
+	\useFireface, 			false,
 	\midiPortName,			"External MIDI- MIDI 1",
 	// \midiPortName,			nil, // nil for no MIDI
 	\cardNameIncludes,		"RME",
