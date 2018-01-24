@@ -148,8 +148,8 @@ SoundLabHardware {
 				});*/
 				this.changed(\updatingConfiguration, 0.3);
 				if(sampleRate.isNil && newSR.isNil, {
-					newSR = 96000;
-					"using default sample rate: 96000".postln;
+					newSR = 44100;
+					"using default sample rate: 44100".postln;
 				});
 				this.prSetSR(newSR);
 				// "---- 3".postln;
@@ -568,7 +568,7 @@ SoundLabHardware {
 	}
 
 	//set paramers for various samplerates - only when audio is NOT running
-	prSetSR {arg sr = 48000; //valid: 44100, 48000, 88200, 96000
+	prSetSR {arg sr = 44100; //valid: 44100, 48000, 88200, 96000
 		var modeWord, srWord, modeByte, cmds, msgBack1, msgBack2;
 		cmds = Array.new;
 		("setting samplerate to " ++ sr).postln;
@@ -942,7 +942,7 @@ Fireface {
 		autoSync = val;
 	}
 
-	sampleRate_{|sr = 48000|
+	sampleRate_{|sr = 44100|
 		var inc = 0;
 		Routine.run({
 			while({active.not && (inc < 10)}, { //
@@ -965,7 +965,7 @@ Fireface {
 
 	}
 
-	prSampleRate_ {|sr = 48000|
+	prSampleRate_ {|sr = 44100|
 		var dbusCmd, sampleRateNumber;
 		"Setting Fireface samplerate".postln;
 		// cmd = "ffado-test SetSamplerate " ++ sr.asString;

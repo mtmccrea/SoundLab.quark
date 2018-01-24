@@ -25,7 +25,7 @@ SoundLab {
 	var <decoderLib, <synthLib, <loadedDelDistGain;
 	var <slhw;
 
-	*new { |initSR=48000, loadGUI=true, useSLHW=true, useKernels=true, configFileName="CONFIG_205.scd", usingOSX=false|
+	*new { |initSR=44100, loadGUI=true, useSLHW=true, useKernels=true, configFileName="CONFIG_205.scd", usingOSX=false|
 		^super.newCopyArgs(initSR, loadGUI, useSLHW, useKernels, configFileName, usingOSX).init;
 	}
 
