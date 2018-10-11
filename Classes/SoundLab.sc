@@ -130,6 +130,15 @@ SoundLab {
 			}, '/reloadGUI', nil
 		);
 
+		OSCdef(\restart, {
+			fork {
+				this.cleanup;
+				0.5.wait;
+				thisProcess.recompile;
+			}
+			}, \restart
+		);
+
 		if(usingSLHW,
 			{ this.prInitSLHW(initSR)},
 			{ this.prInitDefaultHW(initSR) }
