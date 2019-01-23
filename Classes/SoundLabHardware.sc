@@ -34,7 +34,7 @@ Changelog....?
 
 SoundLabHardware {
 	var useSupernova, fixAudioInputGoingToTheDecoder, <>useFireface;
-	var <midiPortName, <cardNameIncludes, jackPath;
+	var <midiDeviceName, <midiPortName, <cardNameIncludes, jackPath;
 	var serverIns, serverOuts, numHwOutChToConnectTo, numHwInChToConnectTo;
 	var firefaceID;
 	var <whichMadiInput, <whichMadiOutput;
@@ -62,6 +62,7 @@ SoundLabHardware {
 	*new {arg useSupernova = false,
 		fixAudioInputGoingToTheDecoder = true,
 		useFireface = true,
+		midiDeviceName = "External MIDI-MADIFXtest MIDI 1", // nil for no MIDI
 		midiPortName = "External MIDI-MADIFXtest MIDI 1", // nil for no MIDI
 		cardNameIncludes = "RME", // nil for OSX
 		jackPath = "/usr/bin/jackd",
@@ -76,7 +77,7 @@ SoundLabHardware {
 		stereoInputArrayOffset = [4, 5, 6, 7], //stereo inputs
 		stereoOutputArrayOffset = [11, 1]; //stero outputs
 		// ^super.newCopyArgs(shellCommand, receiveAction, exitAction, id).init(false);
-		^super.newCopyArgs(useSupernova, fixAudioInputGoingToTheDecoder, useFireface, midiPortName, cardNameIncludes, jackPath, serverIns, serverOuts, numHwOutChToConnectTo, numHwInChToConnectTo, firefaceID, whichMadiInput, whichMadiOutput, whichMadiInputForStereo, stereoInputArrayOffset, stereoOutputArrayOffset).init;
+		^super.newCopyArgs(useSupernova, fixAudioInputGoingToTheDecoder, useFireface, midiDeviceName, midiPortName, cardNameIncludes, jackPath, serverIns, serverOuts, numHwOutChToConnectTo, numHwInChToConnectTo, firefaceID, whichMadiInput, whichMadiOutput, whichMadiInputForStereo, stereoInputArrayOffset, stereoOutputArrayOffset).init;
 	}
 
 	*killJack {
@@ -282,12 +283,12 @@ SoundLabHardware {
 	prInitMIDI {
 		// "init here".postln;
 		// init MIDI
-		if(midiPortName.notNil, {
+		if(midiPortName.notNil && midiDeviceName.notNil, {
 			// "now ini here".postln;
 			MIDIClient.init;
 			// MIDIClient.destinations;
 			// MIDI INIT!!!!!! don't forget to connect.... blah
-			midiPort = MIDIOut.newByName(midiPortName, midiPortName);
+			midiPort = MIDIOut.newByName(midiDeviceName, midiPortName);
 			// postf("midiPort: %\n", midiPort);
 			try { midiPort.connect(midiPort.port); };
 		});

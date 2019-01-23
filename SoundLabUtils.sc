@@ -950,6 +950,7 @@
 			false, 						//useSupernova
 			config.fixAudioInputGoingToTheDecoder, //fixAudioInputGoingToTheDecoder
 			config.useFireface,			//useFireface
+			config.midiDeviceName,		//midiDeviceName
 			config.midiPortName,		//midiPortName
 			config.cardNameIncludes,	//cardNameIncludes
 			config.jackPath, 			//jackPath
