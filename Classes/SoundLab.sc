@@ -681,7 +681,15 @@ NO NEW DECODER STARTED");
 	}
 
 	buildGUI {
-		gui ?? {gui = SoundLabGUI.new(this)};
+		if (gui.isNil) {
+			gui = SoundLabGUI.new(this);
+		} {
+			fork {
+				gui.cleanup;
+				1.wait;
+				gui = SoundLabGUI.new(this);
+			}
+		}
 	}
 
 	// ------------------------------------------------------------------
@@ -842,7 +850,6 @@ NO NEW DECODER STARTED");
 		slhw !? {slhw.removeDependant(this)};
 		this.prClearServerSide; 			// frees jconvs
 		slhw !? {slhw.stopAudio};
-		if ( gui.notNil, {gui.cleanup} );
 	}
 
 	free {this.cleanup}
@@ -853,6 +860,8 @@ NO NEW DECODER STARTED");
 s.options.numOutputBusChannels_(32);
 s.options.device_("JackRouter");
 s.options.numWireBufs_(64*8);
+Jconvolver.jackScOutNameDefault = "scsynth:out";
+Jconvolver.executablePath_("/usr/local/bin/jconvolver");
 // make sure Jack has at least [3x the number of your hardware output busses] virtual ins and outs
 // if using the convolution system and you intend to switch between kernel sets
 // and default (no convolution) settings
@@ -862,8 +871,14 @@ s.options.numWireBufs_(64*8);
 //initSR=96000, loadGUI=true, useSLHW=true, useKernels=true, configFileName="CONFIG_205.scd"
 // l = SoundLab(44100, loadGUI:true, useSLHW:false, useKernels:false, configFileName:"CONFIG_TEST_205.scd")
 // l = SoundLab(44100, loadGUI:true, useSLHW:false, useKernels:false, configFileName:"CONFIG_TEST_117.scd")
-l = SoundLab(44100, loadGUI:true, useSLHW:false, useKernels:false, configFileName:"CONFIG_TEST_113.scd")
+l = SoundLab(44100, loadGUI:true, useSLHW:false, useKernels:true, configFileName:"CONFIG_TEST_117.scd")
+// l = SoundLab(44100, loadGUI: false, useSLHW:false, useKernels:false, configFileName:"CONFIG_TEST_117.scd")
+// l = SoundLab(44100, loadGUI:true, useSLHW:false, useKernels:false, configFileName:"CONFIG_TEST_113.scd")
 )
+
+l.buildGUI
+l.gui = nil
+l.gui.cleanup
 
 Open in browser:
 http://localhost:8080/
@@ -883,6 +898,7 @@ l.free
 s.quit
 
 // test signal
+s.meter
 // test b-format
 x = {Out.ar(l.curDecoderPatch.inbusnum, 4.collect{PinkNoise.ar * SinOsc.kr(rrand(3.0, 5.0).reciprocal).range(0.0, 0.15)})}.play
 // test discrete

@@ -79,7 +79,7 @@ SoundLabGUI {
 			postString = "";
 			this.initVars(cond);
 			cond.wait;
-			"Initializing ontrols.".postln;
+			"Initializing controls.".postln;
 			this.initControls;
 			// "just before building controls".postln;
 			this.buildControls;
@@ -159,7 +159,7 @@ SoundLabGUI {
 		})
 		;
 
-		if(sl.slhw.useFireface, {
+		if (sl.slhw.notNil and: { sl.slhw.useFireface }, {
 			/* Phantom setting */
 			phantomTxt = WsStaticText.init(wsGUI, Rect(0,0,1,0.05))
 			.string_("").font_(Font(font, mdFontSize))
@@ -637,7 +637,7 @@ SoundLabGUI {
 						/* current settings */
 						WsHLayout( Rect(0,0,1, 0.08),
 							WsStaticText.init(wsGUI, Rect(0,0,1,1)).string_(
-								"<strong>Current System Settings</strong>")
+							"<strong>Current System Settings</strong>")
 							.align_(\center).font_(Font(font, mdFontSize))
 							.background_(Color.fromHexString("#FFFFCC")),
 						),
@@ -680,7 +680,7 @@ SoundLabGUI {
 						0.05,
 
 						/* phantom */
-						if(sl.slhw.useFireface, {
+						if (sl.slhw.notNil and: { sl.slhw.useFireface }, {
 							WsHLayout( Rect(0,0,1,0.1),
 								phantomTxt.string_("<strong>Fireface input phantom:</strong>"), 0.01, phantomCheckbox0, 0.01, phantomCheckbox1, 0.01, phantomCheckbox2, 0.01, phantomCheckbox3, 0.1
 							)
@@ -888,7 +888,7 @@ SoundLabGUI {
 			).do{ |menu| menu.value_(0)};
 
 			// on account of WsCheckbox bug (?), action needs to be set after it's laid out
-			if(sl.slhw.useFireface, {
+			if(sl.slhw.notNil and: { sl.slhw.useFireface }, {
 				phantomCheckbox0.action_({ |cb|
 					if(cb.value.asBoolean, {
 						sl.slhw.ffPhantom_(0, 1)
