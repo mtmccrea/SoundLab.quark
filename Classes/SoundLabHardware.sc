@@ -376,7 +376,7 @@ SoundLabHardware {
 		thisProcess.platform.name.switch(
 			\linux, {cmd = cmd ++ " -dalsa -H"},// -dhw:"++cardID.asString;
 			\osx, {cmd = cmd ++ " -dcoreaudio"},
-			{(this.class.name ++ ": error in prStartJack - only linux and macOS is supported").warn}
+			{(this.class.name ++ ": error in prStartJack - only linux anx macOS is supported").warn}
 		);
 		// if(cardNameIncludes.notNil, {
 		// 	cmd = cmd ++ " -dalsa -H -dhw:"++cardID.asString; //assuming linux
@@ -387,7 +387,7 @@ SoundLabHardware {
 			thisProcess.platform.name.switch(
 				\linux, {cmd = cmd ++ " -dhw:"++cardID.asString},// -dhw:"++cardID.asString;
 				\osx, {cmd = cmd ++ " -d"++cardID.asString;},
-				{(this.class.name ++ ": error in prStartJack - only linux and macOS is supported").warn}
+				{(this.class.name ++ ": error in prStartJack - only linux anx macOS is supported").warn}
 			)
 		});
 		cmd = cmd ++ " -r"++sampleRate.asString++
