@@ -25,40 +25,42 @@
 		// Folder structure: /sampleRate/kernelName/ holds
 		// delay, dist, gain .txt files and folders for each "version"
 		// of the kernel, i.e. the various settings: moderate, high correction, min/lin phase, etc
-		kernelDirPathName.entries.do({ |sr_pn|
-			var sr, nm, knm, result;
+		kernelDirPathName !? {
+			kernelDirPathName.entries.do({ |sr_pn|
+				var sr, nm, knm, result;
 
-			(sr_pn.isFolder && (sr_pn.folderName.asInt !=0)).if{
-				sr = sr_pn.folderName;
-				sr_pn.entries.do({ |kern_pn|
-					kern_pn.isFolder.if{
-						knm = kern_pn.folderName;
-						kern_pn.entries.do{ |file_pn|
-							if(file_pn.isFile, {
-								nm = file_pn.fileName;
-								case
-								{nm.contains("delays")}{
-									debug.if{postf("\nParsing delays for %, %: ", knm, sr)};
-									compDict.delays.put(
-										(sr++"/"++knm).asSymbol, this.prParseFile(file_pn)
-									);
-								}{nm.contains("distances")}{
-									debug.if{postf("\nParsing distances for %, %:", knm, sr)};
-									compDict.distances.put(
-										(sr++"/"++knm).asSymbol, this.prParseFile(file_pn)
-									);
-								}{nm.contains("gains")}{
-									debug.if{postf("\nParsing gains for %, %:", knm, sr)};
-									compDict.gains.put(
-										(sr++"/"++knm).asSymbol, this.prParseFile(file_pn)
-									);
-								};
-							});
+				(sr_pn.isFolder && (sr_pn.folderName.asInt !=0)).if{
+					sr = sr_pn.folderName;
+					sr_pn.entries.do({ |kern_pn|
+						kern_pn.isFolder.if{
+							knm = kern_pn.folderName;
+							kern_pn.entries.do{ |file_pn|
+								if(file_pn.isFile, {
+									nm = file_pn.fileName;
+									case
+									{nm.contains("delays")}{
+										debug.if{postf("\nParsing delays for %, %: ", knm, sr)};
+										compDict.delays.put(
+											(sr++"/"++knm).asSymbol, this.prParseFile(file_pn)
+										);
+									}{nm.contains("distances")}{
+										debug.if{postf("\nParsing distances for %, %:", knm, sr)};
+										compDict.distances.put(
+											(sr++"/"++knm).asSymbol, this.prParseFile(file_pn)
+										);
+									}{nm.contains("gains")}{
+										debug.if{postf("\nParsing gains for %, %:", knm, sr)};
+										compDict.gains.put(
+											(sr++"/"++knm).asSymbol, this.prParseFile(file_pn)
+										);
+									};
+								});
+							}
 						}
-					}
-				})
-			}
-		});
+					})
+				}
+			});
+		};
 
 		/* azimuth angles */
 		spkrAzims = config.spkrAzimuthsRad;
@@ -143,17 +145,19 @@
 	collectKernelCheckBoxAttributes {
 		var attributes, sRate_pn;
 		attributes = [];
-		sRate_pn = PathName( config.kernelsPath ++ this.sampleRate);
-		config.kernelSpec.do{|k_attributes|
+		config.kernelsPath !? {
+			sRate_pn = PathName( config.kernelsPath ++ this.sampleRate);
+			config.kernelSpec.do{|k_attributes|
 
-			// check that the kernel spec exists at this SR
-			if( this.checkKernelSpecAtSR(k_attributes[0]), {
+				// check that the kernel spec exists at this SR
+				if( this.checkKernelSpecAtSR(k_attributes[0]), {
 
-				// drop the kernel path and correction degree leaving only user-defined attributes
-				k_attributes[1].do{ |att|
-					if( attributes.includes(att).not, {attributes = attributes.add(att)} )
-				};
-			})
+					// drop the kernel path and correction degree leaving only user-defined attributes
+					k_attributes[1].do{ |att|
+						if( attributes.includes(att).not, {attributes = attributes.add(att)} )
+					};
+				})
+			};
 		};
 		^attributes
 	}
@@ -162,23 +166,25 @@
 		var popups;
 		popups = [[]];
 
-		config.kernelSpec.do{|k_attributes|
+		config.kernelsPath !? {
+			config.kernelSpec.do{|k_attributes|
 
-			if( this.checkKernelSpecAtSR(k_attributes[0]), {
-				var numPopUps = k_attributes[2].size;
+				if( this.checkKernelSpecAtSR(k_attributes[0]), {
+					var numPopUps = k_attributes[2].size;
 
-				// grow popups array if needed
-				if( popups.size < numPopUps, {
-					(numPopUps - popups.size).do{popups = popups.add([])}
+					// grow popups array if needed
+					if( popups.size < numPopUps, {
+						(numPopUps - popups.size).do{popups = popups.add([])}
+					});
+
+					k_attributes[2].do{ |att, i|
+
+						if( popups[i].includes(att).not, {
+							popups[i] = popups[i].add(att);
+						} )
+					};
 				});
-
-				k_attributes[2].do{ |att, i|
-
-					if( popups[i].includes(att).not, {
-						popups[i] = popups[i].add(att);
-					} )
-				};
-			});
+			};
 		};
 		^popups
 	}

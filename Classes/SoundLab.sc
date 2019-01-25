@@ -173,29 +173,32 @@ SoundLab {
 
 				// get an up-to-date list of the kernels available at this sample rate
 				kernels = [];
-				kernelDirPathName.entries.do({ |sr_pn|
-					var sr, nm, knm, result;
+				"kernelDirPathName: ".post; kernelDirPathName.postln;
+				kernelDirPathName !? {
+					kernelDirPathName.entries.do({ |sr_pn|
+						var sr, nm, knm, result;
 
-					(sr_pn.isFolder && (sr_pn.folderName.asInt == server.sampleRate)).if{
+						(sr_pn.isFolder && (sr_pn.folderName.asInt == server.sampleRate)).if{
 
-						sr_pn.entries.do({ |kern_pn|
-							kern_pn.isFolder.if{
-								// kernel "category name"
-								knm = kern_pn.folderName;
-								kern_pn.entries.do{ |entry_pn|
-									// kernel folder
-									if(entry_pn.isFolder, {
-										// could add check here for soundfiles within
-										// to confirm it's a kernel folder
+							sr_pn.entries.do({ |kern_pn|
+								kern_pn.isFolder.if{
+									// kernel "category name"
+									knm = kern_pn.folderName;
+									kern_pn.entries.do{ |entry_pn|
+										// kernel folder
+										if(entry_pn.isFolder, {
+											// could add check here for soundfiles within
+											// to confirm it's a kernel folder
 
-										// kernel stored as String of the path relative to sample rate
-										kernels = kernels.add( knm ++ "/" ++ entry_pn.folderName )
-									});
+											// kernel stored as String of the path relative to sample rate
+											kernels = kernels.add( knm ++ "/" ++ entry_pn.folderName )
+										});
+									}
 								}
-							}
-						})
-					}
-				});
+							})
+						}
+					});
+				};
 
 				kernels = [\basic_balance] ++ kernels;
 
