@@ -15,3 +15,15 @@ If you need to restart the supercollider (not the computer), remember to cleanup
 l.cleanup
 
 Failure to do so will result in hanging processes and inability to properly restart the whole setup.
+
+
+-----
+Requirements:
+SuperCollider
+jconvolver
+JACK
+
+Quarks:
+Ctk
+https://github.com/dyfer/JconvolverSC
+https://github.com/dyfer/OscPipe
