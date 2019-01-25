@@ -22,6 +22,7 @@ IdentityDictionary(know: true)
 	// \useFireface, 			true,
 	\useFireface, 			false, // for testing
 	// \midiPortName,			"External MIDI- MIDI 1",
+	\midiDeviceName,			nil,
 	\midiPortName,			nil, // nil for no MIDI
 	// \cardNameIncludes,		"RME",
 	\cardNameIncludes,		nil, // for OSX
