@@ -27,9 +27,9 @@ Changelog....?
 
 2013.12.05
 -added fireface control
-	//fireface IDs
-	//000a35002dd2c77a // 000a3500c1da0056 //old, dead 205
-	//000a35009caf3c69 // 117
+//fireface IDs
+//000a35002dd2c77a // 000a3500c1da0056 //old, dead 205
+//000a35009caf3c69 // 117
 */
 
 SoundLabHardware {
@@ -95,9 +95,9 @@ SoundLabHardware {
 		if(useSupernova, {
 			Server.supernova;
 			serverInputNameInJack = "supernova:input_"; //this could be set with s.options.device = "supercollider", but not sure about in vs input... leaving for now
-			}, {
-				Server.scsynth;
-				serverInputNameInJack = "SuperCollider:in_";
+		}, {
+			Server.scsynth;
+			serverInputNameInJack = "SuperCollider:in_";
 		});
 		Server.default = server = Server.local; //just to make sure
 		//init vals
@@ -132,20 +132,20 @@ SoundLabHardware {
 				"stopping audio first...".postln;
 
 				this.prStopAudioFunction;
-					// 6.wait;
-					// "------------- before wait".postln;
+				// 6.wait;
+				// "------------- before wait".postln;
 				updatingCondition.wait;
 				// if(useFireface, { conditinal moved to class
 				this.initFireface; //init fireface here as well
 				// });
 				addWaitTime.wait;
-			// });
+				// });
 				// "------------- after wait".postln;
-/*				this.changed(\updatingConfiguration, 0.2);
+				/*				this.changed(\updatingConfiguration, 0.2);
 				if(newSR.notNil, {
-					this.prSetSR(newSR);
-					// 6.wait;
-					updatingCondition.wait;
+				this.prSetSR(newSR);
+				// 6.wait;
+				updatingCondition.wait;
 				});*/
 				this.changed(\updatingConfiguration, 0.3);
 				if(sampleRate.isNil && newSR.isNil, {
@@ -185,21 +185,21 @@ SoundLabHardware {
 				addWaitTime = 0;
 				clientsDictionary = Dictionary.new;
 				// fix for not getting analog ins in the decoder - got moved into separate method, uses env vars now
-/*				if((sampleRate > 48000) && fixAudioIn, {
-					this.prDisconnectRedundantHardwareIns((16..32)); //keeping as is for now
-					//this
-					//"SC_JACK_DEFAULT_OUTPUTS".setenv("".ccatList(16.collect({|inc| "system:playback_" ++ (inc + 1).asString})).replace(" ", "").replace("[", "").replace("]", "").drop(1));
-					//not
-					//would make SC connect only to the first 16 outputs (needs appro
+				/*				if((sampleRate > 48000) && fixAudioIn, {
+				this.prDisconnectRedundantHardwareIns((16..32)); //keeping as is for now
+				//this
+				//"SC_JACK_DEFAULT_OUTPUTS".setenv("".ccatList(16.collect({|inc| "system:playback_" ++ (inc + 1).asString})).replace(" ", "").replace("[", "").replace("]", "").drop(1));
+				//not
+				//would make SC connect only to the first 16 outputs (needs appro
 				});*/
 				// clientsDictionary.add("PreSonus", [ins * 0.5, 0]);
 				this.prAddClient("PreSonus", [32 * 0.5, 32 * 0.5], false); //ins, because outs is fake 32 for 48k
 				this.changed(\updatingConfiguration, 1.0);
 				// this.changed(\audioIsRunning, true);
 			});
-			}, {
-				"Wrong sample rate! Valid are: 44100, 48000, 88200, 96000".error;
-				this.changed(\error, "Wrong sample rate!");
+		}, {
+			"Wrong sample rate! Valid are: 44100, 48000, 88200, 96000".error;
+			this.changed(\error, "Wrong sample rate!");
 		});
 	}
 
@@ -225,11 +225,11 @@ SoundLabHardware {
 			if((newSR != sampleRate) || audioIsRunning.not, {
 				this.startAudio(newSR);
 			}, {
-					("The system is already running at " ++ sampleRate ++ "!").postln;
+				("The system is already running at " ++ sampleRate ++ "!").postln;
 			});
-			}, {
-				"Wrong sample rate! Valid are: 44100, 48000, 88200, 96000".error;
-				this.changed(\error, "Wrong sample rate!");
+		}, {
+			"Wrong sample rate! Valid are: 44100, 48000, 88200, 96000".error;
+			this.changed(\error, "Wrong sample rate!");
 		});
 	}
 
@@ -287,7 +287,7 @@ SoundLabHardware {
 					})
 				},
 				\osx, {
-					var tempName = this.hash.asString;
+					var tempName = this.hash.asString; //this is for starting JACK (for finding the device name) with a random name, so it works even if another JACK server is running
 					//on osx we use jack to list devices
 					p = Pipe.new(format("% -n % -r -d coreaudio -l", jackPath, tempName), "r");
 					l = p.getLine;
@@ -366,9 +366,9 @@ SoundLabHardware {
 	prStartJack { arg periodSize = 256, periodNum = 2;//, jackPath = "/usr/bin/jackd";
 		var cmd, options;
 		updatingCondition.test = false;
-/*		if("pidof jackd".unixCmdGetStdOut.size > 0, {
-			"jack was running -
-			this.prStopJack;
+		/*		if("pidof jackd".unixCmdGetStdOut.size > 0, {
+		"jack was running -
+		this.prStopJack;
 		});
 		while({"pidof jackd".unixCmdGetStdOut.size > 0}, {"waiting for jack to stop...".postln; 0.1.wait});*/
 		cmd = "exec " ++ jackPath ++
@@ -404,22 +404,22 @@ SoundLabHardware {
 		cmd.unixCmdGetStdOutThruOsc({|line|
 			"from jack: ".post; line.postln;
 			this.prParseJackOutput(line);
+		}, {
+			if(audioIsRunning, {
+				"Jack crashed, restarting!".warn;
+				startRoutine.stop;
+				// this.stopAudio;
+				"killall scsynth".unixCmd;
+				"killall supernova".unixCmd;
+				this.changed(\message, "Jack crashed, restarting!");
+				{this.startAudio;}.defer(5);//to give extra time
 			}, {
-				if(audioIsRunning, {
-					"Jack crashed, restarting!".warn;
-					startRoutine.stop;
-					// this.stopAudio;
-					"killall scsynth".unixCmd;
-					"killall supernova".unixCmd;
-					this.changed(\message, "Jack crashed, restarting!");
-					{this.startAudio;}.defer(5);//to give extra time
-					}, {
-						//when exits, signal routine
-						updatingCondition.test = true;
-						updatingCondition.signal;
-						jackWasStartedBySC = false;
-						"oscpipe: jack finished.".postln;
-				});
+				//when exits, signal routine
+				updatingCondition.test = true;
+				updatingCondition.signal;
+				jackWasStartedBySC = false;
+				"oscpipe: jack finished.".postln;
+			});
 		});
 		jackPeriodSize = periodSize;
 
@@ -434,11 +434,11 @@ SoundLabHardware {
 			"killall -9 jackd".unixCmd;
 			if(jackWasStartedBySC, {
 				updatingCondition.test = false;
-				}, {
-					1.wait;
-			}); //pause routine only if jack was started by sc, and thus only if exit action can resume it; otherwise wait
 			}, {
-				"jack not running".postln;
+				1.wait;
+			}); //pause routine only if jack was started by sc, and thus only if exit action can resume it; otherwise wait
+		}, {
+			"jack not running".postln;
 		});
 	}
 
@@ -490,9 +490,9 @@ SoundLabHardware {
 				("Netjack client " ++ removedName ++ " removed.").postln;
 				this.prRemoveClient(removedName);
 		});
-/*		(line.copyRange(0, 6) == "Name : ").if({
-			newJackDetected = true;
-			newJackName = line.copyToEnd(7)
+		/*		(line.copyRange(0, 6) == "Name : ").if({
+		newJackDetected = true;
+		newJackName = line.copyToEnd(7)
 		});*/
 	}
 
@@ -504,7 +504,7 @@ SoundLabHardware {
 			{
 				this.prConnectNetJackClientToSC(name);
 				this.prConnectAuxInputsToNetJackClient(name);
-					}.defer(2);//to give time for establishing connectino?
+			}.defer(2);//to give time for establishing connectino?
 		});
 
 	}
@@ -533,8 +533,8 @@ SoundLabHardware {
 	}
 
 	//not needed anymore
-/*	prDisconnectRedundantHardwareIns {arg channelArrayToDisconnect; //should be 0-based
-		SCJConnection.disconnect(channelArrayToDisconnect, channelArrayToDisconnect, "system:capture_", serverInputNameInJack);
+	/*	prDisconnectRedundantHardwareIns {arg channelArrayToDisconnect; //should be 0-based
+	SCJConnection.disconnect(channelArrayToDisconnect, channelArrayToDisconnect, "system:capture_", serverInputNameInJack);
 	}*/
 
 	/*
@@ -557,24 +557,24 @@ SoundLabHardware {
 		var numChannelsPerMADI, inOffset, outOffset;
 		if(sampleRate <= 48000, {
 			numChannelsPerMADI = 64;
-			}, {
-				numChannelsPerMADI = 32;
+		}, {
+			numChannelsPerMADI = 32;
 		});
 		if(whichMadiInput.isNil, {
 			inOffset = 0
-			}, {
-				inOffset = (whichMadiInput * numChannelsPerMADI) + 2;
+		}, {
+			inOffset = (whichMadiInput * numChannelsPerMADI) + 2;
 		});
 		if(whichMadiOutput.isNil, {
 			outOffset = 0
-			}, {
-				outOffset = (whichMadiOutput * numChannelsPerMADI) + 2;
+		}, {
+			outOffset = (whichMadiOutput * numChannelsPerMADI) + 2;
 		});
 
 		"SC_JACK_DEFAULT_OUTPUTS".setenv("".ccatList(numHwOutChToConnectTo.collect({|inc| "system:playback_" ++ (inc + 1 + outOffset).asString})).replace(" ", "").replace("[", "").replace("]", "").drop(1));
 		//fix audio in
-/*		if((sampleRate > 48000) && fixAudioIn, {
-			"SC_JACK_DEFAULT_INPUTS".setenv("".ccatList(16.collect({|inc| "system:capture_" ++ (inc + 1).asString})).replace(" ", "").replace("[", "").replace("]", "").drop(1)); //connect only 16 ins so rme input doesn't get into the decoder
+		/*		if((sampleRate > 48000) && fixAudioIn, {
+		"SC_JACK_DEFAULT_INPUTS".setenv("".ccatList(16.collect({|inc| "system:capture_" ++ (inc + 1).asString})).replace(" ", "").replace("[", "").replace("]", "").drop(1)); //connect only 16 ins so rme input doesn't get into the decoder
 		});*/ //this was needed for 117 with Presonus
 		"SC_JACK_DEFAULT_INPUTS".setenv("".ccatList(numHwInChToConnectTo.collect({|inc| "system:capture_" ++ (inc + 1 + inOffset).asString})).replace(" ", "").replace("[", "").replace("]", "").drop(1));
 
@@ -608,17 +608,17 @@ SoundLabHardware {
 			updatingCondition.test = true;
 			updatingCondition.signal;
 		}, onFailure: {
-				"addWaitTime <= 5: ".post; (addWaitTime <= 5).postln;
-				if(addWaitTime <= 5, {
-					addWaitTime = addWaitTime + 1; //increase waittimes
-					this.startAudio;//and try again
-					"Something went wrong! Trying to start again...".warn;
-					this.changed(\message, "Restarting audio on initialisation error...");
-					}, {
-						"I've tried couple times, still can't boot the server, something's really wrong... check the configuration".error;
-						this.changed(\message, "Error: Couldn't start audio. Check the configuration");
-				});
-				false;
+			"addWaitTime <= 5: ".post; (addWaitTime <= 5).postln;
+			if(addWaitTime <= 5, {
+				addWaitTime = addWaitTime + 1; //increase waittimes
+				this.startAudio;//and try again
+				"Something went wrong! Trying to start again...".warn;
+				this.changed(\message, "Restarting audio on initialisation error...");
+			}, {
+				"I've tried couple times, still can't boot the server, something's really wrong... check the configuration".error;
+				this.changed(\message, "Error: Couldn't start audio. Check the configuration");
+			});
+			false;
 		});
 	}
 
@@ -712,9 +712,9 @@ SoundLabHardware {
 			if([44100, 48000, 88200, 96000].includes(newSR), {
 				// "prSampleRateIsCorrectOrNil: true".postln;
 				^true;
-				}, {
-					// "prSampleRateIsCorrectOrNil: false".postln;
-					^false;
+			}, {
+				// "prSampleRateIsCorrectOrNil: false".postln;
+				^false;
 			});
 		}, {
 			^true;
@@ -800,8 +800,8 @@ Fireface {
 			// starting = true;
 			this.prStartDbusServer;
 			{this.prInitDefaults}.defer(2);
-			}, {
-				"Fireface seems already initialized, NOT starting DBus server".postln;
+		}, {
+			"Fireface seems already initialized, NOT starting DBus server".postln;
 		});
 	}
 
@@ -814,8 +814,8 @@ Fireface {
 				// this.sendQueuedMessages;
 				this.prInitDefaults; //this sends queued messages as well
 			}.defer(1); //how's that delay? enough?
-			}, {
-				"Fireface dbus server seems already running, NOT initializing".postln;
+		}, {
+			"Fireface dbus server seems already running, NOT initializing".postln;
 		});
 
 	}
@@ -863,7 +863,7 @@ Fireface {
 		active = true;
 		starting = false;
 		this.sendQueuedMessages;
-	// }.defer(2); //more time?
+		// }.defer(2); //more time?
 	}
 
 	sendQueuedMessages{
@@ -955,39 +955,39 @@ Fireface {
 	phantom_ {|channel = 0/*0-3*/, state /*bool or 0-1*/|
 		var phantomRawValue, rawValuesArray, dbusCmd;
 		// if(state.notNil, {
-			"Setting Fireface phantom".postln;
-			//store in the class
-			phantomState[channel] = state.asBoolean;
+		"Setting Fireface phantom".postln;
+		//store in the class
+		phantomState[channel] = state.asBoolean;
 
-			/*
-			mic 7 on -> 65537
-			mic 7 off -> 65536
-			mic 8 on -> 131074
-			mic 8 off -> 131072
-			mic 9 on -> 262148
-			mic 9 off -> 262144
-			mic 10 on -> 524296
-			mic 10 off -> 524288
-			*/
-			//method call sender=:1.88 -> dest=:1.89 serial=220138 path=/org/ffado/Control/DeviceManager/ ++ id ++ /Control/Phantom; interface=org.ffado.Control.Element.Discrete; member=setValue
+		/*
+		mic 7 on -> 65537
+		mic 7 off -> 65536
+		mic 8 on -> 131074
+		mic 8 off -> 131072
+		mic 9 on -> 262148
+		mic 9 off -> 262144
+		mic 10 on -> 524296
+		mic 10 off -> 524288
+		*/
+		//method call sender=:1.88 -> dest=:1.89 serial=220138 path=/org/ffado/Control/DeviceManager/ ++ id ++ /Control/Phantom; interface=org.ffado.Control.Element.Discrete; member=setValue
 
-			// int32 524296
+		// int32 524296
 
-			rawValuesArray = [
-				[65536, 65537],
-				[131072, 131074],
-				[262144, 262148],
-				[524288, 524296]
-			];
-			phantomRawValue = rawValuesArray[channel][state.asInteger];
-			// phantomRawValue.postln;
-			// dbusCmd = "dbus-send --print-reply --dest=org.ffado.Control /org/ffado/Control/DeviceManager/" ++ id ++ "/Control/Phantom org.ffado.Control.Element.Discrete.setValue int32:" ++ phantomRawValue.asString;
-			// dbusCmd.postln;
-			// dbusCmd.unixCmd(postOutput: false);
-			this.sendDBus("Control/Phantom", "Discrete", "setValue", "int32:" ++ phantomRawValue.asString);
-			// ^[channel, state];
-			// }, {
-			// ^phantomState[channel];
+		rawValuesArray = [
+			[65536, 65537],
+			[131072, 131074],
+			[262144, 262148],
+			[524288, 524296]
+		];
+		phantomRawValue = rawValuesArray[channel][state.asInteger];
+		// phantomRawValue.postln;
+		// dbusCmd = "dbus-send --print-reply --dest=org.ffado.Control /org/ffado/Control/DeviceManager/" ++ id ++ "/Control/Phantom org.ffado.Control.Element.Discrete.setValue int32:" ++ phantomRawValue.asString;
+		// dbusCmd.postln;
+		// dbusCmd.unixCmd(postOutput: false);
+		this.sendDBus("Control/Phantom", "Discrete", "setValue", "int32:" ++ phantomRawValue.asString);
+		// ^[channel, state];
+		// }, {
+		// ^phantomState[channel];
 		// });
 	}
 
@@ -1036,8 +1036,8 @@ Fireface {
 				this.prSampleRate_(sr);
 				0.5.wait;
 				this.autoSync_(true); //back to proper autosync
-				},{
-					this.prSampleRate_(sr); //set right away if it's in master mode
+			},{
+				this.prSampleRate_(sr); //set right away if it's in master mode
 			});
 		});
 
@@ -1057,7 +1057,7 @@ Fireface {
 			this.sendDBus("Control/sysclock_freq", "Discrete", "setValue", "int32:" ++ sr.asInteger.asString);
 			this.sendDBus("Generic/SamplerateSelect", "Enum", "select", "int32:" ++ sampleRateNumber.asInteger.asString);
 		}, {
-				"Fireface: no proper sampleRate provided, valid are: [32000, 44100, 48000, 64000, 88200, 96000, 128000, 176400, 192000]".warn;
+			"Fireface: no proper sampleRate provided, valid are: [32000, 44100, 48000, 64000, 88200, 96000, 128000, 176400, 192000]".warn;
 		});
 	}
 
@@ -1090,25 +1090,25 @@ Fireface {
 
 	//also uise this to detect when the interface gets disconnected and close/restart dbus server
 
-/*	getStatus {|path = \SamplerateSelect, interface = \Element, member = \canChangeValue, value, post = true| /*these can be Symbols or Strings; value needs to be in the format int32:0*/
-		var dbusCmd;
-		if(post, {"Getting Fireface status".postln;});
-		dbusCmd = "dbus-send --print-reply --dest=org.ffado.Control /org/ffado/Control/DeviceManager/" ++ id ++ "/Generic/" ++ path.asString ++ " org.ffado.Control.Element." ++ interface.asString ++ "." ++ member.asString;
-		value !? {dbusCmd = dbusCmd + value};
-		// dbusCmd.postln;
-		dbusCmd.unixCmd(postOutput: post);
+	/*	getStatus {|path = \SamplerateSelect, interface = \Element, member = \canChangeValue, value, post = true| /*these can be Symbols or Strings; value needs to be in the format int32:0*/
+	var dbusCmd;
+	if(post, {"Getting Fireface status".postln;});
+	dbusCmd = "dbus-send --print-reply --dest=org.ffado.Control /org/ffado/Control/DeviceManager/" ++ id ++ "/Generic/" ++ path.asString ++ " org.ffado.Control.Element." ++ interface.asString ++ "." ++ member.asString;
+	value !? {dbusCmd = dbusCmd + value};
+	// dbusCmd.postln;
+	dbusCmd.unixCmd(postOutput: post);
 	}*/
 
 	sendDBus {|path = "Generic/SamplerateSelect", interface = "MatrixMixer", member = "setValue", value, post = false, synchronous = false, updateLastCmdTime = true| /*path, interface, member - these can be Symbols or Strings; value needs to be in the format 'int32:0 int32:1' etc; synchronous will return (synchronously) value from the command; updateLastCmdTime should be set to true for all messages except continuous polling*/
 		//eventually add queuing here
 		if(active, {
 			this.prSendDBus(path, interface, member, value, post, synchronous, updateLastCmdTime);
-			}, {
-				// messageQueue.add([path, interface, member, value, post, synchronous, updateLastCmdTime]);
-				messageQueue.addFirst([path, interface, member, value, post, synchronous, updateLastCmdTime]); //changed to include in front and remove from the end because of erratic errors...
-				if(starting.not, {
-					this.reinit;
-				});
+		}, {
+			// messageQueue.add([path, interface, member, value, post, synchronous, updateLastCmdTime]);
+			messageQueue.addFirst([path, interface, member, value, post, synchronous, updateLastCmdTime]); //changed to include in front and remove from the end because of erratic errors...
+			if(starting.not, {
+				this.reinit;
+			});
 		});
 	}
 
@@ -1182,26 +1182,26 @@ Fireface {
 /*
 method call sender=:1.761 -> dest=:1.762 serial=117851 path=/org/ffado/Control/DeviceManager/000a3500c1da0056/Generic/SamplerateSelect; interface=org.ffado.Control.Element.Element; member=canChangeValue
 method return sender=:1.762 -> dest=:1.761 reply_serial=117851
-   boolean true
+boolean true
 method call sender=:1.761 -> dest=:1.762 serial=117852 path=/org/ffado/Control/DeviceManager/000a3500c1da0056/Generic/ClockSelect; interface=org.ffado.Control.Element.Element; member=canChangeValue
 method return sender=:1.762 -> dest=:1.761 reply_serial=117852
-   boolean true
+boolean true
 method call sender=:1.761 -> dest=:1.762 serial=117853 path=/org/ffado/Control/DeviceManager/000a3500c1da0056/Generic/Nickname; interface=org.ffado.Control.Element.Element; member=canChangeValue
 method return sender=:1.762 -> dest=:1.761 reply_serial=117853
-   boolean false
+boolean false
 method call sender=:1.761 -> dest=:1.762 serial=117854 path=/org/ffado/Control/DeviceManager/000a3500c1da0056/Generic/StreamingStatus; interface=org.ffado.Control.Element.Enum; member=selected
 method return sender=:1.762 -> dest=:1.761 reply_serial=117854
-   int32 0
+int32 0
 method call sender=:1.761 -> dest=:1.762 serial=117855 path=/org/ffado/Control/DeviceManager/000a3500c1da0056/Generic/StreamingStatus; interface=org.ffado.Control.Element.Enum; member=getEnumLabel
-   int32 0
+int32 0
 method return sender=:1.762 -> dest=:1.761 reply_serial=117855
-   string "Idle"
+string "Idle"
 method call sender=:1.761 -> dest=:1.762 serial=117856 path=/org/ffado/Control/DeviceManager/000a3500c1da0056/Generic/SamplerateSelect; interface=org.ffado.Control.Element.Enum; member=count
 method return sender=:1.762 -> dest=:1.761 reply_serial=117856
-   int32 1
+int32 1
 method call sender=:1.761 -> dest=:1.762 serial=117857 path=/org/ffado/Control/DeviceManager/000a3500c1da0056/Generic/SamplerateSelect; interface=org.ffado.Control.Element.Enum; member=getEnumLabel
-   int32 0
+int32 0
 method return sender=:1.762 -> dest=:1.761 reply_serial=117857
-   string "48000"
+string "48000"
 
 */
