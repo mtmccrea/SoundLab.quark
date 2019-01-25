@@ -36,9 +36,18 @@ SoundLab {
 	// Thus SC will boot with s.option.numOutputBusChannels = numHarwareOuts * 3.
 	init {
 
-		File.use( File.realpath(this.class.filenameSymbol).dirname ++ "/" ++ configFileName, "r", { |f|
-			config = f.readAllString.interpret;
+		var filePath = File.realpath(this.class.filenameSymbol).dirname +/+ configFileName;
+
+		if(File.exists(filePath), {
+
+			File.use(filePath, "r", { |f|
+				config = f.readAllString.interpret;
+			});
+
+		}, {
+			Error.throw("FIle not found at" + filePath)
 		});
+
 
 		// defaults
 		labName				= config.labName ?? {""};
