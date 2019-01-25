@@ -42,7 +42,7 @@ SoundLabHardware {
 	var <stereoInputArrayOffset;
 	var <stereoOutputArrayOffset;
 	// var firstOutput = 66, firstInput = 66;//0 for 117, 64 for 205, at 96k!
-	var cardID, <sampleRate, /*<ins, <outs, */midiPort, <server;
+	var <cardID, <sampleRate, /*<ins, <outs, */midiPort, <server;
 	// var getCardID, setSR, initMIDI, sendSysex, startJack, stopJack, initAll, prStartServer;
 	var <audioIsRunning, parametersSetting;//bools for status
 	var updatingCondition, isUpdating;
@@ -111,8 +111,8 @@ SoundLabHardware {
 		this.prGetCardID;
 		this.prInitMIDI;
 		this.changed(\updatingConfiguration, 1.0);
-		if(cardNameIncludes.isNil, {
-			server.options.device_("JackRouter");//osx hack?
+		if(thisProcess.platform.name == \osx, {
+			server.options.device_("JackRouter");//osx uses JackRouter
 		});
 		// this.changed(\audioIsRunning, false);
 	}
@@ -165,10 +165,16 @@ SoundLabHardware {
 				updatingCondition.wait;
 				addWaitTime.wait;
 				// "--before setting jack connections".postln;
-				this.prSetJackConnections;
+				if(thisProcess.platform.name == \linux, {
+					this.prSetJackConnections;
+				});
 				//Fireface - phantom and Routing
 				// this.setFfDefaultRouting; //automatically inside fireface class
 				// this.recallFfPhantom;
+				//set number of channels for JackRouter on macos
+				if(thisProcess.platform.name == \osx, {
+					this.setJackRouterInsOuts(serverIns, serverOuts);
+				});
 				this.changed(\updatingConfiguration, 0.9);
 				// "--before starting server".postln;
 				this.prStartServer;
@@ -252,28 +258,60 @@ SoundLabHardware {
 	prGetCardID {/* arg cardNameIncludes = "RME";*/
 		//get card ID
 		var p, l, extractedID;
+		"getting cardID...".postln;
 		postf("cardNameIncludes: %\n", cardNameIncludes);
 		if(cardNameIncludes.notNil, {
-			if(cardNameIncludes.isKindOf(SimpleNumber), {
-				cardID = cardNameIncludes;
-			}, {
-				p = Pipe.new("cat /proc/asound/cards", "r");
-				l = p.getLine;
-				while({l.notNil}, {
-					// l.postln;
-					if(l.contains(cardNameIncludes), {
-						extractedID = l.split($ )[1];
-						// "l.split($ ): ".post; l.split($ ).postln;
-						// extractedID.postln;
-						if(extractedID.size > 0, { //use only lines, where there is something as the second argument
-							cardID = extractedID.asInteger;
-							l.postln; "cardID: ".post; cardID.postln;
-						});
-					});
+			thisProcess.platform.name.switch(
+				\linux, {
+					if(cardNameIncludes.isKindOf(SimpleNumber), {
+						cardID = cardNameIncludes;
+					}, {
+						// thisProcess.platform.name.postln;
+
+						p = Pipe.new("cat /proc/asound/cards", "r");
+						l = p.getLine;
+						while({l.notNil}, {
+							// l.postln;
+							if(l.contains(cardNameIncludes), {
+								extractedID = l.split($ )[1];
+								// "l.split($ ): ".post; l.split($ ).postln;
+								// extractedID.postln;
+								if(extractedID.size > 0, { //use only lines, where there is something as the second argument
+									cardID = extractedID.asInteger;
+									// l.postln; "cardID: ".post; cardID.postln;
+								});
+							});
+							l = p.getLine;
+						});    // run until l = nil
+						p.close; // close the pipe
+					})
+				},
+				\osx, {
+					var tempName = this.hash.asString;
+					//on osx we use jack to list devices
+					p = Pipe.new(format("% -n % -r -d coreaudio -l", jackPath, tempName), "r");
 					l = p.getLine;
-				});    // run until l = nil
-				p.close; // close the pipe
-			});
+					while({l.notNil}, {
+						var thisString, nameIndex;
+						// l.postln;
+						if(l.contains(cardNameIncludes), {
+
+							//doesn't work
+							// thisString = l.split($,).first;
+							// nameIndex = thisString.find("name = ");
+							// cardID = thisString.copyToEnd(nameIndex).split($=).last.copyToEnd(1).replace("'", "");
+							//we need this id instead:
+							nameIndex = l.findAll("name = ").last;
+							cardID = l.copyToEnd(nameIndex).split($=).last.split($')[1];
+
+							// l.postln; "cardID: ".post; cardID.postln;
+						});
+						l = p.getLine;
+					});    // run until l = nil
+					p.close; // close the pipe
+				},
+				{Error.throw(format(": only linux and osx platforms are supported", this.class.name))}
+			);
 		}, {
 			cardID = 0;
 		});
@@ -335,15 +373,30 @@ SoundLabHardware {
 		while({"pidof jackd".unixCmdGetStdOut.size > 0}, {"waiting for jack to stop...".postln; 0.1.wait});*/
 		cmd = "exec " ++ jackPath ++
 		" -R ";
+		thisProcess.platform.name.switch(
+			\linux, {cmd = cmd ++ " -dalsa -H"},// -dhw:"++cardID.asString;
+			\osx, {cmd = cmd ++ " -dcoreaudio"},
+			{(this.class.name ++ ": error in prStartJack - only linux and macOS is supported").warn}
+		);
+		// if(cardNameIncludes.notNil, {
+		// 	cmd = cmd ++ " -dalsa -H -dhw:"++cardID.asString; //assuming linux
+		// 	}, {
+		// 		cmd = cmd ++ " -dcoreaudio"; //assuming osx
+		// });
 		if(cardNameIncludes.notNil, {
-			cmd = cmd ++ " -dalsa -H -dhw:"++cardID.asString; //assuming linux
-		}, {
-			cmd = cmd ++ " -dcoreaudio"; //assuming osx
+			thisProcess.platform.name.switch(
+				\linux, {cmd = cmd ++ " -dhw:"++cardID.asString},// -dhw:"++cardID.asString;
+				\osx, {cmd = cmd ++ " -d"++cardID.asString;},
+				{(this.class.name ++ ": error in prStartJack - only linux and macOS is supported").warn}
+			)
 		});
 		cmd = cmd ++ " -r"++sampleRate.asString++
 		" -p"++periodSize.asString++
-		" -n"++periodNum.asString++
+		// " -n"++periodNum.asString++
 		" -D";//++
+		if(thisProcess.platform.name == \linux, {
+			cmd = cmd ++ " -n"++periodNum.asString; //numperiods only valid on ALSA (linux)
+		});
 		// " -i"++ins.asString++ //needs to be exact as MADI expects, not needed?
 		// " -o"++outs.asString;
 		// " -o"++ins.asString; //needs to be exact as MADI expects, not needed?
@@ -375,6 +428,7 @@ SoundLabHardware {
 
 	prStopJack {
 		"killall -9 jackd".unixCmd; //should be PID based....
+		"killall -9 jackdmp".unixCmd; //should be PID based....
 		if("pidof jackd".unixCmdGetStdOut.size > 0, {
 			"killall -9 jackdbus".unixCmd;
 			"killall -9 jackd".unixCmd;
@@ -695,6 +749,29 @@ SoundLabHardware {
 			^this.fireface.phantomState;
 		});
 	}
+
+	//JackRouter - for macOS
+	setJackRouterInsOuts {arg numIns, numOuts;
+		if(thisProcess.platform.name == \osx, {
+			var configStr, configArr;
+			var jackRouterPath = "~/Library/Preferences/JAS.jpil".standardizePath;
+			File.use(jackRouterPath, "r", {|file| configStr = file.readAllString});
+			// "input string: ".post; configStr.postln;
+			configArr = configStr.split($\t);
+			configArr[1] = numIns.asString;
+			configArr[3] = numOuts.asString;
+			configStr = "".catList(configArr.collect({|item| "\t " ++ item}));
+			// "output string: ".post; configStr.postln;
+			//save here
+			File.use(jackRouterPath, "w", {|file|
+				file.write(configStr);
+				format("JackRouter configuration changed to % ins and % outs", numIns, numOuts).postln;
+			});
+		}, {
+			"configuring JackRouter is supported only on macOS".warn;
+		});
+	}
+
 }
 
 //putting Fireface methods to its own class
