@@ -5,7 +5,7 @@
 
 SoundLab {
 	// copyArgs
-	var <initSR, <loadGUI, <usingSLHW, <>usingKernels, <configFileName, <osx;
+	var <initSR, <loadGUI, <usingSLHW, <>usingKernels, <configFileName;
 
 	var <>xfade = 0.2,  <>debug=true, <kernels;
 	var <globalAmp, <numSatChans, <numSubChans, <totalArrayChans, <numKernelChans, <>rotateDegree, <>xOverHPF, <>xOverLPF, <>shelfFreq;
@@ -25,8 +25,8 @@ SoundLab {
 	var <decoderLib, <synthLib, <loadedDelDistGain;
 	var <slhw;
 
-	*new { |initSR=44100, loadGUI=true, useSLHW=true, useKernels=true, configFileName="CONFIG_205.scd", usingOSX=false|
-		^super.newCopyArgs(initSR, loadGUI, useSLHW, useKernels, configFileName, usingOSX).init;
+	*new { |initSR=44100, loadGUI=true, useSLHW=true, useKernels=true, configFileName="CONFIG_205.scd"|
+		^super.newCopyArgs(initSR, loadGUI, useSLHW, useKernels, configFileName).init;
 	}
 
 	// NOTE: Jack will create numHarwareOuts * 3 for routing to
@@ -120,6 +120,10 @@ SoundLab {
 		rotated = rotated ?? {false};
 		matrixDecoderNames = [];
 
+		config.jconvolverPath !? {
+			Jconvolver.executablePath_(config.jconvolverPath)
+		};
+
 		this.prInitRigDimensions;
 		this.prInitDecoderAttributes;
 
@@ -173,7 +177,7 @@ SoundLab {
 
 				// get an up-to-date list of the kernels available at this sample rate
 				kernels = [];
-				"kernelDirPathName: ".post; kernelDirPathName.postln;
+				// "kernelDirPathName: ".post; kernelDirPathName.postln;
 				kernelDirPathName !? {
 					kernelDirPathName.entries.do({ |sr_pn|
 						var sr, nm, knm, result;
@@ -632,10 +636,33 @@ NO NEW DECODER STARTED");
 
 				"Generating jconvolver configuration file...".postln;
 
-				osx.if{ // for osx
-					Jconvolver.jackScOutNameDefault = "scsynth:out";
-					Jconvolver.executablePath_("/usr/local/bin/jconvolver");
+				config.jconvolverPath !? {
+					Jconvolver.executablePath_(config.jconvolverPath);
 				};
+
+				//name guessing, for now here
+
+				thisProcess.platform.name.switch(
+					\osx, {
+						if(Server.program.asString.endsWith("scsynth"), {
+							Jconvolver.jackScOutNameDefault = "scsynth:out";
+						}, {
+							Jconvolver.jackScOutNameDefault = "supernova:out"; //not tested
+						})
+					},
+					\linux, {
+						if(Server.program.asString.endsWith("scsynth"), {
+							Jconvolver.jackScOutNameDefault = "SuperCollider:out_";
+						}, {
+							Jconvolver.jackScOutNameDefault = "supernova:out"; //not tested
+						})
+					}
+				);
+
+				// osx.if{ // for osx
+				// 	Jconvolver.jackScOutNameDefault = "scsynth:out";
+				// 	Jconvolver.executablePath_("/usr/local/bin/jconvolver");
+				// };
 
 				nextjconvinbus = if( jconvinbus.notNil,
 					{(jconvinbus + numHardwareOuts).wrap(1, numHardwareOuts*2)}, // replacing another instance

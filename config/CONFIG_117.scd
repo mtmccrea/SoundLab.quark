@@ -29,8 +29,9 @@ IdentityDictionary(know: true)
 	// \midiPortName,			nil, // nil for no MIDI
 	\cardNameIncludes,		"RME",
 	// \cardNameIncludes,		nil, // for OSX
-	\jackPath,				"/usr/bin/jackd",
-	// \jackPath,				"/usr/local/bin/jackdmp", // for osx
+	// \jackPath,				"/usr/bin/jackd",
+	\jackPath,				"/usr/local/bin/jackdmp", // for osx
+	\jconvolverPath,				"/usr/local/bin/jconvolver", // for osx
 	\fixAudioInputGoingToTheDecoder, true,
 	\hwPeriodSize, 			256,
 	\hwPeriodNum,			1,
