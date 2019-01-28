@@ -1,0 +1,19 @@
+(
+          name: "SoundLab",
+       summary: "Routing and decoding system for DXARTS sound labs.",
+        author: ["Michael McCrea", "Marcin Pączkowski"],
+     copyright: "DXARTS, 2012-2019",
+       license: "GPL v3",
+       version: "0.2",
+        schelp: "SoundLab",
+          test: "",
+           url: "http://github.com/mtmccrea/SoundLab.quark",
+  dependencies: [
+                    "Ctk",
+                    "http://github.com/dyfer/JconvolverSC.quark",
+                    "http://github.com/dyfer/WsGUI.quark",
+                    "http://github.com/dyfer/OscPipe.quark",
+                ],
+  isCompatible: true ,
+         since: ""
+)
