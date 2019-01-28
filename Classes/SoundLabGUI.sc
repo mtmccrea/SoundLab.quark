@@ -601,7 +601,7 @@ SoundLabGUI {
 
 	postState {
 		stateTxt.string_("<strong>"
-			++ "\t" ++ sl.sampleRate ++ "\n "
+			++ "\t" ++ sl.sampleRate.asInteger ++ "\n "
 			++ "\t" ++ sl.stereoActive.if({"Enabled"},{"Disabled"}) ++ "\n "
 			++ "\t" ++ sl.rotated.if({"YES"},{"NO"}) ++ "\n "
 			++ "\t" ++ sl.curDecoderPatch.decoderName ++ "\n "
@@ -833,7 +833,7 @@ SoundLabGUI {
 		pendingKernel = nil;
 
 		postf("\nCurrent decoder:\t%\nCurrent SR:\t%\nCurKernel:\t%\n",
-			sl.curDecoderPatch.decoderName, sl.sampleRate, sl.curKernel);
+			sl.curDecoderPatch.decoderName, sl.sampleRate.asInteger, sl.curKernel);
 		loadCondition !? {loadCondition.test_(true).signal}
 	}
 

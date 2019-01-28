@@ -224,7 +224,7 @@ SoundLab {
 					if( kernels.collect(_.asSymbol).includes((namedFolder ++ "/" ++ kernelFolder).asSymbol), {
 						var newPath;
 						// update curKernel to new SR path
-						newPath = format( "%%/%/%/", config.kernelsPath, server.sampleRate, namedFolder, kernelFolder);
+						newPath = format( "%%/%/%/", config.kernelsPath, server.sampleRate.asInteger, namedFolder, kernelFolder);
 						File.exists(newPath).if({
 							requestKernel = newPath;
 						},{ this.setNoKernel });
@@ -421,7 +421,7 @@ SoundLab {
 	checkKernelFolder { |pendingKernel|
 		var str;
 		// build the path to the kernel folder
-		str = kernelDirPathName.absolutePath ++ server.sampleRate.asString ++ "/" ++ pendingKernel;
+		str = kernelDirPathName.absolutePath ++ server.sampleRate.asInteger.asString ++ "/" ++ pendingKernel;
 
 		^File.exists(str).if({
 			str
@@ -848,7 +848,7 @@ NO NEW DECODER STARTED");
 		)
 	}
 
-	sampleRate {if(usingSLHW, {^slhw.server.sampleRate}, {^server.sampleRate})}
+	sampleRate {if(usingSLHW, {^slhw.server.sampleRate.asInteger}, {^server.sampleRate.asInteger})}
 
 	setNoKernel {
 		curKernel = \basic_balance;
@@ -1880,7 +1880,7 @@ NO NEW DECODER STARTED");
 		server.waitForBoot({
 			rbtTryCnt = rbtTryCnt+1;
 			// in case sample rate isn't set correctly the first time (SC bug)
-			if( server.sampleRate == initSR, {
+			if( server.sampleRate.asInteger == initSR, {
 				rbtTryCnt = 0;
 				this.prLoadServerSide(server);
 			},{ fork{
@@ -1898,7 +1898,7 @@ NO NEW DECODER STARTED");
 	prFindKernelDir { |kernelName|
 		var kernelDir_pn;
 		kernelDirPathName.folders.do({ |sr_pn|
-			if( sr_pn.folderName.asInt == server.sampleRate, {
+			if( sr_pn.folderName.asInteger == server.sampleRate.asInteger, {
 				sr_pn.folders.do({ |kernel_pn|
 					if( kernel_pn.folderName.asSymbol == kernelName, {
 						("found kernel match"+kernel_pn).postln;

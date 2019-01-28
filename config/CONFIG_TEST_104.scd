@@ -4,8 +4,8 @@
 IdentityDictionary(know: true)
 .putPairs([
 	\labName,				"test Marcin (117 kernels)",
-	\numHardwareOuts, 		22,
-	\numHardwareIns, 		14,
+	\numHardwareOuts, 		64,
+	\numHardwareIns, 		64,
 	\numSatChans,			24,
 	\numSubChans, 			4, //2, // TODO, this is actually 1
 	\defaultDecoderName,	\Sph_24ch_all,
@@ -22,11 +22,14 @@ IdentityDictionary(know: true)
 
 	// \useFireface, 			true,
 	\useFireface, 			false, // for testing
+
+	// \midiDeviceName,			"828mk2",
+	\midiDeviceName,			"MADIface USB (23824613)",
 	// \midiPortName,			"External MIDI- MIDI 1",
-	\midiDeviceName,			"828mk2",
-	\midiPortName,			"MIDI Port", // nil for no MIDI
-	// \cardNameIncludes,		"RME",
-	\cardNameIncludes,		"MOTU",
+	\midiPortName,			"Port 1",
+	// \midiPortName,			"MIDI Port", // nil for no MIDI
+	\cardNameIncludes,		"RME",
+	// \cardNameIncludes,		"MOTU",
 	// \jackPath,				"/usr/bin/jackd",
 	\jackPath,				"/usr/local/bin/jackdmp", // for osx
 	\jconvolverPath,				"/usr/local/bin/jconvolver", // for osx
