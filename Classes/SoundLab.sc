@@ -10,7 +10,7 @@ SoundLab {
 	var <>xfade = 0.2,  <>debug=true, <kernels;
 	var <globalAmp, <numSatChans, <numSubChans, <totalArrayChans, <numKernelChans, <>rotateDegree, <>xOverHPF, <>xOverLPF, <>shelfFreq;
 	var <hwInCount, <hwInStart;
-	var <config, <labName, <numHardwareOuts, <numHardwareIns, <stereoChanIndex, <>defaultDecoderName, <>kernelDirPathName, <>decoderMatricesPath;
+	var <config, <labName, <numHardwareOuts, <numHardwareIns, <stereoChanIndex, <>defaultDecoderName, <>kernelDirPathName, <>decoderMatricesPath, <configRelativePathName = "../config/";
 
 	var <server, <gui, <curKernel, <stereoActive, <isMuted, <isAttenuated, <stateLoaded, <rotated;
 	var <clipMonitoring, <curDecoderPatch, rbtTryCnt;
@@ -36,7 +36,12 @@ SoundLab {
 	// Thus SC will boot with s.option.numOutputBusChannels = numHarwareOuts * 3.
 	init {
 
-		var filePath = File.realpath(this.class.filenameSymbol).dirname +/+ configFileName;
+		var filePath;
+		if(PathName(configFileName).isAbsolutePath, {
+			filePath = configFileName;
+		}, {
+			filePath = File.realpath(this.class.filenameSymbol).dirname +/+ configRelativePathName ++ configFileName;
+		});
 
 		if(File.exists(filePath), {
 
