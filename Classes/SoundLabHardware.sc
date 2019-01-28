@@ -310,7 +310,7 @@ SoundLabHardware {
 					});    // run until l = nil
 					p.close; // close the pipe
 				},
-				{Error.throw(format(": only linux and osx platforms are supported", this.class.name))}
+				{Error(format("%: only linux and osx platforms are supported", this.class.name)).throw}
 			);
 		}, {
 			cardID = 0;

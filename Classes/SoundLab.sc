@@ -45,7 +45,7 @@ SoundLab {
 			});
 
 		}, {
-			Error.throw("FIle not found at" + filePath)
+			Error("FIle not found at" + filePath).throw;
 		});
 
 
