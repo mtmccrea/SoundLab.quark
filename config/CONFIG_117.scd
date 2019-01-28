@@ -24,11 +24,9 @@ IdentityDictionary(know: true)
 	/* SoundLabHardware settings */
 
 	\useFireface, 			false,
-	\midiDeviceName,			"External MIDI- MIDI 1",
-	\midiPortName,			"External MIDI- MIDI 1",
-	// \midiPortName,			nil, // nil for no MIDI
+	\midiDeviceName,			"MADIface USB (23824613)",
+	\midiPortName,			"Port 1",
 	\cardNameIncludes,		"RME",
-	// \cardNameIncludes,		nil, // for OSX
 	// \jackPath,				"/usr/bin/jackd",
 	\jackPath,				"/usr/local/bin/jackdmp", // for osx
 	\jconvolverPath,				"/usr/local/bin/jconvolver", // for osx
