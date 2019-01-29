@@ -7,7 +7,7 @@ _Set of classes for managing sound labs in DXARTS: Raitt 113, 117, 205._
 After installing this Quark, use following line in your `startup.scd` to start the whole setup:
 
 ```supercollider
-l = SoundLab.new(48000, useKernels: true, configFileName: "CONFIG_117.scd");
+l = SoundLab.new("CONFIG_117.scd");
 ```
 changing the appropriate parameters. `ConfigFileName` should refer to the configuration file for the desired room.
 

@@ -5,12 +5,12 @@
 
 SoundLab {
 	// copyArgs
-	var <initSR, <loadGUI, <usingSLHW, <>usingKernels, <configFileName;
+	var <configFileName, <>usingKernels, <loadGUI, <usingSLHW;
 
 	var <>xfade = 0.2,  <>debug=true, <kernels;
 	var <globalAmp, <numSatChans, <numSubChans, <totalArrayChans, <numKernelChans, <>rotateDegree, <>xOverHPF, <>xOverLPF, <>shelfFreq;
 	var <hwInCount, <hwInStart;
-	var <config, <labName, <numHardwareOuts, <numHardwareIns, <stereoChanIndex, <>defaultDecoderName, <>kernelDirPathName, <>decoderMatricesPath, <configRelativePathName = "../config/";
+	var <config, <labName, <numHardwareOuts, <numHardwareIns, <stereoChanIndex, <>defaultDecoderName, <>kernelDirPathName, <>decoderMatricesPath, <configRelativePathName = "../config/", <initSR;
 
 	var <server, <gui, <curKernel, <stereoActive, <isMuted, <isAttenuated, <stateLoaded, <rotated;
 	var <clipMonitoring, <curDecoderPatch, rbtTryCnt;
@@ -25,8 +25,8 @@ SoundLab {
 	var <decoderLib, <synthLib, <loadedDelDistGain;
 	var <slhw;
 
-	*new { |initSR=44100, loadGUI=true, useSLHW=true, useKernels=true, configFileName="CONFIG_205.scd"|
-		^super.newCopyArgs(initSR, loadGUI, useSLHW, useKernels, configFileName).init;
+	*new { |configFileName="CONFIG_205.scd", useKernels=true, loadGUI=true, useSLHW=true|
+		^super.newCopyArgs(configFileName, useKernels, loadGUI, useSLHW).init;
 	}
 
 	// NOTE: Jack will create numHarwareOuts * 3 for routing to
@@ -69,6 +69,7 @@ SoundLab {
 		xOverLPF			= config.xOverLPF ?? {80};		// default xover 80Hz if not specified
 		jconvHWOutChannel	= config.jconvHWOutChannel ?? {0};	// default xover 80Hz if not specified
 		stereoGain			= config.stereoGain ?? 0;		// gain in dB to balance stereo with decoders
+		initSR = config.initSampleRate;
 		// Note: shelfFreq in config takes precedence over listeningDiameter
 		// order / pi * 340 / listeningDiameter
 		// default shelf 400Hz (for dual band decoders)
@@ -1830,7 +1831,6 @@ NO NEW DECODER STARTED");
 	}
 
 	prInitSLHW { |initSR|
-		//for linux
 		slhw = SoundLabHardware.new(
 			false, 						//useSupernova
 			config.fixAudioInputGoingToTheDecoder, //fixAudioInputGoingToTheDecoder
@@ -1990,12 +1990,12 @@ Jconvolver.executablePath_("/usr/local/bin/jconvolver");
 
 // InterfaceJS.nodePath = "/usr/local/bin/node";
 
-//initSR=96000, loadGUI=true, useSLHW=true, useKernels=true, configFileName="CONFIG_205.scd"
-// l = SoundLab(44100, loadGUI:true, useSLHW:false, useKernels:false, configFileName:"CONFIG_TEST_205.scd")
-// l = SoundLab(44100, loadGUI:true, useSLHW:false, useKernels:false, configFileName:"CONFIG_TEST_117.scd")
-l = SoundLab(44100, loadGUI:true, useSLHW:false, useKernels:true, configFileName:"CONFIG_TEST_117.scd")
-// l = SoundLab(44100, loadGUI: false, useSLHW:false, useKernels:false, configFileName:"CONFIG_TEST_117.scd")
-// l = SoundLab(44100, loadGUI:true, useSLHW:false, useKernels:false, configFileName:"CONFIG_TEST_113.scd")
+//configFileName="CONFIG_205.scd", useKernels=true, loadGUI=true, useSLHW=true
+// l = SoundLab(configFileName:"CONFIG_TEST_205.scd", useKernels:false, loadGUI:true, useSLHW:false)
+// l = SoundLab(configFileName:"CONFIG_TEST_117.scd", useKernels:false, loadGUI:true, useSLHW:false)
+l = SoundLab(configFileName:"CONFIG_TEST_117.scd", useKernels:true, loadGUI:true, useSLHW:false)
+// l = SoundLab(configFileName:"CONFIG_TEST_117.scd", useKernels:false, loadGUI: false, useSLHW:false)
+// l = SoundLab(configFileName:"CONFIG_TEST_113.scd", useKernels:false, loadGUI:true, useSLHW:false)
 )
 
 l.buildGUI
@@ -2037,7 +2037,7 @@ l.startNewSignalChain(\Sphere_12ch, kernelName: \decor)
 l.startNewSignalChain(\Sphere_24ch, kernelName: \decor_700)
 
 // testing sample rate change
-l = SoundLab(48000, useSLHW:false, useKernels:false)
+l = SoundLab(useKernels:false, useSLHW:false)
 l.startNewSignalChain(\Sphere_12ch_first_dual)
 l.startNewSignalChain(\Dodec)
 l.startNewSignalChain(\Quad_Long)
@@ -2050,7 +2050,7 @@ l.sampleRate_(96000)
 
 
 // testing slhw
-l = SoundLab(48000, useSLHW:false, useKernels:false)
+l = SoundLab(useSLHW:false, useKernels:false)
 
 // testing gui
 l = SoundLab(48000, loadGUI:true, useSLHW:false, useKernels:false)
@@ -2059,7 +2059,7 @@ x = {Out.ar(0, 4.collect{PinkNoise.ar * SinOsc.kr(rrand(3.0, 5.0).reciprocal).ra
 
 
 InterfaceJS.nodePath = "/usr/local/bin/node"
-l = SoundLab(48000, useSLHW:false)
+l = SoundLab(useSLHW:false)
 l.cleanup
 l.jconvolver
 l.gui

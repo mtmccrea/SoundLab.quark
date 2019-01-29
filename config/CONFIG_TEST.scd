@@ -17,6 +17,7 @@ IdentityDictionary(know: true)
 	\xOverLPF,				60,
 	\shelfFreq,				60,		// takes predecdence over listening Diameter
 	\listeningDiameter,		1.5,	// sweet spot size in meters
+	\initSampleRate, 48000,  //used at initialization
 
 	/* SoundLabHardware settings */
 

@@ -17,6 +17,7 @@ IdentityDictionary(know: true)
 	\shelfFreq,				60,		// takes predecdence over listening Diameter
 	\listeningDiameter,		1.5,	// sweet spot size in meters
 	\stereoGain,			-3,		// gain on stereo bus in dB, to balance with decoders
+	\initSampleRate, 48000,  //used at initialization
 
 	/* SoundLabHardware settings */
 
@@ -24,6 +25,7 @@ IdentityDictionary(know: true)
 	\useFireface, 			false, // for testing
 
 	// \midiDeviceName,			"828mk2",
+	// \midiDeviceName,			nil,
 	\midiDeviceName,			"MADIface USB (23824613)",
 	// \midiPortName,			"External MIDI- MIDI 1",
 	\midiPortName,			"Port 1",

@@ -20,6 +20,7 @@ IdentityDictionary(know: true)
 	\shelfFreq,				60,		// takes predecdence over listening Diameter
 	\listeningDiameter,		1.5,	// sweet spot size in meters
 	\stereoGain,			-3,		// gain on stereo bus in dB, to balance with decoders
+	\initSampleRate,    48000,  //used at initialization
 
 	/* SoundLabHardware settings */
 

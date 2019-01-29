@@ -1,6 +1,6 @@
 /*
 Class for managing 117 Sound Lab in Raitt hall, DXARTS, University of Washington, Seattle
-Coded in 2012, 2013 by Marcin Paczkowski (marcinp@uw.edu)
+Coded in 2012, 2013 by Marcin Pączkowski (marcinp@uw.edu)
 work in progress! :)
 */
 /*
@@ -109,11 +109,13 @@ SoundLabHardware {
 		// clientsDictionary = Dictionary.new; //not here
 		//init hardware
 		this.prGetCardID;
+		format("%: before midi", this.class.name).postln;
 		this.prInitMIDI;
 		this.changed(\updatingConfiguration, 1.0);
 		if(thisProcess.platform.name == \osx, {
 			server.options.device_("JackRouter");//osx uses JackRouter
 		});
+		format("%: init complete", this.class.name).postln;
 		// this.changed(\audioIsRunning, false);
 	}
 
@@ -319,16 +321,20 @@ SoundLabHardware {
 	}
 
 	prInitMIDI {
-		// "init here".postln;
 		// init MIDI
 		if(midiPortName.notNil && midiDeviceName.notNil, {
-			// "now ini here".postln;
 			MIDIClient.init;
+			// "after MIDI init".postln;
+			// "midiDeviceName: ".post; midiDeviceName.postln;
+			// "midiPortName: ".post; midiPortName.postln;
 			// MIDIClient.destinations;
-			// MIDI INIT!!!!!! don't forget to connect.... blah
-			midiPort = MIDIOut.newByName(midiDeviceName, midiPortName);
-			// postf("midiPort: %\n", midiPort);
-			try { midiPort.connect(midiPort.port); };
+			try { midiPort = MIDIOut.newByName(midiDeviceName, midiPortName)};
+			postf("midiPort: %\n", midiPort);
+			if(thisProcess.platform.name == \linux, {
+				// MIDI INIT!!!!!! don't forget to connect....
+				try { midiPort.connect(midiPort.port); };
+			});
+			midiPort !? {midiPort.latency_(0)};
 		});
 		postf("midiPort: %\n", midiPort);
 	}
@@ -336,7 +342,7 @@ SoundLabHardware {
 	prSendSysex { arg midiDevice, data; // for DA-32 and DA-16
 		var sysexHeader, manufacturerID, modelID, bankOrDeviceID, messageType, eof;
 		var sysexCommand;
-		if(midiPortName.notNil, {
+		if(midiDevice.notNil, {
 			// these are taken from RME M-32 DA documentation
 			sysexHeader = 0xf0;
 			manufacturerID = [0x00, 0x20, 0x0d];
@@ -376,7 +382,7 @@ SoundLabHardware {
 		thisProcess.platform.name.switch(
 			\linux, {cmd = cmd ++ " -dalsa -H"},// -dhw:"++cardID.asString;
 			\osx, {cmd = cmd ++ " -dcoreaudio"},
-			{(this.class.name ++ ": error in prStartJack - only linux anx macOS is supported").warn}
+			{(this.class.name ++ ": error in prStartJack - only linux and macOS is supported").warn}
 		);
 		// if(cardNameIncludes.notNil, {
 		// 	cmd = cmd ++ " -dalsa -H -dhw:"++cardID.asString; //assuming linux
@@ -387,7 +393,7 @@ SoundLabHardware {
 			thisProcess.platform.name.switch(
 				\linux, {cmd = cmd ++ " -dhw:"++cardID.asString},// -dhw:"++cardID.asString;
 				\osx, {cmd = cmd ++ " -d"++cardID.asString;},
-				{(this.class.name ++ ": error in prStartJack - only linux anx macOS is supported").warn}
+				{(this.class.name ++ ": error in prStartJack - only linux and macOS is supported").warn}
 			)
 		});
 		cmd = cmd ++ " -r"++sampleRate.asString++
@@ -661,9 +667,11 @@ SoundLabHardware {
 		);
 		// set commands for card parameters
 		// cmd1 = "amixer -c " ++ cardID.asString ++ " sset 'Internal Clock' " ++ srWord;
-		cmds = cmds.add("amixer -c " ++ cardID.asString ++ " sset 'Clock Selection' " ++ "'Word Clock'");
-		cmds = cmds.add("amixer -c " ++ cardID.asString ++ " sset 'Internal Clock' " ++ srWord);
-		cmds = cmds.add("amixer -c " ++ cardID.asString ++ " sset 'MADI Speed Mode' " ++ modeWord);
+		if(thisProcess.platform.name == \linux, {
+			cmds = cmds.add("amixer -c " ++ cardID.asString ++ " sset 'Clock Selection' " ++ "'Word Clock'");
+			cmds = cmds.add("amixer -c " ++ cardID.asString ++ " sset 'Internal Clock' " ++ srWord);
+			cmds = cmds.add("amixer -c " ++ cardID.asString ++ " sset 'MADI Speed Mode' " ++ modeWord);
+		});
 		//add Clock Selection
 		//add WC Single speed?
 		if(modeWord.notNil,
@@ -678,7 +686,7 @@ SoundLabHardware {
 				// msgBack1.postln;
 				// msgBack2 = cmd2.unixCmdGetStdOut; // set proper speed mode on madi
 				// msgBack2.postln;
-				if(cardNameIncludes.notNil, {
+				if(cmds.size > 0, {
 					// cmds.postln;
 					cmds.do(_.unixCmd(postOutput: false));
 				});//run commands only if card name provided -> assuming we're on linux
@@ -694,7 +702,7 @@ SoundLabHardware {
 
 				//fireface here as well
 
-				6.wait;//wait for clocks to get in sync - not sure if we need that much...
+				1.wait;//wait for clocks to get in sync - not sure if we need that much...
 				// this.setFfSampleRate(sampleRate);
 				if(useFireface, {this.fireface.sampleRate_(sampleRate);});
 				updatingCondition.test = true;
