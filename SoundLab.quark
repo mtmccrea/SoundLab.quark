@@ -10,6 +10,7 @@
            url: "http://github.com/mtmccrea/SoundLab.quark",
   dependencies: [
                     "Ctk",
+                    "atk-sc3",
                     "http://github.com/dyfer/JconvolverSC.quark",
                     "http://github.com/dyfer/WsGUI.quark",
                     "http://github.com/dyfer/OscPipe.quark",

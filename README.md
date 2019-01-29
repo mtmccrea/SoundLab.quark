@@ -21,11 +21,13 @@ Failure to do so will result in hanging processes and inability to properly rest
 -----
 ## Requirements:
 - SuperCollider
+- sc3-plugins
 - jconvolver
 - JACK
 
 **Quarks** (These will be automatically installed.)
 - Ctk
+- atk-sc3
 - https://github.com/dyfer/JconvolverSC.quark
 - https://github.com/dyfer/OscPipe.quark
 - http://github.com/dyfer/WsGUI.quark
