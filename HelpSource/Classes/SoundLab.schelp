@@ -10,26 +10,22 @@ CLASSMETHODS::
 
 METHOD:: new
 
-argument::initSR
-Initialize the routing system to this sample rate.
 
-argument::loadGUI
-Boolean.  True to load the web interface through InterfaceJS.
-
-argument::useSLHW
-Boolean.  True to use SoundLabHardware, specific to the RME interfaces used in DXARTS.  False to you built-in/default system audio I/O.
+argument::configFileName
+A String naming the file which specifies your rig dimensions, the format of which is (to be documented).
+The location of this file is assumed to be in the same folder as this class file.
 
 argument::useKernels
 Boolean.
 True to use JConvolver to do convolution on your output signals to your speakers (room correction, crossover, etc).  This assumes Jconvolver is installed, JACK is your audio "device", and will use kernels stored in the path specified in your config file.  The file hierarchy and delay/gain/distance text files follow specific conventions (to be documented, along with JACK configurations)
 False to use no convolution and the built-in delay and gain compensation as calculated from the dimensions of your rig, specified in the config file.
 
-argument::configFileName
-A String naming the file which specifies your rig dimensions, the format of which is (to be documented).
-The location of this file is assumed to be in the same folder as this class file.
+argument::loadGUI
+Boolean.  True to load the web interface using WsGUI.
 
-argument::usingOSX
-A Boolean whether the class is used on OSX or Linux. This alters the configuration of JConvolver in the case of using convolution on the output.
+argument::useSLHW
+Boolean.  True to use SoundLabHardware, specific to the RME interfaces used in DXARTS.  False to you built-in/default system audio I/O.
+
 
 returns::
 itself
@@ -46,5 +42,12 @@ s.options.numWireBufs_(64*8);
 // and default (no convolution) settings
 
 // this will boot the server for you
-l = SoundLab(initSR:48000, loadGUI:true, useSLHW:false, useKernels:true, configFileName:"CONFIG_TEST.scd")
+l = SoundLab(configFileName:"CONFIG_TEST.scd", useKernels:true, loadGUI:true, useSLHW:false);
+// you can also create a window with a button to recompile the library, as an easy way to restrt the system (assuming you start SoundLab in your startup file)
+l.createRecompileWindow;
+// or
+l.createRecompileWindow(Window.screenBounds);
+
+// freeing resources - closes server, JACK, web interface, Jconvolver
+l.cleanup;
 ::
