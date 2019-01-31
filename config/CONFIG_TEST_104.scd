@@ -17,24 +17,27 @@ IdentityDictionary(know: true)
 	\shelfFreq,				60,		// takes predecdence over listening Diameter
 	\listeningDiameter,		1.5,	// sweet spot size in meters
 	\stereoGain,			-3,		// gain on stereo bus in dB, to balance with decoders
-	\initSampleRate, 48000,  //used at initialization
+	\initSampleRate,48000,  //used at initialization
 
 	/* SoundLabHardware settings */
 
-	// \useFireface, 			true,
-	\useFireface, 			false, // for testing
+	\useFireface, 			false,
 
-	// \midiDeviceName,			"828mk2",
-	// \midiDeviceName,			nil,
-	\midiDeviceName,			"MADIface USB (23824613)",
-	// \midiPortName,			"External MIDI- MIDI 1",
-	\midiPortName,			"Port 1",
+	//MOTU 828 for testing
+	\midiDeviceName,        "828mk2", //motu 828
+	\midiPortName,          "Port 1", //motu 828
+	\cardNameIncludes,		"MOTU",
+
+	//RME MADIface USB
+	// \midiDeviceName,		"MADIface USB (23824613)",
 	// \midiPortName,			"MIDI Port", // nil for no MIDI
-	\cardNameIncludes,		"RME",
-	// \cardNameIncludes,		"MOTU",
+	// \cardNameIncludes,		"RME",
+
+	// \midiDeviceName,			nil,
+
 	// \jackPath,				"/usr/bin/jackd",
 	\jackPath,				"/usr/local/bin/jackdmp", // for osx
-	\jconvolverPath,				"/usr/local/bin/jconvolver", // for osx
+	\jconvolverPath,		"/usr/local/bin/jconvolver", // for osx
 	\fixAudioInputGoingToTheDecoder, true,
 	\hwPeriodSize, 			256,
 	\hwPeriodNum,			1,
