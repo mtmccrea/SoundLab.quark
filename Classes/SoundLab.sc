@@ -1975,10 +1975,12 @@ NO NEW DECODER STARTED");
 			Button()
 			.states_([
 				["Recompile class library", Color.red(1, 0.7), Color.grey(0, 0.1)],
-				["Bye!"]
 			])
 			.font_(Font(size: 32))
-			.action_({thisProcess.recompile}),
+			.action_({
+				recompileWindow.close;
+				{thisProcess.recompile}.defer(0.1); //wait for the window to close before recompiling
+			}),
 			nil
 		));
 	}
