@@ -211,13 +211,18 @@ SoundLabHardware {
 	}
 
 
-	stopAudio {
-		Routine.run({
+	stopAudio {|force = false|
+		var stopFunc = {
 			if(startRoutine.isPlaying, {
 				startRoutine.stop;
 			});
-			1.wait;
-			this.prStopAudioFunction;
+			if(force.not, {1.wait});
+			this.prStopAudioFunction(force);
+		};
+		if(force, {
+			stopFunc.value;
+		}, {
+			Routine.run(stopFunc);
 		});
 	}
 
@@ -235,7 +240,7 @@ SoundLabHardware {
 		});
 	}
 
-	prStopAudioFunction {
+	prStopAudioFunction {|force = false|
 		updatingCondition.test = true;
 		this.changed(\updatingConfiguration, 0.0);
 		this.changed(\stoppingAudio);
@@ -249,8 +254,10 @@ SoundLabHardware {
 		this.audioIsRunning_(false);//moved here so jack knows we're stopping
 		this.prStopJack;
 		// 1.wait;
-		updatingCondition.wait;
-		1.wait;//just to make sure everything's off
+		if(force.not, {
+			updatingCondition.wait;
+			1.wait;//just to make sure everything's off
+		});
 		this.changed(\updatingConfiguration, 1.0);
 		// this.changed(\audioIsRunning, false);
 	}

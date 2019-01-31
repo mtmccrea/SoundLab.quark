@@ -24,6 +24,7 @@ SoundLab {
 	var <spkrAzims, <spkrElevs, <spkrDirs, <spkrOppDict, <spkrDels, <spkrGains, <spkrDists;
 	var <decoderLib, <synthLib, <loadedDelDistGain;
 	var <slhw;
+	var <forceCleanupFunc, <recompileWindow;
 
 	*new { |configFileName="CONFIG_205.scd", useKernels=true, loadGUI=true, useSLHW=true|
 		^super.newCopyArgs(configFileName, useKernels, loadGUI, useSLHW).init;
@@ -35,8 +36,11 @@ SoundLab {
 	// jconvolver 2 (numHardwareOuts..numHardwareOuts*3-1)
 	// Thus SC will boot with s.option.numOutputBusChannels = numHarwareOuts * 3.
 	init {
-
 		var filePath;
+
+		forceCleanupFunc = {this.cleanup(true)};
+		ShutDown.add(forceCleanupFunc);
+
 		if(PathName(configFileName).isAbsolutePath, {
 			filePath = configFileName;
 		}, {
@@ -1964,17 +1968,39 @@ NO NEW DECODER STARTED");
 		});
 	}
 
+	createRecompileWindow {|bounds|
+		recompileWindow = Window.new(format("% - recompile window", this.class.name), bounds).front;
+		recompileWindow.layout_(VLayout(
+			nil,
+			Button()
+			.states_([
+				["Recompile class library", Color.red(1, 0.7), Color.grey(0, 0.1)],
+				["Bye!"]
+			])
+			.font_(Font(size: 32))
+			.action_({thisProcess.recompile}),
+			nil
+		));
+	}
 
 
-	cleanup  {
+	//force = true will make the cleanup run immediately
+	//that means no sound fadeout
+	//but can be run from library shutdown
+
+	cleanup  {|force = false|
+		if(force, {format("%: starting immediate cleanup", this.class.name).warn});
+		ShutDown.remove(forceCleanupFunc);
+
 		[OSCdef(\clipListener), OSCdef(\reloadGUI)].do(_.free);
 		gui !? {gui.cleanup};
 		slhw !? {slhw.removeDependant(this)};
 		this.prClearServerSide; 			// frees jconvs
-		slhw !? {slhw.stopAudio};
+		slhw !? {slhw.stopAudio(force)};
+		recompileWindow !? {{recompileWindow.close}.defer};
 	}
 
-	free {this.cleanup}
+	free {|force = false| this.cleanup(force)}
 }
 
 /* ------ TESTING ---------
