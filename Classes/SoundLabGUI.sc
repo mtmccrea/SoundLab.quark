@@ -29,6 +29,9 @@ SoundLabGUI {
 				slhw = sl.slhw.addDependant(this)
 			});
 
+			if (WsWindow.allWsWindows.notNil and: { WsWindow.allWsWindows[\SoundLabRouter].notNil }) {
+				WsWindow.allWsWindows[\SoundLabRouter].free;
+			};
 			wsGUI = WsWindow("Sound Lab Router", isDefault: true, wwwPort: wwwPort, suppressPosting: false);
 
 			1.5.wait; // TODO: add condition
