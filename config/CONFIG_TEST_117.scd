@@ -17,7 +17,7 @@ IdentityDictionary(know: true)
 	\shelfFreq,				nil,		// takes predecdence over listening Diameter
 	\listeningDiameter,		0.5,	// sweet spot size in meters
 	\stereoGain,			-3,		// gain on stereo bus in dB, to balance with decoders
-	\initSampleRate, 48000,  //used at initialization
+	\initSampleRate, 		44100,  //used at initialization
 
 	/* SoundLabHardware settings */
 
@@ -38,7 +38,7 @@ IdentityDictionary(know: true)
 	\whichMadiOutput,       nil,
 
 	/* file paths */
-	\kernelsPath,          	"/Users/dxlocal/Documents/SoundLabs/SoundLabKernels117/",
+	\kernelsPath,          	"~/Documents/SoundLabs/SoundLabKernels117/".standardizePath,
 	\decoderMatricesPath,	nil
 ])
 
