@@ -1692,7 +1692,7 @@ NO NEW DECODER STARTED");
 
 		decoderLib.add(
 			SynthDef( decSpecs.synthdefName, {
-				arg in_busnum, fadeTime = 0.3, subgain = 0, gate = 1;
+				arg in_busnum, out_busnum = 0, fadeTime = 0.3, subgain = 0, gate = 1;
 				var in, env, out;
 				var azims, elevs, directions, encoder, bf, decoders, sub_decodes;
 
@@ -1702,7 +1702,7 @@ NO NEW DECODER STARTED");
 
 				in = In.ar(in_busnum, decSpecs.numInputChans)  * env;
 				decSpecs.arrayOutIndices.do{ |outbus, i|
-					Out.ar(outbus, in[i] * decSpecs.decGain.dbamp)
+					Out.ar(outbus + out_busnum, in[i] * decSpecs.decGain.dbamp)
 				};
 
 				// subs were considered at one point, but decided discrete routing should be
@@ -2005,7 +2005,8 @@ NO NEW DECODER STARTED");
 	free {|force = false| this.cleanup(force)}
 }
 
-/* ------ TESTING ---------
+/*
+------ TESTING ---------
 (
 s.options.numOutputBusChannels_(32);
 s.options.device_("JackRouter");

@@ -40,12 +40,13 @@ SoundLabDecoderPatch {
 				decodersynth = sl.decoderLib[synthdefName].note(
 					addAction: \head, target: group)
 				.in_busnum_(inbusnum);
-				// discrete routing synthdefs have no out_busnum or rotation arg
+				// discrete routing synthdefs have no rotation arg
 				(decType != \discrete).if{
-					decodersynth.out_busnum_(outbusnum)
+					decodersynth
 					.rotate_(if(sl.rotated, {sl.rotateDegree.degrad},{0}))
 					.shelfFreq_(sl.shelfFreq);
 				};
+				decodersynth.out_busnum_(outbusnum);
 
 				compsynth = sl.synthLib[\delay_gain_comp].note(
 					addAction: \tail, target: group)
