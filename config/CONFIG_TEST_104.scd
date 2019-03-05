@@ -25,7 +25,7 @@ IdentityDictionary(know: true)
 
 	//MOTU 828 for testing
 	\midiDeviceName,        "828mk2", //motu 828
-	\midiPortName,          "Port 1", //motu 828
+	\midiPortName,          "MIDI Port", //motu 828
 	\cardNameIncludes,		"MOTU",
 
 	//RME MADIface USB
