@@ -198,7 +198,7 @@ SoundLabGUI {
 					(mn.item == sl.sampleRate.asSymbol).if({
 						this.status_("Requested samplerate is already current.");
 						mn.valueAction_(0); // set back to '-'
-					},{	pendingSR = mn.item.asInt }
+					},{	pendingSR = mn.item.asInteger }
 					)
 				}
 			)
@@ -494,7 +494,7 @@ SoundLabGUI {
 					this.status_( args[0].if(
 						{"Stereo added to first two output channels."},{"Stereo cleared."}
 					));
-					stereoButton.value_(args[0].asInt);
+					stereoButton.value_(args[0].asInteger);
 				},
 				\rotate,	{
 					var rotated;
@@ -502,7 +502,7 @@ SoundLabGUI {
 					this.status_( rotated.if(
 						{"Soundfield rotated."},{"Rotation cleared."}
 					));
-					rotateButton.value_(args[0].asInt);
+					rotateButton.value_(args[0].asInteger);
 				},
 				\kernel,	{
 					kernelCheckBoxes.do(_.value_(false));	// clear the kernel boxes
@@ -850,10 +850,10 @@ SoundLabGUI {
 				sl.globalAmp.ampdb.round(0.01))
 			);
 
-			muteButton.value_	(sl.isMuted.asInt );
-			attButton.value_	(sl.isAttenuated.asInt );
-			stereoButton.value_	(sl.stereoActive.asInt );
-			rotateButton.value_	(sl.rotated.asInt );
+			muteButton.value_	(sl.isMuted.asInteger );
+			attButton.value_	(sl.isAttenuated.asInteger );
+			stereoButton.value_	(sl.stereoActive.asInteger );
+			rotateButton.value_	(sl.rotated.asInteger );
 
 			/* set/refresh kernel CheckBoxes */
 			kernelLayout.remove;

@@ -192,7 +192,7 @@ SoundLab {
 					kernelDirPathName.entries.do({ |sr_pn|
 						var sr, nm, knm, result;
 
-						(sr_pn.isFolder && (sr_pn.folderName.asInt == server.sampleRate)).if{
+						(sr_pn.isFolder && (sr_pn.folderName.asInteger == server.sampleRate)).if{
 
 							sr_pn.entries.do({ |kern_pn|
 								kern_pn.isFolder.if{
@@ -919,7 +919,7 @@ NO NEW DECODER STARTED");
 			kernelDirPathName.entries.do({ |sr_pn|
 				var sr, nm, knm, result;
 
-				(sr_pn.isFolder && (sr_pn.folderName.asInt !=0)).if{
+				(sr_pn.isFolder && (sr_pn.folderName.asInteger !=0)).if{
 					sr = sr_pn.folderName;
 					sr_pn.entries.do({ |kern_pn|
 						kern_pn.isFolder.if{
@@ -1164,7 +1164,7 @@ NO NEW DECODER STARTED");
 		// prepare stereo decoder for subs or diammetric if there's an even number of them > 2
 		if(numSubChans.even, {
 			// only need to provide 1/2 of the directions for diametric decoder
-			subDirections = subOutbusNums.keep( (subOutbusNums.size/2).asInt ).collect({
+			subDirections = subOutbusNums.keep( (subOutbusNums.size/2).asInteger ).collect({
 				|busnum|
 				spkrDirs[busnum][0]  // subs always 2D
 			});
@@ -1325,7 +1325,7 @@ NO NEW DECODER STARTED");
 		// prepare stereo or diammetric decoder for subs if there's an even number of them
 		if(numSubChans.even, {
 			// only need to provide 1/2 of the directions for diametric decoder
-			subDirections = subOutbusNums.keep( (subOutbusNums.size/2).asInt ).collect({
+			subDirections = subOutbusNums.keep( (subOutbusNums.size/2).asInteger ).collect({
 				|busnum|
 				spkrDirs[busnum][0]  // subs always 2D
 			});
@@ -1452,7 +1452,7 @@ NO NEW DECODER STARTED");
 		// assume the layout is regular in this case
 		if(numSubChans.even, {
 			// only need to provide 1/2 of the directions for diametric decoder
-			subDirections = subOutbusNums.keep( (subOutbusNums.size/2).asInt ).collect({
+			subDirections = subOutbusNums.keep( (subOutbusNums.size/2).asInteger ).collect({
 				|busnum|
 				spkrDirs[busnum][0]  // subs always 2D
 			});
@@ -1583,7 +1583,7 @@ NO NEW DECODER STARTED");
 		// assume the layout is regular in this case
 		if(numSubChans.even, {
 			// only need to provide 1/2 of the directions for diametric decoder
-			subDirections = subOutbusNums.keep( (subOutbusNums.size/2).asInt ).collect({
+			subDirections = subOutbusNums.keep( (subOutbusNums.size/2).asInteger ).collect({
 				|busnum|
 				spkrDirs[busnum][0]  // subs always 2D
 			});
