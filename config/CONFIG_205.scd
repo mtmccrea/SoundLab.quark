@@ -35,6 +35,11 @@ IdentityDictionary(know: true)
 	\firefaceID,            "000a35002dd2c77a", //"000a3500c1da0056",
 	\whichMadiInput,        2,
 	\whichMadiOutput,       2,
+	\whichMadiInputForStereo, 1, //for permanent stereo in from Fireface to speakers
+	\stereoInputArrayOffset, [4, 5, 6, 7], //stereo inputs from Fireface
+	\stereoOutputArrayOffset, [11, 1], //stero outputs for permanent stereo in
+	\audioDeviceName,       nil,
+
 
 	/* file paths */
 	\kernelsPath,			"/home/audioadmin/Documents/SoundLabSupport/SoundLabKernels/",

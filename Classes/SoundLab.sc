@@ -182,8 +182,8 @@ SoundLab {
 		server.doWhenBooted({
 			fork {
 				var requestKernel;
-				"waiting 2 seconds".postln;
-				2.wait; // give server time to get sorted
+				// "waiting 2 seconds".postln;
+				// 2.wait; // give server time to get sorted
 
 				// get an up-to-date list of the kernels available at this sample rate
 				kernels = [];
@@ -1856,6 +1856,9 @@ NO NEW DECODER STARTED");
 			config.firefaceID, 			//firefaceID
 			config.whichMadiInput, 		//whichMadiInput
 			config.whichMadiOutput, 	//whichMadiOutput
+			config.whichMadiInputForStereo, //whichMadiInputForStereo
+			config.stereoInputArrayOffset,  //stereoInputArrayOffset
+			config.stereoOutputArrayOffset, //stereoOutputArrayOffset
 			config.audioDeviceName      //audioDeviceName
 		);
 		// slhw = SoundLabHardware.new(false,true,false,nil,nil,"/usr/local/bin/jackdmp",32,128); //for osx

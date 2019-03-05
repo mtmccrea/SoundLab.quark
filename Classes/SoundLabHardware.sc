@@ -76,12 +76,22 @@ SoundLabHardware {
 		firefaceID = "000a3500c1da0056",//117: 000a35009caf3c69, 205: 000a3500c1da0056
 		whichMadiInput = 2, //not nil will assume 205 and turn on stereo in from fireface... Marcin 2016.02
 		whichMadiOutput = 2,//nil for regular MADI, 0-2 for MADIFX
-		whichMadiInputForStereo = 1, //for permanent stereo in from Fireface
-		stereoInputArrayOffset = [4, 5, 6, 7], //stereo inputs
-		stereoOutputArrayOffset = [11, 1], //stero outputs
+		whichMadiInputForStereo, //for permanent stereo in from Fireface (205)
+		stereoInputArrayOffset, //stereo inputs from Fireface (205)
+		stereoOutputArrayOffset, //stero outputs for permanent stereo in
 		audioDeviceName;
 		// ^super.newCopyArgs(shellCommand, receiveAction, exitAction, id).init(false);
-		^super.newCopyArgs(useSupernova, fixAudioInputGoingToTheDecoder, useFireface, midiDeviceName, midiPortName, cardNameIncludes, jackPath, serverIns, serverOuts, numHwOutChToConnectTo, numHwInChToConnectTo, firefaceID, whichMadiInput, whichMadiOutput, whichMadiInputForStereo, stereoInputArrayOffset, stereoOutputArrayOffset).init;
+		^super.newCopyArgs(
+			useSupernova, fixAudioInputGoingToTheDecoder, useFireface,
+			midiDeviceName, midiPortName, cardNameIncludes, jackPath,
+			serverIns, serverOuts, numHwOutChToConnectTo, numHwInChToConnectTo,
+			firefaceID,
+			whichMadiInput, whichMadiOutput,
+			whichMadiInputForStereo,
+			stereoInputArrayOffset,
+			stereoOutputArrayOffset,
+			audioDeviceName
+		).init;
 	}
 
 	*killJack {
@@ -116,7 +126,7 @@ SoundLabHardware {
 		format("%: before midi", this.class.name).postln;
 		this.prInitMIDI;
 		this.changed(\updatingConfiguration, 1.0);
-		audioDeviceName !? {server.options.device_("JackRouter")};
+
 		format("%: init complete", this.class.name).postln;
 		// this.changed(\audioIsRunning, false);
 	}
@@ -169,16 +179,21 @@ SoundLabHardware {
 				updatingCondition.wait;
 				addWaitTime.wait;
 				// "--before setting jack connections".postln;
-				// if(thisProcess.platform.name == \linux, {
-				this.prSetJackConnections;
-				// });
+				"audioDeviceName: ".post; audioDeviceName.postln;
+				if(audioDeviceName.notNil,{
+					//assumes using JackRouter
+					"not nil".postln;
+					server.options.device_(audioDeviceName);
+					this.setJackRouterInsOuts(serverIns, serverOuts);
+				}, {
+					"is nil".postln;
+					//assumes using JACK directly
+					this.prSetJackConnections;
+				});
 				//Fireface - phantom and Routing
 				// this.setFfDefaultRouting; //automatically inside fireface class
 				// this.recallFfPhantom;
 				//set number of channels for JackRouter on macos
-				if(thisProcess.platform.name == \osx, {
-					this.setJackRouterInsOuts(serverIns, serverOuts);
-				});
 				this.changed(\updatingConfiguration, 0.9);
 				// "--before starting server".postln;
 				this.prStartServer;
@@ -594,7 +609,7 @@ SoundLabHardware {
 		"SC_JACK_DEFAULT_INPUTS".setenv("".ccatList(numHwInChToConnectTo.collect({|inc| "system:capture_" ++ (inc + 1 + inOffset).asString})).replace(" ", "").replace("[", "").replace("]", "").drop(1));
 
 		//stereo in from Fireface
-		if(whichMadiInput.notNil, { //assuming 205
+		if(whichMadiInputForStereo.notNil, { //assuming 205
 			this.prConnectInToOutInJack((whichMadiInputForStereo * numChannelsPerMADI) + 2 + stereoInputArrayOffset, (whichMadiOutput * numChannelsPerMADI) + 2 + stereoOutputArrayOffset)
 		});
 	}
