@@ -44,6 +44,7 @@ IdentityDictionary(know: true)
 	\firefaceID,            "000a35009caf3c69",
 	\whichMadiInput,        nil,
 	\whichMadiOutput,       nil,
+	\audioDeviceName,       nil, //optionally for osx: "JackRouter"
 
 	/* file paths */
 	// \kernelsPath,          	nil,
