@@ -167,9 +167,9 @@ SoundLabHardware {
 				updatingCondition.wait;
 				addWaitTime.wait;
 				// "--before setting jack connections".postln;
-				if(thisProcess.platform.name == \linux, {
-					this.prSetJackConnections;
-				});
+				// if(thisProcess.platform.name == \linux, {
+				this.prSetJackConnections;
+				// });
 				//Fireface - phantom and Routing
 				// this.setFfDefaultRouting; //automatically inside fireface class
 				// this.recallFfPhantom;
