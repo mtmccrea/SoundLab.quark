@@ -655,7 +655,13 @@ NO NEW DECODER STARTED");
 				thisProcess.platform.name.switch(
 					\osx, {
 						if(Server.program.asString.endsWith("scsynth"), {
-							Jconvolver.jackScOutNameDefault = "scsynth:out";
+							"config.audioDeviceName.notNil: ".post;  config.audioDeviceName.notNil.postln;
+							"config.audioDeviceName: ".post; config.audioDeviceName.postln;
+							if(config.audioDeviceName.notNil, {
+								Jconvolver.jackScOutNameDefault = "scsynth:out"; //assuming SC -> JackRouter
+							}, {
+								Jconvolver.jackScOutNameDefault = "SuperCollider:out_"; //assuming native JACK backend
+							});
 						}, {
 							Jconvolver.jackScOutNameDefault = "supernova:out"; //not tested
 						})
