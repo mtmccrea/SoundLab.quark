@@ -187,7 +187,7 @@ SoundLabHardware {
 				addWaitTime.wait;
 				this.audioIsRunning_(true);
 				addWaitTime = 0;
-				clientsDictionary = Dictionary.new;
+				// clientsDictionary = Dictionary.new;
 				// fix for not getting analog ins in the decoder - got moved into separate method, uses env vars now
 				/*				if((sampleRate > 48000) && fixAudioIn, {
 				this.prDisconnectRedundantHardwareIns((16..32)); //keeping as is for now
@@ -197,7 +197,7 @@ SoundLabHardware {
 				//would make SC connect only to the first 16 outputs (needs appro
 				});*/
 				// clientsDictionary.add("PreSonus", [ins * 0.5, 0]);
-				this.prAddClient("PreSonus", [32 * 0.5, 32 * 0.5], false); //ins, because outs is fake 32 for 48k
+				// this.prAddClient("PreSonus", [32 * 0.5, 32 * 0.5], false); //ins, because outs is fake 32 for 48k
 				this.changed(\updatingConfiguration, 1.0);
 				// this.changed(\audioIsRunning, true);
 			});
