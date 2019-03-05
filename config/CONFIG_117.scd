@@ -25,18 +25,19 @@ IdentityDictionary(know: true)
 	/* SoundLabHardware settings */
 
 	\useFireface, 			false,
-	\midiDeviceName,			"MADIface USB (23824613)",
+	\midiDeviceName,		"MADIface USB (23824613)",
 	\midiPortName,			"Port 1",
 	\cardNameIncludes,		"RME",
 	// \jackPath,				"/usr/bin/jackd",
 	\jackPath,				"/usr/local/bin/jackdmp", // for osx
-	\jconvolverPath,				"/usr/local/bin/jconvolver", // for osx
+	\jconvolverPath,		"/usr/local/bin/jconvolver", // for osx
 	\fixAudioInputGoingToTheDecoder, true,
 	\hwPeriodSize, 			256,
 	\hwPeriodNum,			1,
 	\firefaceID,            "000a35009caf3c69",
 	\whichMadiInput,        nil,
 	\whichMadiOutput,       nil,
+	\audioDeviceName,       nil, //optionally for osx: JackRouter
 
 	/* file paths */
 	\kernelsPath,           "/Users/dxlocal/Documents/SoundLabs/SoundLabKernels117/",

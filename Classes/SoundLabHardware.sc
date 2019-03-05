@@ -41,6 +41,9 @@ SoundLabHardware {
 	var <whichMadiInputForStereo;
 	var <stereoInputArrayOffset;
 	var <stereoOutputArrayOffset;
+	var <audioDeviceName;
+	//end of copyArgs
+
 	// var firstOutput = 66, firstInput = 66;//0 for 117, 64 for 205, at 96k!
 	var <cardID, <sampleRate, /*<ins, <outs, */midiPort, <server;
 	// var getCardID, setSR, initMIDI, sendSysex, startJack, stopJack, initAll, prStartServer;
@@ -75,7 +78,8 @@ SoundLabHardware {
 		whichMadiOutput = 2,//nil for regular MADI, 0-2 for MADIFX
 		whichMadiInputForStereo = 1, //for permanent stereo in from Fireface
 		stereoInputArrayOffset = [4, 5, 6, 7], //stereo inputs
-		stereoOutputArrayOffset = [11, 1]; //stero outputs
+		stereoOutputArrayOffset = [11, 1], //stero outputs
+		audioDeviceName;
 		// ^super.newCopyArgs(shellCommand, receiveAction, exitAction, id).init(false);
 		^super.newCopyArgs(useSupernova, fixAudioInputGoingToTheDecoder, useFireface, midiDeviceName, midiPortName, cardNameIncludes, jackPath, serverIns, serverOuts, numHwOutChToConnectTo, numHwInChToConnectTo, firefaceID, whichMadiInput, whichMadiOutput, whichMadiInputForStereo, stereoInputArrayOffset, stereoOutputArrayOffset).init;
 	}
@@ -112,9 +116,7 @@ SoundLabHardware {
 		format("%: before midi", this.class.name).postln;
 		this.prInitMIDI;
 		this.changed(\updatingConfiguration, 1.0);
-		if(thisProcess.platform.name == \osx, {
-			server.options.device_("JackRouter");//osx uses JackRouter
-		});
+		audioDeviceName !? {server.options.device_("JackRouter")};
 		format("%: init complete", this.class.name).postln;
 		// this.changed(\audioIsRunning, false);
 	}

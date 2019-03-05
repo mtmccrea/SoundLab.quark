@@ -1849,7 +1849,8 @@ NO NEW DECODER STARTED");
 			numHardwareIns, 			//numHwInChToConnectTo
 			config.firefaceID, 			//firefaceID
 			config.whichMadiInput, 		//whichMadiInput
-			config.whichMadiOutput 		//whichMadiOutput
+			config.whichMadiOutput, 	//whichMadiOutput
+			config.audioDeviceName      //audioDeviceName
 		);
 		// slhw = SoundLabHardware.new(false,true,false,nil,nil,"/usr/local/bin/jackdmp",32,128); //for osx
 		slhw.postln;
