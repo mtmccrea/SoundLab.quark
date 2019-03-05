@@ -123,7 +123,7 @@ SoundLabHardware {
 		// clientsDictionary = Dictionary.new; //not here
 		//init hardware
 		this.prGetCardID;
-		format("%: before midi", this.class.name).postln;
+		// format("%: before midi", this.class.name).postln;
 		this.prInitMIDI;
 		this.changed(\updatingConfiguration, 1.0);
 
@@ -179,14 +179,11 @@ SoundLabHardware {
 				updatingCondition.wait;
 				addWaitTime.wait;
 				// "--before setting jack connections".postln;
-				"audioDeviceName: ".post; audioDeviceName.postln;
 				if(audioDeviceName.notNil,{
 					//assumes using JackRouter
-					"not nil".postln;
 					server.options.device_(audioDeviceName);
 					this.setJackRouterInsOuts(serverIns, serverOuts);
 				}, {
-					"is nil".postln;
 					//assumes using JACK directly
 					this.prSetJackConnections;
 				});
@@ -353,7 +350,7 @@ SoundLabHardware {
 			// "midiPortName: ".post; midiPortName.postln;
 			// MIDIClient.destinations;
 			try { midiPort = MIDIOut.newByName(midiDeviceName, midiPortName)};
-			postf("midiPort: %\n", midiPort);
+			// postf("midiPort: %\n", midiPort);
 			if(thisProcess.platform.name == \linux, {
 				// MIDI INIT!!!!!! don't forget to connect....
 				try { midiPort.connect(midiPort.port); };
