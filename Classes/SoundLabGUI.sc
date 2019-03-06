@@ -1,7 +1,7 @@
 SoundLabGUI {
 	// copyArgs
 	var <sl, <wwwPort;
-	var <slhw, <deviceAddr, <wsGUI;
+	var <deviceAddr, <wsGUI;
 	var <decsHoriz, <decsSphere, <decsDome, <discreteRouters, <decsMatrix;
 	var <sampleRates;
 	var <gainTxt, <gainSl, <muteButton, <attButton, <srMenu, <decMenus,
@@ -26,7 +26,7 @@ SoundLabGUI {
 			"\n*** Initializing Web Window ***".postln;
 			sl.addDependant( this );
 			if( sl.usingSLHW, {
-				slhw = sl.slhw.addDependant(this)
+				sl.slhw.addDependant(this)
 			});
 
 			if (WsWindow.allWsWindows.notNil and: { WsWindow.allWsWindows[\SoundLabRouter].notNil }) {
@@ -312,7 +312,7 @@ SoundLabGUI {
 					var updateCond;
 					if( sl.usingSLHW,
 						{
-							if( slhw.audioIsRunning.not, {
+							if( sl.slhw.audioIsRunning.not, {
 								this.status_("Warning: Audio is stopped in Hardware");
 								break.("Audio is currently stopped in the Hardware.".warn)
 							});
@@ -529,13 +529,15 @@ SoundLabGUI {
 			);
 			this.postState;
 		});
-		if( who == slhw, {
+		if( who == sl.slhw, {
 			switch( what,
 				\audioIsRunning, { args[0].not.if(
 					{ this.status_("Audio stopped. Please wait for audio to resume to make further changes.") }
 				);
 				},
-				\stoppingAudio, { this.status_("Audio is stopping...") }
+				\stoppingAudio, { this.status_("Audio is stopping...") },
+				\reportError,	{ this.status_(args[0]) },
+				\reportStatus,	{ this.status_(args[0]) }
 			)
 		});
 	}
@@ -928,7 +930,7 @@ SoundLabGUI {
 
 	cleanup {
 		sl.removeDependant( this );
-		slhw !? {slhw.removeDependant(this)};
+		sl.slhw !? {sl.slhw.removeDependant(this)};
 		wsGUI.free;
 	}
 
