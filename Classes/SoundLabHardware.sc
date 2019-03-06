@@ -58,6 +58,7 @@ SoundLabHardware {
 	var fixAudioIn;
 	var <fireface;
 	var ffPhantomState;
+	var <maxStartTime = 20, <checkRoutine; //if audio did not start after this time, attempt starting again
 
 	//remmeber to use update notification at some point!!!!
 
@@ -140,10 +141,29 @@ SoundLabHardware {
 			});
 			startRoutine = Routine.run({
 				clientsDictionary = Dictionary.new; //reset names
+
+				checkRoutine !? {checkRoutine.stop};
+				checkRoutine = fork{
+					maxStartTime.wait;
+					postf("\n\n------\nChecking if server is up and running after % seconds:\n", maxStartTime);
+					if(server.serverRunning.not, {
+						this.audioIsRunning_(false);
+
+						this.changed(\reportStatus,
+							warn(format("Server is not running. Attempting to start again...", maxStartTime))
+						);
+						this.startAudio(newSR, periodSize, periodNum)
+					}, {
+						"Server is running.\n-----".postln;
+					}
+					)
+				};
+
 				this.changed(\updatingConfiguration, 0.0);
 				// if(audioIsRunning, {
 				//for now - do it always, just in case something was running before
 				"stopping audio first...".postln;
+				this.changed(\reportStatus, "Stopping audio first");
 
 				this.prStopAudioFunction;
 				// 6.wait;
@@ -166,12 +186,14 @@ SoundLabHardware {
 					newSR = 44100;
 					"using default sample rate: 44100".postln;
 				});
+				this.changed(\reportStatus, "Setting new samplerate...");
 				this.prSetSR(newSR);
 				// "---- 3".postln;
 				// 6.wait;
 				updatingCondition.wait;
 				addWaitTime.wait;
 				this.changed(\updatingConfiguration, 0.6);
+				this.changed(\reportStatus, "Starting JACK...");
 				// "---- 4".postln;
 				this.prStartJack(periodSize, periodNum);
 				// "---- after jack".postln;
@@ -192,11 +214,13 @@ SoundLabHardware {
 				// this.recallFfPhantom;
 				//set number of channels for JackRouter on macos
 				this.changed(\updatingConfiguration, 0.9);
+				this.changed(\reportStatus, "Booting the server...");
 				// "--before starting server".postln;
 				this.prStartServer;
 				// 2.wait;
 				updatingCondition.wait;
 				addWaitTime.wait;
+				this.changed(\reportStatus, "Server booted.");
 				this.audioIsRunning_(true);
 				addWaitTime = 0;
 				// clientsDictionary = Dictionary.new;
