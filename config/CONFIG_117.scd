@@ -108,6 +108,7 @@ numInChannels: number of input channels into the decoder/router (Int)
 		[\Hex_faceForward,	\discrete,	\NA,	2,	(9..14)++(24..27),			10, 0 ],
 		[\Hex_faceRight,	\discrete,	\NA,	2,	(10..14)++[9]++(24..27),	10, 0 ],
 		[\LongQuad_faceRight,\discrete,	\NA,	2,	[10, 11, 13, 14]++(24..27),	8,  0 ],
+		[\All,                \discrete, \NA, 2, (0..31),                    32, 0 ],
 		// counter-clockwise
 		[\Hex_faceForward_ccw,	\discrete,	\NA,	2,	(9..14).reverse.rotate++(24..27),			10, 0 ],
 		[\Hex_faceRight_ccw,	\discrete,	\NA,	2,	((10..14)++[9]).reverse.rotate++(24..27),	10, 0 ],
