@@ -6,42 +6,42 @@
 
 IdentityDictionary(know: true)
 .putPairs([
-	\labName,				"Sound Lab 117",
-	\numHardwareOuts, 		32,
-	\numHardwareIns, 		32,
-	\numSatChans,			24,
-	\numSubChans, 			4,
-	\defaultDecoderName,	\Sph_24ch_all, // must match a name in \decAttributeList below
-	\jconvHWOutChannel,		0,
-	\stereoChanIndex,		[10, 11],
-	\rotateDegree,			-90, // option to rotate the listening position to this angle
-	\xOverHPF,				60,
-	\xOverLPF,				60,
-	\shelfFreq,				60,		// takes predecdence over listening Diameter
-	\listeningDiameter,		1.5,	// sweet spot size in meters
-	\stereoGain,			-3,		// gain on stereo bus in dB, to balance with decoders
-	\initSampleRate,    48000,  //used at initialization
+	\labName,            "Sound Lab 117",
+	\numHardwareOuts,    32,
+	\numHardwareIns,     32,
+	\numSatChans,        24,
+	\numSubChans,        4,
+	\defaultDecoderName, \Sph_24ch_all, // must match a name in \decAttributeList below
+	\jconvHWOutChannel,  0,
+	\stereoChanIndex,    [10, 11],
+	\rotateDegree,       -90,   // option to rotate the listening position to this angle
+	\xOverHPF,           60,
+	\xOverLPF,           60,
+	\shelfFreq,          60,    // takes predecdence over listening Diameter
+	\listeningDiameter,  1.5,	// sweet spot size in meters
+	\stereoGain,         -3,    // gain on stereo bus in dB, to balance with decoders
+	\initSampleRate,     48000, //used at initialization
 
 	/* SoundLabHardware settings */
 
-	\useFireface, 			false,
-	\midiDeviceName,		"MADIface USB (23824613)",
-	\midiPortName,			"Port 1",
-	\cardNameIncludes,		"RME",
+	\useFireface,       false,
+	\midiDeviceName,    "MADIface USB (23824613)",
+	\midiPortName,      "Port 1",
+	\cardNameIncludes,  "RME",
 	// \jackPath,				"/usr/bin/jackd",
-	\jackPath,				"/usr/local/bin/jackdmp", // for osx
-	\jconvolverPath,		"/usr/local/bin/jconvolver", // for osx
+	\jackPath,          "/usr/local/bin/jackdmp", // for osx
+	\jconvolverPath,    "/usr/local/bin/jconvolver", // for osx
 	\fixAudioInputGoingToTheDecoder, true,
-	\hwPeriodSize, 			256,
-	\hwPeriodNum,			1,
-	\firefaceID,            "000a35009caf3c69",
-	\whichMadiInput,        nil,
-	\whichMadiOutput,       nil,
-	\audioDeviceName,       nil, //optionally for osx: "JackRouter"
+	\hwPeriodSize,      256,
+	\hwPeriodNum,       1,
+	\firefaceID,        "000a35009caf3c69",
+	\whichMadiInput,    nil,
+	\whichMadiOutput,   nil,
+	\audioDeviceName,   nil, //optionally for osx: JackRouter
 
 	/* file paths */
-	\kernelsPath,           "/Users/dxlocal/Documents/SoundLabs/SoundLabKernels117/",
-	\decoderMatricesPath,	nil
+	\kernelsPath,         "/Users/dxlocal/Documents/SoundLabs/SoundLabKernels117/",
+	\decoderMatricesPath, nil
 ])
 
 
@@ -104,15 +104,14 @@ numInChannels: number of input channels into the decoder/router (Int)
 		/* --discrete channel routing-- */
 		// thru routing assumes contiguous channels, starting at arrayOutIndices.first
 		// includes subs
-		[\All,				\discrete,	\NA,	2,	(0..27),					28, 0 ],
-		[\Hex_faceForward,	\discrete,	\NA,	2,	(9..14)++(24..27),			10, 0 ],
-		[\Hex_faceRight,	\discrete,	\NA,	2,	(10..14)++[9]++(24..27),	10, 0 ],
-		[\LongQuad_faceRight,\discrete,	\NA,	2,	[10, 11, 13, 14]++(24..27),	8,  0 ],
 		[\All,                \discrete, \NA, 2, (0..31),                    32, 0 ],
+		[\Hex_faceForward,    \discrete, \NA, 2, (9..14)++(24..27),          10, 0 ],
+		[\Hex_faceRight,      \discrete, \NA, 2, (10..14)++[9]++(24..27),    10, 0 ],
+		[\LongQuad_faceRight, \discrete, \NA, 2, [10, 11, 13, 14]++(24..27), 8,  0 ],
 		// counter-clockwise
-		[\Hex_faceForward_ccw,	\discrete,	\NA,	2,	(9..14).reverse.rotate++(24..27),			10, 0 ],
-		[\Hex_faceRight_ccw,	\discrete,	\NA,	2,	((10..14)++[9]).reverse.rotate++(24..27),	10, 0 ],
-		[\LongQuad_faceRight_ccw,\discrete,	\NA,	2,	[10, 11, 13, 14].reverse.rotate++(24..27),	8,  0 ],
+		[\Hex_faceForward_ccw,    \discrete, \NA, 2, (9..14).reverse.rotate++(24..27),          10, 0 ],
+		[\Hex_faceRight_ccw,      \discrete, \NA, 2, ((10..14)++[9]).reverse.rotate++(24..27),  10, 0 ],
+		[\LongQuad_faceRight_ccw, \discrete, \NA, 2, [10, 11, 13, 14].reverse.rotate++(24..27), 8,  0 ],
 	]
 )
 
