@@ -17,18 +17,19 @@ IdentityDictionary(know: true)
 	\shelfFreq,				700,	// ~0.17m sweet spot diam, takes precedence over listening Diameter
 	\listeningDiameter,		0.17,	// sweet spot size in meters
 	\stereoGain,			-3,		// gain on stereo bus in dB, to balance with decoders
-	\initSampleRate, 48000,  //used at initialization
+	\initSampleRate,        48000,  //used at initialization
 
 	/* SoundLabHardware settings */
 
 	\useFireface, 			false,
-	\midiDeviceName,			"External MIDI- MIDI 1",
-	\midiPortName,			"External MIDI- MIDI 1",
+	\midiDeviceName,		"HDSPe MADI (23531001)",
+	\midiPortName,			"Port 1",
 	// \midiPortName,			nil, // nil for no MIDI
 	\cardNameIncludes,		"RME",
 	// \cardNameIncludes,		nil, // for OSX
-	\jackPath,				"/usr/bin/jackd",
-	// \jackPath,				"/usr/local/bin/jackdmp", // for osx
+	// \jackPath,				"/usr/bin/jackd",
+	\jackPath,				"/usr/local/bin/jackdmp", // for osx
+	\jconvolverPath,        "/usr/local/bin/jconvolver", // for osx
 	\fixAudioInputGoingToTheDecoder, true,
 	\hwPeriodSize, 			256,
 	\hwPeriodNum,			1,
@@ -37,7 +38,7 @@ IdentityDictionary(know: true)
 	\whichMadiOutput,       nil,
 
 	/* file paths */
-	\kernelsPath,       "/home/audioadmin/Documents/SoundLabSupport/SoundLabKernels113/",
+	\kernelsPath,       "~/Documents/SoundLabSupport/SoundLabKernels113/".standardizePath,
 	\decoderMatricesPath, nil
 ])
 
