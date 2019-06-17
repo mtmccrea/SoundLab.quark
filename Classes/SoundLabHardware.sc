@@ -62,6 +62,27 @@ SoundLabHardware {
 
 	//remmeber to use update notification at some point!!!!
 
+	//for lack of a better place, here is a method for finding PID of a given process (for linux and macos)
+	*pidof {arg processName;
+		var result;
+		if(processName.notNil, {
+			thisProcess.platform.name.switch(
+				\linux, {
+					result = (format("pidof \"%\"", processName).unixCmdGetStdOut);
+				},
+				\osx, {
+					result = (format("pgrep \"%\"", processName).unixCmdGetStdOut);
+				}
+			)
+		});
+		if(result.size == 0, {result = nil}); //replace empty string with nil
+		if(result.notNil, {
+			^result.asInteger
+		}, {
+			^nil //returns nil if no pid found
+		});
+	}
+
 
 	*new {arg useSupernova = false,
 		fixAudioInputGoingToTheDecoder = true,
@@ -480,7 +501,7 @@ SoundLabHardware {
 	prStopJack {
 		"killall -9 jackd".unixCmd; //should be PID based....
 		"killall -9 jackdmp".unixCmd; //should be PID based....
-		if("pidof jackd".unixCmdGetStdOut.size > 0, {
+		if(SoundLabHardware.pidof("jackd").notNil, {
 			"killall -9 jackdbus".unixCmd;
 			"killall -9 jackd".unixCmd;
 			if(jackWasStartedBySC, {
@@ -833,28 +854,46 @@ SoundLabHardware {
 
 Fireface {
 	var <id, <phantomState;
-	var <dbusServerPid, <autoSync = true;
+	var <settingsAppPid, <autoSync = true;
 	var <pollingRoutine, <lastUnixCmdTime = 0, <>dbusServerAliveTime = 60;
 	var <lastUpdateTime;
 	var <active = false;
 	var <starting = false;
 	var <messageQueue;
+	var scriptPath; //for applescript
+	var firefaceSettingsPath = "/Applications/Fireface Settings.app/Contents/MacOS/Fireface Settings";
 
 	*new {|id = "000a3500c1da0056", phantomState|
 		^super.newCopyArgs(id, phantomState).init;
 	}
 
 	init { //called when class is initialized
+		var settingsAppName;
 		phantomState ?? {phantomState = 4.collect({false})};
 		messageQueue = List.new;
 		if(this.active.not, {
 			"initializint fireface".postln;
 			// this.prStartFireface;
 			// starting = true;
-			this.prStartDbusServer;
+			thisProcess.platform.name.switch(
+				\linux, {
+					this.prStartDbusServer;
+				},
+				\osx, {
+					scriptPath = File.realpath(this.class.filenameSymbol).dirname.dirname +/+ "applescript";
+					this.prStartFirefaceSettings;
+				}
+			);
 			{this.prInitDefaults}.defer(2);
 		}, {
-			"Fireface seems already initialized, NOT starting DBus server".postln;
+			thisProcess.platform.name.switch(
+				\linux, {
+					"Fireface seems already initialized, NOT starting DBus server".postln;
+				},
+				\osx, {
+					"Fireface seems already initialized, NOT starting Fireface Settings".postln;
+				}
+			);
 		});
 	}
 
@@ -876,14 +915,14 @@ Fireface {
 	// prStartDbusServer {
 	// 	"Starting ffado-dbus-server for Fireface".postln;
 	// 	starting = true;
-	// 	dbusServerPid = "exec ffado-dbus-server".unixCmd({|msg|
-	// 		dbusServerPid = nil;
+	// 	settingsAppPid = "exec ffado-dbus-server".unixCmd({|msg|
+	// 		settingsAppPid = nil;
 	// 		"Dbus server finished".postln;
 	// 	}); //needs to be run each time fireface disconnects
-	// 	// dbusServerPid = "exec ffado-dbus-server".unixCmdGetStdOutThruOsc({|line|
+	// 	// settingsAppPid = "exec ffado-dbus-server".unixCmdGetStdOutThruOsc({|line|
 	// 	// 	"from dbus server: ".post; line.postln;
 	// 	// 	}, {|msg|
-	// 	// 		dbusServerPid = nil;
+	// 	// 		settingsAppPid = nil;
 	// 	// 		"Dbus server finished".postln;
 	// 	// });
 	// 	this.prStartPolling;//start with the server
@@ -892,17 +931,34 @@ Fireface {
 	prStartDbusServer {
 		"Starting ffado-dbus-server for Fireface".postln;
 		starting = true;
-		dbusServerPid = "exec ffado-mixer".unixCmd({|msg| //use ffado mixer
-			dbusServerPid = nil;
+		settingsAppPid = "exec ffado-mixer".unixCmd({|msg| //use ffado mixer
+			settingsAppPid = nil;
 			"Dbus server finished".postln;
 		}); //needs to be run each time fireface disconnects
-		// dbusServerPid = "exec ffado-dbus-server".unixCmdGetStdOutThruOsc({|line|
+		// settingsAppPid = "exec ffado-dbus-server".unixCmdGetStdOutThruOsc({|line|
 		// 	"from dbus server: ".post; line.postln;
 		// 	}, {|msg|
-		// 		dbusServerPid = nil;
+		// 		settingsAppPid = nil;
 		// 		"Dbus server finished".postln;
 		// });
 		// this.prStartPolling;//start with the server
+	}
+
+	prStartFirefaceSettings { //on osx only
+		"Starting Fireface Settings".postln;
+		starting = true;
+		settingsAppPid = SoundLabHardware.pidof(PathName(firefaceSettingsPath).fileName); // check if the fireface app is running
+		// "settingsAppPid: ".post; settingsAppPid.postln;
+		settingsAppPid !? {
+			// kill it in order to start a new one from SC and be able to know when it finishes
+			"killing Fireface Settings".postln;
+			thisProcess.platform.killProcessByID(settingsAppPid);
+			settingsAppPid = nil;
+		};
+		settingsAppPid = format("exec \"%\"", firefaceSettingsPath).unixCmd({|msg|
+			settingsAppPid = nil;
+			"Fireface Settings finished".postln;
+		}); //needs to be run each time fireface disconnects
 	}
 
 	prInitDefaults{
@@ -915,11 +971,15 @@ Fireface {
 		// this.prStartPolling; //moved to prStartDbusServer
 		active = true;
 		starting = false;
-		this.sendQueuedMessages;
+		thisProcess.platform.name.switch(
+			\linux, {
+				this.sendQueuedMessages;
+			}
+		);
 		// }.defer(2); //more time?
 	}
 
-	sendQueuedMessages{
+	sendQueuedMessages{ //this method used on linux only
 		"Fireface: sending queued messages".postln;
 		active = true;
 		starting = false;
@@ -942,7 +1002,7 @@ Fireface {
 	}
 
 	// isActive {
-	// 	if(dbusServerPid.notNil, {
+	// 	if(settingsAppPid.notNil, {
 	// 		^true;
 	// 		}, {
 	// 			^false;
@@ -958,27 +1018,34 @@ Fireface {
 
 		active = false;
 		"clearing fireface".postln;
-		// "dbusServerPid: ".post; dbusServerPid.postln;
+		// "settingsAppPid: ".post; settingsAppPid.postln;
 		// "pollingRoutine: ".postln;
 		// pollingRoutine.dump;
 		// pollingRoutine.stop;
 		// pollingRoutine.isPlaying.postln;
-		// "dbusServerPid: ".post; dbusServerPid.postln;
-		if(dbusServerPid.notNil, {
-			"killing pid ".post; dbusServerPid.postln;
-			// ("killing pid " ++ dbusServerPid).postln;
-			("kill -9 " ++ dbusServerPid).unixCmd;
+		// "settingsAppPid: ".post; settingsAppPid.postln;
+		if(settingsAppPid.notNil, {
+			"killing pid ".post; settingsAppPid.postln;
+			// ("killing pid " ++ settingsAppPid).postln;
+			("kill -9 " ++ settingsAppPid).unixCmd;
 		});
 	}
 
 	setMatrixGain {|inbus = 6 /*mic: 6-9*/, outbus = 12/*ADAT: 12-19(27)*/, gain = 1, post = true|
-		var dbusCmd, gainRaw;
-		gainRaw = gain * 16384;
-		// dbusCmd = "dbus-send --print-reply --dest=org.ffado.Control /org/ffado/Control/DeviceManager/" ++ id ++ "/Mixer/InputFaders org.ffado.Control.Element.MatrixMixer.setValue int32:" ++ outbus.asString ++ " int32:" ++ inbus.asString ++ " double:" ++ gainRaw.asString;
-		this.sendDBus("Mixer/InputFaders", "MatrixMixer", "setValue", "int32:" ++ outbus.asString ++ " int32:" ++ inbus.asString ++ " double:" ++ gainRaw.asString, post);
-		// dbusCmd.postln;
-		// dbusCmd.unixCmd(postOutput: post);
-		// this.prUnixCmdFfActive(dbusCmd, post: post);
+		thisProcess.platform.name.switch(
+			\osx, {
+				// not yet implemented
+			},
+			\linux, {
+				var dbusCmd, gainRaw;
+				gainRaw = gain * 16384;
+				// dbusCmd = "dbus-send --print-reply --dest=org.ffado.Control /org/ffado/Control/DeviceManager/" ++ id ++ "/Mixer/InputFaders org.ffado.Control.Element.MatrixMixer.setValue int32:" ++ outbus.asString ++ " int32:" ++ inbus.asString ++ " double:" ++ gainRaw.asString;
+				this.sendDBus("Mixer/InputFaders", "MatrixMixer", "setValue", "int32:" ++ outbus.asString ++ " int32:" ++ inbus.asString ++ " double:" ++ gainRaw.asString, post);
+				// dbusCmd.postln;
+				// dbusCmd.unixCmd(postOutput: post);
+				// this.prUnixCmdFfActive(dbusCmd, post: post);
+			}
+		)
 	}
 
 	setDefaultRouting {
@@ -1006,42 +1073,54 @@ Fireface {
 	}
 
 	phantom_ {|channel = 0/*0-3*/, state /*bool or 0-1*/|
-		var phantomRawValue, rawValuesArray, dbusCmd;
-		// if(state.notNil, {
-		"Setting Fireface phantom".postln;
-		//store in the class
-		phantomState[channel] = state.asBoolean;
+		thisProcess.platform.name.switch(
+			\osx, {
+				var cmd;
+				state = state.asBoolean.asString;
+				channel = channel + 7; //the script expects the channel number consistent with Fireface input number
+				cmd = format("osascript % % %", scriptPath +/+ "ff800_setPhantom.scpt", channel, state);
+				// cmd.postln;
+				cmd.unixCmd;
+			},
+			\linux, {
+				var phantomRawValue, rawValuesArray, dbusCmd;
+				// if(state.notNil, {
+				"Setting Fireface phantom".postln;
+				//store in the class
+				phantomState[channel] = state.asBoolean;
 
-		/*
-		mic 7 on -> 65537
-		mic 7 off -> 65536
-		mic 8 on -> 131074
-		mic 8 off -> 131072
-		mic 9 on -> 262148
-		mic 9 off -> 262144
-		mic 10 on -> 524296
-		mic 10 off -> 524288
-		*/
-		//method call sender=:1.88 -> dest=:1.89 serial=220138 path=/org/ffado/Control/DeviceManager/ ++ id ++ /Control/Phantom; interface=org.ffado.Control.Element.Discrete; member=setValue
+				/*
+				mic 7 on -> 65537
+				mic 7 off -> 65536
+				mic 8 on -> 131074
+				mic 8 off -> 131072
+				mic 9 on -> 262148
+				mic 9 off -> 262144
+				mic 10 on -> 524296
+				mic 10 off -> 524288
+				*/
+				//method call sender=:1.88 -> dest=:1.89 serial=220138 path=/org/ffado/Control/DeviceManager/ ++ id ++ /Control/Phantom; interface=org.ffado.Control.Element.Discrete; member=setValue
 
-		// int32 524296
+				// int32 524296
 
-		rawValuesArray = [
-			[65536, 65537],
-			[131072, 131074],
-			[262144, 262148],
-			[524288, 524296]
-		];
-		phantomRawValue = rawValuesArray[channel][state.asInteger];
-		// phantomRawValue.postln;
-		// dbusCmd = "dbus-send --print-reply --dest=org.ffado.Control /org/ffado/Control/DeviceManager/" ++ id ++ "/Control/Phantom org.ffado.Control.Element.Discrete.setValue int32:" ++ phantomRawValue.asString;
-		// dbusCmd.postln;
-		// dbusCmd.unixCmd(postOutput: false);
-		this.sendDBus("Control/Phantom", "Discrete", "setValue", "int32:" ++ phantomRawValue.asString);
-		// ^[channel, state];
-		// }, {
-		// ^phantomState[channel];
-		// });
+				rawValuesArray = [
+					[65536, 65537],
+					[131072, 131074],
+					[262144, 262148],
+					[524288, 524296]
+				];
+				phantomRawValue = rawValuesArray[channel][state.asInteger];
+				// phantomRawValue.postln;
+				// dbusCmd = "dbus-send --print-reply --dest=org.ffado.Control /org/ffado/Control/DeviceManager/" ++ id ++ "/Control/Phantom org.ffado.Control.Element.Discrete.setValue int32:" ++ phantomRawValue.asString;
+				// dbusCmd.postln;
+				// dbusCmd.unixCmd(postOutput: false);
+				this.sendDBus("Control/Phantom", "Discrete", "setValue", "int32:" ++ phantomRawValue.asString);
+				// ^[channel, state];
+				// }, {
+				// ^phantomState[channel];
+				// });
+			}
+		)
 	}
 
 	phantom {|channel = 0/*0-3*/|
@@ -1061,42 +1140,57 @@ Fireface {
 	}
 
 	autoSync_ {|val = true|
-		var dbusCmd;
-		"Setting Fireface AutoSync".postln;
-		//method call sender=:1.88 -> dest=:1.89 serial=291689 path=/org/ffado/Control/DeviceManager/000a35009caf3c69/Control/Clock_mode; interface=org.ffado.Control.Element.Discrete; member=setValue
-		// int32 1
-		// dbusCmd = "dbus-send --print-reply --dest=org.ffado.Control /org/ffado/Control/DeviceManager/" ++ id ++ "/Control/Clock_mode org.ffado.Control.Element.Discrete.setValue int32:" ++ val.asInteger.asString;
-		// dbusCmd.postln;
-		// dbusCmd.unixCmd(postOutput: false);
+		thisProcess.platform.name.switch(
+			\osx, {
+				// not yet implemented
+			},
+			\linux, {
+				var dbusCmd;
+				"Setting Fireface AutoSync".postln;
+				//method call sender=:1.88 -> dest=:1.89 serial=291689 path=/org/ffado/Control/DeviceManager/000a35009caf3c69/Control/Clock_mode; interface=org.ffado.Control.Element.Discrete; member=setValue
+				// int32 1
+				// dbusCmd = "dbus-send --print-reply --dest=org.ffado.Control /org/ffado/Control/DeviceManager/" ++ id ++ "/Control/Clock_mode org.ffado.Control.Element.Discrete.setValue int32:" ++ val.asInteger.asString;
+				// dbusCmd.postln;
+				// dbusCmd.unixCmd(postOutput: false);
 
-		this.sendDBus("Control/Clock_mode", "Discrete", "setValue", "int32:" ++ val.asInteger.asString);
-		autoSync = val;
+				this.sendDBus("Control/Clock_mode", "Discrete", "setValue", "int32:" ++ val.asInteger.asString);
+				autoSync = val;
+			}
+		)
 	}
 
 	sampleRate_{|sr = 44100|
-		var inc = 0;
-		Routine.run({
-			while({active.not && (inc < 10)}, { //
-				"fireface sampleRate_: waiting for activation".postln;
-				2.wait;
-				inc = inc + 1;
-			});
-			if(autoSync && active, {
-				"setting fireface samplerate".postln;
-				//NOTE: to properly switch samplerate from "single speed" to "double speed" (48k -> 96k), switch to clock master first, then swtich sample rate, then switch back to autosync
-				this.autoSync_(false);//set to master to enforce proper single speed/double speed selection
-				0.5.wait;
-				this.prSampleRate_(sr);
-				0.5.wait;
-				this.autoSync_(true); //back to proper autosync
-			},{
-				this.prSampleRate_(sr); //set right away if it's in master mode
-			});
-		});
-
+		thisProcess.platform.name.switch(
+			\osx, {
+				var cmd = format("osascript % %", scriptPath +/+ "ff800_setSR.scpt", sr.asInteger);
+				// cmd.postln;
+				cmd.unixCmd;
+			},
+			\linux, {
+				var inc = 0;
+				Routine.run({
+					while({active.not && (inc < 10)}, { //
+						"fireface sampleRate_: waiting for activation".postln;
+						2.wait;
+						inc = inc + 1;
+					});
+					if(autoSync && active, {
+						"setting fireface samplerate".postln;
+						//NOTE: to properly switch samplerate from "single speed" to "double speed" (48k -> 96k), switch to clock master first, then swtich sample rate, then switch back to autosync
+						this.autoSync_(false);//set to master to enforce proper single speed/double speed selection
+						0.5.wait;
+						this.prSampleRate_(sr);
+						0.5.wait;
+						this.autoSync_(true); //back to proper autosync
+					},{
+						this.prSampleRate_(sr); //set right away if it's in master mode
+					});
+				});
+			}
+		)
 	}
 
-	prSampleRate_ {|sr = 44100|
+	prSampleRate_ {|sr = 44100| //this method used on linux only
 		var dbusCmd, sampleRateNumber;
 		"Setting Fireface samplerate".postln;
 		// cmd = "ffado-test SetSamplerate " ++ sr.asString;
@@ -1115,23 +1209,30 @@ Fireface {
 	}
 
 	inputSource_ {|channel = 0/*0, 6, 7*/, source = 'front' /*'front', 'rear', 'front+rear'*/| //note 0-based numbering; also inconsistent with phantom ch number...
-		var dbusCmd, chanName, sourceNumber;
-		channel.switch(
-			0, {chanName = "Chan1_source"},
-			6, {chanName = "Chan7_source"},
-			7, {chanName = "Chan8_source"},
-			{"Wrong channel number, possible are 0, 6, 7".warn}
-		);
-		source.switch(
-			'front', {sourceNumber = 0},
-			'rear', {sourceNumber = 1},
-			'front+rear', {sourceNumber = 2},
-			{"Wrong source, possible are 'front', 'rear', 'front+rear'".warn}
-		);
-		if(chanName.notNil && sourceNumber.notNil, {
-			// "Setting input source".postln;
-			this.sendDBus("Control/" ++ chanName, "Discrete", "setValue", "int32:" ++ sourceNumber.asInteger.asString);
-		});
+		thisProcess.platform.name.switch(
+			\osx, {
+				// not yet implemented
+			},
+			\linux, {
+				var dbusCmd, chanName, sourceNumber;
+				channel.switch(
+					0, {chanName = "Chan1_source"},
+					6, {chanName = "Chan7_source"},
+					7, {chanName = "Chan8_source"},
+					{"Wrong channel number, possible are 0, 6, 7".warn}
+				);
+				source.switch(
+					'front', {sourceNumber = 0},
+					'rear', {sourceNumber = 1},
+					'front+rear', {sourceNumber = 2},
+					{"Wrong source, possible are 'front', 'rear', 'front+rear'".warn}
+				);
+				if(chanName.notNil && sourceNumber.notNil, {
+					// "Setting input source".postln;
+					this.sendDBus("Control/" ++ chanName, "Discrete", "setValue", "int32:" ++ sourceNumber.asInteger.asString);
+				});
+			}
+		)
 	}
 
 	setDefaultSources { //0 - rear, 6,7 - front
@@ -1152,6 +1253,7 @@ Fireface {
 	dbusCmd.unixCmd(postOutput: post);
 	}*/
 
+	//this method used on linux only
 	sendDBus {|path = "Generic/SamplerateSelect", interface = "MatrixMixer", member = "setValue", value, post = false, synchronous = false, updateLastCmdTime = true| /*path, interface, member - these can be Symbols or Strings; value needs to be in the format 'int32:0 int32:1' etc; synchronous will return (synchronously) value from the command; updateLastCmdTime should be set to true for all messages except continuous polling*/
 		//eventually add queuing here
 		if(active, {
@@ -1165,6 +1267,7 @@ Fireface {
 		});
 	}
 
+	//this method used on linux only
 	prSendDBus {|path = "Generic/SamplerateSelect", interface = "MatrixMixer", member = "setValue", value, post = false, synchronous = false, updateLastCmdTime = true|
 		var dbusCmd;
 		dbusCmd = "dbus-send --print-reply --dest=org.ffado.Control /org/ffado/Control/DeviceManager/" ++ id ++ "/" ++ path.asString ++ " org.ffado.Control.Element." ++ interface.asString ++ "." ++ member.asString;
@@ -1182,6 +1285,7 @@ Fireface {
 	//following methods are used for that
 	//example
 	//dbus-send --print-reply --dest=org.ffado.Control /org/ffado/Control/DeviceManager/000a3500c1da0056/Generic/SamplerateSelect org.ffado.Control.Element.Element.canChangeValue
+	//this method used on linux only
 	prStartPolling {
 		fork{
 			pollingRoutine !? {pollingRoutine.stop}; //just in case
