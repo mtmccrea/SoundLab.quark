@@ -1142,7 +1142,9 @@ Fireface {
 	autoSync_ {|val = true|
 		thisProcess.platform.name.switch(
 			\osx, {
-				// not yet implemented
+				var cmd = format("osascript % %", scriptPath +/+ "ff800_setClockMode.scpt", val.if({"AutoSync"}, {"Master"}));
+				// cmd.postln;
+				cmd.unixCmd;
 			},
 			\linux, {
 				var dbusCmd;
@@ -1238,9 +1240,12 @@ Fireface {
 	}
 
 	setDefaultSources { //0 - rear, 6,7 - front
-		[[0, 'rear'], [6, 'front'], [7, 'front']].do({|thisInput|
-			this.inputSource_(thisInput[0], thisInput[1])
-		});
+		fork{
+			[[0, 'rear'], [6, 'front'], [7, 'front']].do({|thisInput|
+				this.inputSource_(thisInput[0], thisInput[1]);
+				1.wait; //needed for macos
+			});
+		}
 	}
 
 
