@@ -884,7 +884,7 @@ Fireface {
 					this.prStartFirefaceSettings;
 				}
 			);
-			{this.prInitDefaults}.defer(2);
+			{this.prInitDefaults}.defer(4);
 		}, {
 			thisProcess.platform.name.switch(
 				\linux, {
@@ -1211,7 +1211,9 @@ Fireface {
 	inputSource_ {|channel = 0/*0, 6, 7*/, source = 'front' /*'front', 'rear', 'front+rear'*/| //note 0-based numbering; also inconsistent with phantom ch number...
 		thisProcess.platform.name.switch(
 			\osx, {
-				// not yet implemented
+				var cmd = format("osascript % % %", scriptPath +/+ "ff800_setInputSource.scpt", (channel + 1).asInteger, source);
+				// cmd.postln;
+				cmd.unixCmd;
 			},
 			\linux, {
 				var dbusCmd, chanName, sourceNumber;
