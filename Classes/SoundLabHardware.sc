@@ -42,6 +42,8 @@ SoundLabHardware {
 	var <stereoInputArrayOffset;
 	var <stereoOutputArrayOffset;
 	var <audioDeviceName;
+	var <firstInputArr;
+	var <firstOutputArr;
 	//end of copyArgs
 
 	// var firstOutput = 66, firstInput = 66;//0 for 117, 64 for 205, at 96k!
@@ -59,6 +61,7 @@ SoundLabHardware {
 	var <fireface;
 	var ffPhantomState;
 	var <maxStartTime = 20, <checkRoutine; //if audio did not start after this time, attempt starting again
+	var <firstInput, <firstOutput; //will change depending on SR
 
 	//remmeber to use update notification at some point!!!!
 
@@ -101,7 +104,9 @@ SoundLabHardware {
 		whichMadiInputForStereo, //for permanent stereo in from Fireface (205)
 		stereoInputArrayOffset, //stereo inputs from Fireface (205)
 		stereoOutputArrayOffset, //stero outputs for permanent stereo in
-		audioDeviceName;
+		audioDeviceName, //for server.options.devices_
+		firstInputArr, //replaces whichMadiInput functinality - provide first input for single speed (sr <= 48k) and double speed (sr > 48k && sr <=96k), e.g. [64, 32]
+		firstOutputArr; //replaces whichMadiOutput
 		// ^super.newCopyArgs(shellCommand, receiveAction, exitAction, id).init(false);
 		^super.newCopyArgs(
 			useSupernova, fixAudioInputGoingToTheDecoder, useFireface,
@@ -112,7 +117,9 @@ SoundLabHardware {
 			whichMadiInputForStereo,
 			stereoInputArrayOffset,
 			stereoOutputArrayOffset,
-			audioDeviceName
+			audioDeviceName,
+			firstInputArr,
+			firstOutputArr,
 		).init;
 	}
 
@@ -626,29 +633,37 @@ SoundLabHardware {
 
 	prSetJackConnections {
 		//connect only as many sc outputs as jack outputs
-		var numChannelsPerMADI, inOffset, outOffset;
+		var numChannelsPerMADI;
 		if(sampleRate <= 48000, {
 			numChannelsPerMADI = 64;
 		}, {
 			numChannelsPerMADI = 32;
 		});
 		if(whichMadiInput.isNil, {
-			inOffset = 0
+			if(firstInputArr.isNil, {
+				firstInput = 0
+			}, {
+				firstInput = firstInputArr[(sampleRate > 48000).asInteger];
+			});
 		}, {
-			inOffset = (whichMadiInput * numChannelsPerMADI) + 2;
+			firstInput = (whichMadiInput * numChannelsPerMADI) + 2;
 		});
 		if(whichMadiOutput.isNil, {
-			outOffset = 0
+			if(firstOutputArr.isNil, {
+				firstOutput = 0
+			}, {
+				firstOutput = firstOutputArr[(sampleRate > 48000).asInteger];
+			});
 		}, {
-			outOffset = (whichMadiOutput * numChannelsPerMADI) + 2;
+			firstOutput = (whichMadiOutput * numChannelsPerMADI) + 2;
 		});
 
-		"SC_JACK_DEFAULT_OUTPUTS".setenv("".ccatList(numHwOutChToConnectTo.collect({|inc| "system:playback_" ++ (inc + 1 + outOffset).asString})).replace(" ", "").replace("[", "").replace("]", "").drop(1));
+		"SC_JACK_DEFAULT_OUTPUTS".setenv("".ccatList(numHwOutChToConnectTo.collect({|inc| "system:playback_" ++ (inc + 1 + firstOutput).asString})).replace(" ", "").replace("[", "").replace("]", "").drop(1));
 		//fix audio in
 		/*		if((sampleRate > 48000) && fixAudioIn, {
 		"SC_JACK_DEFAULT_INPUTS".setenv("".ccatList(16.collect({|inc| "system:capture_" ++ (inc + 1).asString})).replace(" ", "").replace("[", "").replace("]", "").drop(1)); //connect only 16 ins so rme input doesn't get into the decoder
 		});*/ //this was needed for 117 with Presonus
-		"SC_JACK_DEFAULT_INPUTS".setenv("".ccatList(numHwInChToConnectTo.collect({|inc| "system:capture_" ++ (inc + 1 + inOffset).asString})).replace(" ", "").replace("[", "").replace("]", "").drop(1));
+		"SC_JACK_DEFAULT_INPUTS".setenv("".ccatList(numHwInChToConnectTo.collect({|inc| "system:capture_" ++ (inc + 1 + firstInput).asString})).replace(" ", "").replace("[", "").replace("]", "").drop(1));
 
 		//stereo in from Fireface
 		if(whichMadiInputForStereo.notNil, { //assuming 205
@@ -763,7 +778,7 @@ SoundLabHardware {
 				server.options.numInputBusChannels = serverIns;
 				server.options.numAudioBusChannels = (serverIns + serverOuts) * 8;
 				server.options.sampleRate = sampleRate;
-				server.options.numWireBufs = 512; //to make metering possible with many channels
+				server.options.numWireBufs = 1024; //to make metering possible with many channels
 				server.options.memSize = 8192 * 16;
 
 				//fireface here as well
@@ -798,16 +813,16 @@ SoundLabHardware {
 	//fireface
 	initFireface {
 		if(useFireface, {
-			// fireface = Fireface.new(firefaceID, ffPhantomState)
-			fireface = Fireface.new(firefaceID) //not recalling phantom
+			fireface = Fireface.new(firefaceID, ffPhantomState)
+			// fireface = Fireface.new(firefaceID) //not recalling phantom
 		});
 	}
 
 	clearFireface {
 		if(useFireface, {
-			// if(fireface.notNil, {
-			// 	ffPhantomState = this.fireface.phantomState;
-			// }); //not recalling phantom
+			if(fireface.notNil, {
+				ffPhantomState = this.fireface.phantomState;
+			});
 			this.fireface.clear;
 		});
 	}
@@ -815,6 +830,9 @@ SoundLabHardware {
 	ffPhantom_ {|channel = 0/*0-3*/, state /*bool or 0-1*/|
 		if(useFireface, {
 			fireface.phantom_(channel, state);
+			if(thisProcess.platform.name == \osx, {
+				this.changed(\reportStatus, format("Please wait for phantom power on channel % (%) to turn %", channel, channel+7, state.asBoolean.if({"on"}, {"off"}))); //due to sandboxing in macOS Mojave, AppleScript commands take good few seconds to execute...
+			});
 		});
 	}
 
@@ -964,10 +982,14 @@ Fireface {
 	prInitDefaults{
 		"initializing defaults".postln;
 		// {
-		this.autoSync_(true);
-		this.setDefaultRouting;
-		this.setDefaultSources;
-		this.recallPhantom;
+		thisProcess.platform.name.switch(
+			\linux, {
+				this.autoSync_(true);
+				this.setDefaultRouting; //on macOS this causes a delay, so it's disabled for now
+				this.setDefaultSources;
+				this.recallPhantom;
+			},
+		);
 		// this.prStartPolling; //moved to prStartDbusServer
 		active = true;
 		starting = false;
@@ -1072,22 +1094,22 @@ Fireface {
 		});
 	}
 
-	phantom_ {|channel = 0/*0-3*/, state /*bool or 0-1*/|
+	phantom_ {|channel = 0/*0-3*/, state = false /*bool or 0-1*/|
+		"Setting Fireface phantom".postln;
+		//store in the class
+		phantomState[channel] = state.asBoolean;
 		thisProcess.platform.name.switch(
 			\osx, {
 				var cmd;
 				state = state.asBoolean.asString;
 				channel = channel + 7; //the script expects the channel number consistent with Fireface input number
-				cmd = format("osascript % % %", scriptPath +/+ "ff800_setPhantom.scpt", channel, state);
+				cmd = format("osascript \"%\" % %", scriptPath +/+ "ff800_setPhantom.scpt", channel, state);
 				// cmd.postln;
 				cmd.unixCmd;
 			},
 			\linux, {
 				var phantomRawValue, rawValuesArray, dbusCmd;
 				// if(state.notNil, {
-				"Setting Fireface phantom".postln;
-				//store in the class
-				phantomState[channel] = state.asBoolean;
 
 				/*
 				mic 7 on -> 65537
@@ -1142,7 +1164,7 @@ Fireface {
 	autoSync_ {|val = true|
 		thisProcess.platform.name.switch(
 			\osx, {
-				var cmd = format("osascript % %", scriptPath +/+ "ff800_setClockMode.scpt", val.if({"AutoSync"}, {"Master"}));
+				var cmd = format("osascript \"%\" %", scriptPath +/+ "ff800_setClockMode.scpt", val.if({"AutoSync"}, {"Master"}));
 				// cmd.postln;
 				cmd.unixCmd;
 			},
@@ -1164,7 +1186,7 @@ Fireface {
 	sampleRate_{|sr = 44100|
 		thisProcess.platform.name.switch(
 			\osx, {
-				var cmd = format("osascript % %", scriptPath +/+ "ff800_setSR.scpt", sr.asInteger);
+				var cmd = format("osascript \"%\" %", scriptPath +/+ "ff800_setSR.scpt", sr.asInteger);
 				// cmd.postln;
 				cmd.unixCmd;
 			},
@@ -1213,7 +1235,7 @@ Fireface {
 	inputSource_ {|channel = 0/*0, 6, 7*/, source = 'front' /*'front', 'rear', 'front+rear'*/| //note 0-based numbering; also inconsistent with phantom ch number...
 		thisProcess.platform.name.switch(
 			\osx, {
-				var cmd = format("osascript % % %", scriptPath +/+ "ff800_setInputSource.scpt", (channel + 1).asInteger, source);
+				var cmd = format("osascript \"%\" % %", scriptPath +/+ "ff800_setInputSource.scpt", (channel + 1).asInteger, source);
 				// cmd.postln;
 				cmd.unixCmd;
 			},

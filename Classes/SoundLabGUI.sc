@@ -688,7 +688,7 @@ SoundLabGUI {
 						if (sl.slhw.notNil and: { sl.slhw.useFireface }, {
 							WsHLayout( Rect(0,0,1,0.1),
 								phantomTxt.string_("<strong>Fireface input phantom:</strong>"), 0.01, phantomCheckbox0, 0.01, phantomCheckbox1, 0.01, phantomCheckbox2, 0.01, phantomCheckbox3, 0.1
-							)
+							);
 						}),
 						0.05,
 
@@ -921,6 +921,10 @@ SoundLabGUI {
 					}, {
 						sl.slhw.ffPhantom_(3, 0)
 					});
+				});
+				// recall values
+				[phantomCheckbox0, phantomCheckbox1, phantomCheckbox2, phantomCheckbox3].do({|chkBox, inc|
+					chkBox.value_(sl.slhw.fireface.phantomState[inc].asInteger)
 				});
 			});
 

@@ -9,7 +9,7 @@ IdentityDictionary(know: true)
 	\numSatChans,			19,
 	\numSubChans, 			2,
 	\defaultDecoderName,	\Horiz_Dodec,
-	\jconvHWOutChannel,		66,
+	// \jconvHWOutChannel,		66,
 	\stereoChanIndex,		[11, 1],
 	\rotateDegree,			90, // option to rotate the listening position to this angle
 	\xOverHPF,				60,
@@ -21,29 +21,29 @@ IdentityDictionary(know: true)
 
 	/* SoundLabHardware settings */
 
-	\useFireface, 			true, //2016.01.22 Marcin - testing
-	\midiDeviceName,			"External MIDI-MADIFXtest MIDI 1", // 205
-	\midiPortName,			"External MIDI-MADIFXtest MIDI 1", // 205
-	// \midiPortName,			nil, // nil for no MIDI
+	\useFireface, 			true,
+	\midiDeviceName,		"HDSPe MADI FX (23566177)", // 205
+	\midiPortName,			"Port 1", // 205
 	\cardNameIncludes,		"RME", // 205
-	// \cardNameIncludes,		nil, // for OSX
-	\jackPath,				"/usr/bin/jackd", // 205
-	// \jackPath,				"/usr/local/bin/jackdmp", // for osx
+	\jackPath,				"/usr/local/bin/jackdmp", // for osx
+	\jconvolverPath,        "/usr/local/bin/jconvolver", // for osx
 	\fixAudioInputGoingToTheDecoder, true,
 	\hwPeriodSize, 			256,
 	\hwPeriodNum,			1,
-	\firefaceID,            "000a35002dd2c77a", //"000a3500c1da0056",
-	\whichMadiInput,        2,
-	\whichMadiOutput,       2,
-	\whichMadiInputForStereo, 1, //for permanent stereo in from Fireface to speakers
-	\stereoInputArrayOffset, [4, 5, 6, 7], //stereo inputs from Fireface
-	\stereoOutputArrayOffset, [11, 1], //stero outputs for permanent stereo in
+	\whichMadiInput,        nil,
+	\whichMadiOutput,       nil,
+	\whichMadiInputForStereo, nil, //for permanent stereo in from Fireface to speakers
+	\stereoInputArrayOffset, nil, //now routed in soundcard mixer
+	\stereoOutputArrayOffset, nil, //stero outputs for permanent stereo in
 	\audioDeviceName,       nil,
+	\firstInputArr,         [128, 64],
+	\firstOutputArr,         [128, 64],
 
 
 	/* file paths */
-	\kernelsPath,			"/home/audioadmin/Documents/SoundLabSupport/SoundLabKernels/",
-	\decoderMatricesPath,	"/home/audioadmin/Documents/SoundLabSupport/DecoderMatrices/",
+	\kernelsPath,			"/Users/dxlocal/Documents/SoundLabSupport/SoundLabKernels205/",
+	\decoderMatricesPath,   nil
+	// \decoderMatricesPath,	"/home/dxlocal/Documents/SoundLabSupport/DecoderMatrices/",
 ])
 
 // no leading '/' in relative folder path

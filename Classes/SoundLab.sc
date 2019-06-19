@@ -686,16 +686,10 @@ NO NEW DECODER STARTED");
 				);
 
 				jconvHWOut = if(usingSLHW, {
-					if(slhw.whichMadiOutput.isNil,
-						{ jconvHWOutChannel },
-						{
-							var numChannelsPerMADI;
-							numChannelsPerMADI = if(slhw.sampleRate <= 48000, {64},{32});
-							(slhw.whichMadiOutput * numChannelsPerMADI) + 2;
-						}
-					)
-				},{jconvHWOutChannel}
-				);
+					slhw.firstOutput
+				},{
+					jconvHWOutChannel
+				});
 				Jconvolver.createSimpleConfigFileFromFolder(
 					kernelFolderPath: newKernelPath,
 					partitionSize: partSize,
@@ -884,7 +878,7 @@ NO NEW DECODER STARTED");
 				},
 				\stoppingAudio, {
 					this.prClearServerSide;
-				}
+				},
 			)
 		})
 	}
@@ -1859,7 +1853,9 @@ NO NEW DECODER STARTED");
 			config.whichMadiInputForStereo, //whichMadiInputForStereo
 			config.stereoInputArrayOffset,  //stereoInputArrayOffset
 			config.stereoOutputArrayOffset, //stereoOutputArrayOffset
-			config.audioDeviceName      //audioDeviceName
+			config.audioDeviceName,     //audioDeviceName
+			config.firstInputArr,       //firstInputArr
+			config.firstOutputArr,      //firstOutputArr
 		);
 		// slhw = SoundLabHardware.new(false,true,false,nil,nil,"/usr/local/bin/jackdmp",32,128); //for osx
 		slhw.postln;
