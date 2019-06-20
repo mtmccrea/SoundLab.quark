@@ -22,8 +22,8 @@ The cleanup procedure is also triggered automatically when SuperCollider shuts d
 ## Requirements:
 - SuperCollider
 - sc3-plugins
-- jconvolver
-- JACK
+- jconvolver ([jconvolver for macOS](http://www.matthiaskronlachner.com/?p=1515))
+- JACK ([JackOSX](http://jackaudio.org/downloads/))
 
 **Quarks** (These will be automatically installed.)
 - Ctk
