@@ -27,7 +27,7 @@ The cleanup procedure is also triggered automatically when SuperCollider shuts d
 
 **Quarks** (These will be automatically installed.)
 - Ctk
-- atk-sc3
+- atk-sc3 with [kernels](http://www.ambisonictoolkit.net/download/kernels/) and [matrices](http://www.ambisonictoolkit.net/download/matrices/)
 - https://github.com/dyfer/JconvolverSC.quark
 - https://github.com/dyfer/OscPipe.quark
 - http://github.com/dyfer/WsGUI.quark
