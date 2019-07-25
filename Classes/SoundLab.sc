@@ -41,6 +41,8 @@ SoundLab {
 	init {
 		var filePath;
 
+		CtkObj.latency_(nil);
+
 		forceCleanupFunc = {this.cleanup(true)};
 		ShutDown.add(forceCleanupFunc);
 
