@@ -22,7 +22,7 @@ SoundLabPartConvPatch {
 
 				PathName(kernelPath).deepFiles.do{arg pathname;
 					(pathname.extension == "wav").if({
-						irbuffers = irbuffers.add(CtkBuffer(pathname.fullPath).load(sync: false))
+						irbuffers = irbuffers.add(CtkBuffer(pathname.fullPath, server: server).load(sync: false))
 					})
 				};
 
@@ -33,7 +33,7 @@ SoundLabPartConvPatch {
 				};
 
 				irspectrums = bufSizes.collect{arg bufSize;
-					CtkBuffer.buffer(bufSize, 1).load(sync: false)
+					CtkBuffer.buffer(bufSize, 1, server).load(sync: false)
 				};
 
 				server.sync;
