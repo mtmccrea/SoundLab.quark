@@ -15,7 +15,7 @@ You can free the resources and quit the server and web gui by typing:
 ```supercollider
 l.cleanup;
 ```
-The cleanup procedure is also triggered automatically when SuperCollider shuts down or then the class library is recompiled.
+The cleanup procedure is also triggered automatically when SuperCollider shuts down or when the class library is recompiled.
 
 
 -----
