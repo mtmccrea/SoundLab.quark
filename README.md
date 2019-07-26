@@ -11,7 +11,7 @@ l = SoundLab.new("CONFIG_117.scd");
 ```
 changing the appropriate parameters. `ConfigFileName` should refer to the configuration file for the desired room.
 
-You can free the resources and quit the server, JACK, web gui and jcovolver by typing:
+You can free the resources and quit the server and web gui by typing:
 ```supercollider
 l.cleanup;
 ```
