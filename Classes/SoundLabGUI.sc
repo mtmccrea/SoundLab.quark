@@ -154,7 +154,7 @@ SoundLabGUI {
 				1, {
 					if( sl.curDecoderPatch.attributes.kind == \discrete, {
 						this.status_("Rotation not available for discrete routing".warn);
-						rotateButton.valueAction_(0);
+						rotateButton.value_(0);
 					},{ sl.rotate_(true) }
 					)
 				}
