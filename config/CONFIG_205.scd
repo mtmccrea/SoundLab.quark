@@ -18,6 +18,7 @@ IdentityDictionary(know: true)
 	\listeningDiameter,		2,	// sweet spot size in meters
 	\stereoGain,			-3,		// gain on stereo bus in dB, to balance with decoders
 	\initSampleRate, 48000,  //used at initialization
+	\fftsize,               1024
 
 	/* SoundLabHardware settings */
 
@@ -25,8 +26,6 @@ IdentityDictionary(know: true)
 	\midiDeviceName,		"HDSPe MADI FX (23566177)", // 205
 	\midiPortName,			"Port 1", // 205
 	\cardNameIncludes,		"RME", // 205
-	\jackPath,				"/usr/local/bin/jackdmp", // for osx
-	\jconvolverPath,        "/usr/local/bin/jconvolver", // for osx
 	\fixAudioInputGoingToTheDecoder, true,
 	\hwPeriodSize, 			256,
 	\hwPeriodNum,			1,

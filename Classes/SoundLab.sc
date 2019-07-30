@@ -77,7 +77,7 @@ SoundLab {
 		xOverHPF			= config.xOverHPF ?? {80};		// default xover 80Hz if not specified
 		xOverLPF			= config.xOverLPF ?? {80};		// default xover 80Hz if not specified
 		stereoGain			= config.stereoGain ?? 0;		// gain in dB to balance stereo with decoders
-		fftsize             = config.fftsize ?? {2048};
+		fftsize             = config.fftsize ?? {1024};
 		initSR = config.initSampleRate;
 		// Note: shelfFreq in config takes precedence over listeningDiameter
 		// order / pi * 340 / listeningDiameter

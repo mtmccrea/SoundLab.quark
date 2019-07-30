@@ -21,6 +21,7 @@ IdentityDictionary(know: true)
 	\listeningDiameter,  1.5,	// sweet spot size in meters
 	\stereoGain,         -3,    // gain on stereo bus in dB, to balance with decoders
 	\initSampleRate,     48000, //used at initialization
+	\fftsize,               1024
 
 	/* SoundLabHardware settings */
 
