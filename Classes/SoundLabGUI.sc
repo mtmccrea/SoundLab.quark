@@ -571,7 +571,7 @@ SoundLabGUI {
 				result = sl.getKernelAttributesMatch(selectedAttributes);
 
 				msg = case
-				{result.isKindOf(String)} { "Found kernel match. Click Apply to start the correcitoin." }
+				{result.isKindOf(String)} { "Found kernel match. Click Apply to start the correction." }
 				{result == 0}  {"No kernel found matching selected criteria."}
 				{result == -1} {"More than one kernel found, refine selected criteria."}
 				;

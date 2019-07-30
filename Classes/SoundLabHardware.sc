@@ -34,7 +34,7 @@ Changelog....?
 
 SoundLabHardware {
 	var useSupernova, fixAudioInputGoingToTheDecoder, <>useFireface;
-	var <midiDeviceName, <midiPortName, <cardNameIncludes, jackPath;
+	var <midiDeviceName, <midiPortName, <cardNameIncludes;
 	var serverIns, serverOuts, numHwOutChToConnectTo, numHwInChToConnectTo;
 	var firefaceID;
 	var <whichMadiInput, <whichMadiOutput;
@@ -48,15 +48,12 @@ SoundLabHardware {
 
 	// var firstOutput = 66, firstInput = 66;//0 for 117, 64 for 205, at 96k!
 	var <cardID, <sampleRate, /*<ins, <outs, */midiPort, <server;
-	// var getCardID, setSR, initMIDI, sendSysex, startJack, stopJack, initAll, prStartServer;
+	// var getCardID, setSR, initMIDI, sendSysex, initAll, prStartServer;
 	var <audioIsRunning, parametersSetting;//bools for status
 	var updatingCondition, isUpdating;
 	var startRoutine;
 	var addWaitTime;
-	var jackWasStartedBySC;
 	var <clientsDictionary; //name -> [outs, ins]
-	var newJackName, newJackIns, newJackOuts, <jackPeriodSize;
-	var serverInputNameInJack;
 	var fixAudioIn;
 	var <fireface;
 	var ffPhantomState;
@@ -93,7 +90,6 @@ SoundLabHardware {
 		midiDeviceName = "External MIDI-MADIFXtest MIDI 1", // nil for no MIDI
 		midiPortName = "External MIDI-MADIFXtest MIDI 1", // nil for no MIDI
 		cardNameIncludes = "RME", // nil for OSX
-		jackPath = "/usr/bin/jackd",
 		serverIns = 32,
 		serverOuts = 128,
 		numHwOutChToConnectTo = 32,
@@ -110,7 +106,7 @@ SoundLabHardware {
 		// ^super.newCopyArgs(shellCommand, receiveAction, exitAction, id).init(false);
 		^super.newCopyArgs(
 			useSupernova, fixAudioInputGoingToTheDecoder, useFireface,
-			midiDeviceName, midiPortName, cardNameIncludes, jackPath,
+			midiDeviceName, midiPortName, cardNameIncludes,
 			serverIns, serverOuts, numHwOutChToConnectTo, numHwInChToConnectTo,
 			firefaceID,
 			whichMadiInput, whichMadiOutput,
@@ -123,11 +119,6 @@ SoundLabHardware {
 		).init;
 	}
 
-	*killJack {
-		"killall -9 jackdbus".unixCmd;
-		"killall -9 jackd".unixCmd;
-	}
-
 	init {//arg useSupernova, fixAudioInputGoingToTheDecoder;
 		// midiPortName.postln;
 		// useFireface.postln;
@@ -137,21 +128,16 @@ SoundLabHardware {
 		//set default synth
 		if(useSupernova, {
 			Server.supernova;
-			serverInputNameInJack = "supernova:input_"; //this could be set with s.options.device = "supercollider", but not sure about in vs input... leaving for now
 		}, {
 			Server.scsynth;
-			serverInputNameInJack = "SuperCollider:in_";
 		});
 		Server.default = server = Server.local; //just to make sure
 		//init vals
 		this.audioIsRunning_(false);
 		updatingCondition = Condition.new(false);
 		addWaitTime = 0;
-		jackWasStartedBySC = false;
 		fixAudioIn = fixAudioInputGoingToTheDecoder;
 		// clientsDictionary = Dictionary.new; //not here
-		//init hardware
-		this.prGetCardID;
 		// format("%: before midi", this.class.name).postln;
 		this.prInitMIDI;
 		this.changed(\updatingConfiguration, 1.0);
@@ -221,26 +207,9 @@ SoundLabHardware {
 				updatingCondition.wait;
 				addWaitTime.wait;
 				this.changed(\updatingConfiguration, 0.6);
-				this.changed(\reportStatus, "Starting JACK...");
-				// "---- 4".postln;
-				this.prStartJack(periodSize, periodNum);
-				// "---- after jack".postln;
-				// 4.wait;
-				updatingCondition.wait;
-				addWaitTime.wait;
-				// "--before setting jack connections".postln;
-				if(audioDeviceName.notNil,{
-					//assumes using JackRouter
-					server.options.device_(audioDeviceName);
-					this.setJackRouterInsOuts(serverIns, serverOuts);
-				}, {
-					//assumes using JACK directly
-					this.prSetJackConnections;
-				});
 				//Fireface - phantom and Routing
 				// this.setFfDefaultRouting; //automatically inside fireface class
 				// this.recallFfPhantom;
-				//set number of channels for JackRouter on macos
 				this.changed(\updatingConfiguration, 0.9);
 				this.changed(\reportStatus, "Booting the server...");
 				// "--before starting server".postln;
@@ -318,7 +287,6 @@ SoundLabHardware {
 		//jack
 		this.changed(\updatingConfiguration, 0.6);
 		this.audioIsRunning_(false);//moved here so jack knows we're stopping
-		this.prStopJack;
 		// 1.wait;
 		if(force.not, {
 			updatingCondition.wait;
@@ -326,71 +294,6 @@ SoundLabHardware {
 		});
 		this.changed(\updatingConfiguration, 1.0);
 		// this.changed(\audioIsRunning, false);
-	}
-
-
-	//get alsa card number
-	prGetCardID {/* arg cardNameIncludes = "RME";*/
-		//get card ID
-		var p, l, extractedID;
-		"getting cardID...".postln;
-		postf("cardNameIncludes: %\n", cardNameIncludes);
-		if(cardNameIncludes.notNil, {
-			thisProcess.platform.name.switch(
-				\linux, {
-					if(cardNameIncludes.isKindOf(SimpleNumber), {
-						cardID = cardNameIncludes;
-					}, {
-						// thisProcess.platform.name.postln;
-
-						p = Pipe.new("cat /proc/asound/cards", "r");
-						l = p.getLine;
-						while({l.notNil}, {
-							// l.postln;
-							if(l.contains(cardNameIncludes), {
-								extractedID = l.split($ )[1];
-								// "l.split($ ): ".post; l.split($ ).postln;
-								// extractedID.postln;
-								if(extractedID.size > 0, { //use only lines, where there is something as the second argument
-									cardID = extractedID.asInteger;
-									// l.postln; "cardID: ".post; cardID.postln;
-								});
-							});
-							l = p.getLine;
-						});    // run until l = nil
-						p.close; // close the pipe
-					})
-				},
-				\osx, {
-					var tempName = this.hash.asString; //this is for starting JACK (for finding the device name) with a random name, so it works even if another JACK server is running
-					//on osx we use jack to list devices
-					p = Pipe.new(format("% -n % -r -d coreaudio -l", jackPath, tempName), "r");
-					l = p.getLine;
-					while({l.notNil}, {
-						var thisString, nameIndex;
-						// l.postln;
-						if(l.contains(cardNameIncludes), {
-
-							//doesn't work
-							// thisString = l.split($,).first;
-							// nameIndex = thisString.find("name = ");
-							// cardID = thisString.copyToEnd(nameIndex).split($=).last.copyToEnd(1).replace("'", "");
-							//we need this id instead:
-							nameIndex = l.findAll("name = ").last;
-							cardID = l.copyToEnd(nameIndex).split($=).last.split($')[1];
-
-							// l.postln; "cardID: ".post; cardID.postln;
-						});
-						l = p.getLine;
-					});    // run until l = nil
-					p.close; // close the pipe
-				},
-				{Error(format("%: only linux and osx platforms are supported", this.class.name)).throw}
-			);
-		}, {
-			cardID = 0;
-		});
-		postf("cardID: %\n", cardID);
 	}
 
 	prInitMIDI {
@@ -442,175 +345,6 @@ SoundLabHardware {
 	sendSysex.value(m, [0x01, 2r00010001]);//96k
 	*/
 
-	prStartJack { arg periodSize = 256, periodNum = 2;//, jackPath = "/usr/bin/jackd";
-		var cmd, options;
-		updatingCondition.test = false;
-		/*		if("pidof jackd".unixCmdGetStdOut.size > 0, {
-		"jack was running -
-		this.prStopJack;
-		});
-		while({"pidof jackd".unixCmdGetStdOut.size > 0}, {"waiting for jack to stop...".postln; 0.1.wait});*/
-		cmd = "exec " ++ jackPath ++
-		" -R ";
-		thisProcess.platform.name.switch(
-			\linux, {cmd = cmd ++ " -dalsa -H"},// -dhw:"++cardID.asString;
-			\osx, {cmd = cmd ++ " -dcoreaudio"},
-			{(this.class.name ++ ": error in prStartJack - only linux and macOS is supported").warn}
-		);
-		// if(cardNameIncludes.notNil, {
-		// 	cmd = cmd ++ " -dalsa -H -dhw:"++cardID.asString; //assuming linux
-		// 	}, {
-		// 		cmd = cmd ++ " -dcoreaudio"; //assuming osx
-		// });
-		if(cardNameIncludes.notNil, {
-			thisProcess.platform.name.switch(
-				\linux, {cmd = cmd ++ " -dhw:"++cardID.asString},// -dhw:"++cardID.asString;
-				\osx, {cmd = cmd ++ " -d"++cardID.asString;},
-				{(this.class.name ++ ": error in prStartJack - only linux and macOS is supported").warn}
-			)
-		});
-		cmd = cmd ++ " -r"++sampleRate.asString++
-		" -p"++periodSize.asString++
-		// " -n"++periodNum.asString++
-		" -D";//++
-		if(thisProcess.platform.name == \linux, {
-			cmd = cmd ++ " -n"++periodNum.asString; //numperiods only valid on ALSA (linux)
-		});
-		// " -i"++ins.asString++ //needs to be exact as MADI expects, not needed?
-		// " -o"++outs.asString;
-		// " -o"++ins.asString; //needs to be exact as MADI expects, not needed?
-		"run jack command ".post; cmd.postln;
-		cmd.unixCmdGetStdOutThruOsc({|line|
-			"from jack: ".post; line.postln;
-			this.prParseJackOutput(line);
-		}, {
-			if(audioIsRunning, {
-				"Jack crashed, restarting!".warn;
-				startRoutine.stop;
-				// this.stopAudio;
-				"killall scsynth".unixCmd;
-				"killall supernova".unixCmd;
-				this.changed(\message, "Jack crashed, restarting!");
-				{this.startAudio;}.defer(5);//to give extra time
-			}, {
-				//when exits, signal routine
-				updatingCondition.test = true;
-				updatingCondition.signal;
-				jackWasStartedBySC = false;
-				"oscpipe: jack finished.".postln;
-			});
-		});
-		jackPeriodSize = periodSize;
-
-		// {"jack_load netmanager".unixCmd;}.defer(6); //load netmanager later - went to prParseJackOutput
-	}
-
-	prStopJack {
-		"killall -9 jackd".unixCmd; //should be PID based....
-		"killall -9 jackdmp".unixCmd; //should be PID based....
-		if(SoundLabHardware.pidof("jackd").notNil, {
-			"killall -9 jackdbus".unixCmd;
-			"killall -9 jackd".unixCmd;
-			if(jackWasStartedBySC, {
-				updatingCondition.test = false;
-			}, {
-				1.wait;
-			}); //pause routine only if jack was started by sc, and thus only if exit action can resume it; otherwise wait
-		}, {
-			"jack not running".postln;
-		});
-	}
-
-	prParseJackOutput { arg line;
-		var removedName;
-		//put analysis of jack output here! - connecting for netjack etc
-		//use switch on first 8 characters from the line
-		switch(line.asString.copyRange(0, 7),
-			"configur", {
-				//when jack started up, signal routine
-				"oscpipe: jack started up!".postln;
-				jackWasStartedBySC = true;
-				{
-					updatingCondition.test = true;
-					updatingCondition.signal;
-				}.defer(1);// to give extra time
-
-				//and start netmanager
-				"jack_load netmanager".unixCmd;
-			},
-			"CoreAudi", { // for osx....
-				//when jack started up, signal routine
-				"oscpipe: jack started up!".postln;
-				jackWasStartedBySC = true;
-				{
-					updatingCondition.test = true;
-					updatingCondition.signal;
-				}.defer(1);// to give extra time
-
-				//and start netmanager
-				"jack_load netmanager".unixCmd;
-			},
-			"Slave na", {
-				"new slave name".postln;
-				newJackName = line.asString.copyToEnd(13);
-			},
-			"Send cha", {
-				"new slave inputs ('send')".postln;
-				newJackIns = line.asString.copyToEnd(31).split($ )[0];
-			},
-			"Return c", {
-				"new slave outputs ('return')".postln;
-				newJackOuts = line.asString.copyToEnd(33).split($ )[0];
-				this.prAddClient(newJackName, [newJackOuts, newJackIns]);
-				// clientsDictionary.add(newJackName, [newJackOuts, newJackIns]);
-			},
-			"Exiting ", {
-				removedName = line.asString.copyToEnd(8).replace("'", "");
-				("Netjack client " ++ removedName ++ " removed.").postln;
-				this.prRemoveClient(removedName);
-		});
-		/*		(line.copyRange(0, 6) == "Name : ").if({
-		newJackDetected = true;
-		newJackName = line.copyToEnd(7)
-		});*/
-	}
-
-	prAddClient {arg name, vals, isNetJackClient = true;
-		clientsDictionary.put(name, vals);
-		// this.changed(\clients, clientsDictionary.collect({|val, inc| val[0]}).asSortedArray /*[[name, outs], [name, outs]]*/);
-		this.changed(\clients);
-		if(isNetJackClient, {
-			{
-				this.prConnectNetJackClientToSC(name);
-				this.prConnectAuxInputsToNetJackClient(name);
-			}.defer(2);//to give time for establishing connectino?
-		});
-
-	}
-
-	prRemoveClient {arg name;
-		clientsDictionary.removeAt(name);
-		// this.changed(\clients, clientsDictionary.collect({|val, inc| val[0]}).asSortedArray /*[[name, outs], [name, outs]]*/);
-		this.changed(\clients);
-	}
-
-	prConnectNetJackClientToSC {arg clientName;
-		var srcDestArray;
-		//serverInputNameInJack
-		// "clientsDictionary.at(clientName)[0]: ".post; clientsDictionary.at(clientName)[0].postln;
-		"connecting new client to SC: ".post; clientName.postln;
-		srcDestArray = clientsDictionary.at(clientName)[0].asInteger.collect({|inc| inc}) + 1; //since it's 1-based
-		SCJConnection.connect(srcDestArray, srcDestArray, clientName ++ ":from_slave_", serverInputNameInJack);
-	}
-
-	prConnectAuxInputsToNetJackClient {arg clientName;
-		var srcDestArray;
-		//serverInputNameInJack
-		"connecting inputs to new client: ".post; clientName.postln;
-		srcDestArray = clientsDictionary.at(clientName)[1].asInteger.collect({|inc| inc}) + 1; //since it's 1-based
-		SCJConnection.connect(srcDestArray, srcDestArray, "system:capture_", clientName ++ ":to_slave_");
-	}
-
 	//not needed anymore
 	/*	prDisconnectRedundantHardwareIns {arg channelArrayToDisconnect; //should be 0-based
 	SCJConnection.disconnect(channelArrayToDisconnect, channelArrayToDisconnect, "system:capture_", serverInputNameInJack);
@@ -631,60 +365,6 @@ SoundLabHardware {
 	"Exiting 'dyferstation'".copyToEnd(8).replace("'", "")
 	*/
 
-	prSetJackConnections {
-		//connect only as many sc outputs as jack outputs
-		var numChannelsPerMADI;
-		if(sampleRate <= 48000, {
-			numChannelsPerMADI = 64;
-		}, {
-			numChannelsPerMADI = 32;
-		});
-		if(whichMadiInput.isNil, {
-			if(firstInputArr.isNil, {
-				firstInput = 0
-			}, {
-				firstInput = firstInputArr[(sampleRate > 48000).asInteger];
-			});
-		}, {
-			firstInput = (whichMadiInput * numChannelsPerMADI) + 2;
-		});
-		if(whichMadiOutput.isNil, {
-			if(firstOutputArr.isNil, {
-				firstOutput = 0
-			}, {
-				firstOutput = firstOutputArr[(sampleRate > 48000).asInteger];
-			});
-		}, {
-			firstOutput = (whichMadiOutput * numChannelsPerMADI) + 2;
-		});
-
-		"SC_JACK_DEFAULT_OUTPUTS".setenv("".ccatList(numHwOutChToConnectTo.collect({|inc| "system:playback_" ++ (inc + 1 + firstOutput).asString})).replace(" ", "").replace("[", "").replace("]", "").drop(1));
-		//fix audio in
-		/*		if((sampleRate > 48000) && fixAudioIn, {
-		"SC_JACK_DEFAULT_INPUTS".setenv("".ccatList(16.collect({|inc| "system:capture_" ++ (inc + 1).asString})).replace(" ", "").replace("[", "").replace("]", "").drop(1)); //connect only 16 ins so rme input doesn't get into the decoder
-		});*/ //this was needed for 117 with Presonus
-		"SC_JACK_DEFAULT_INPUTS".setenv("".ccatList(numHwInChToConnectTo.collect({|inc| "system:capture_" ++ (inc + 1 + firstInput).asString})).replace(" ", "").replace("[", "").replace("]", "").drop(1));
-
-		//stereo in from Fireface
-		if(whichMadiInputForStereo.notNil, { //assuming 205
-			this.prConnectInToOutInJack((whichMadiInputForStereo * numChannelsPerMADI) + 2 + stereoInputArrayOffset, (whichMadiOutput * numChannelsPerMADI) + 2 + stereoOutputArrayOffset)
-		});
-	}
-
-	prJackConnect {|input = "system:capture_1", output = "system:playback_1"|
-		("jack_connect" + input + output).unixCmd;
-	}
-
-	prJackDisonnect {|input = "system:capture_1", output = "system:playback_1"|
-		("jack_disconnect" + input + output).unixCmd;
-	}
-
-	prConnectInToOutInJack {|inArray = ([0]), outArray = ([0]), inName = "system:capture_", outName = "system:playback_"| //use 0-based in/out numbers
-		outArray = outArray.wrapExtend(inArray.size);
-		inArray.do({|thisIn, inc|
-			this.prJackConnect(inName ++ (thisIn + 1).asString, outName ++ (outArray[inc] + 1).asString)
-		});
-	}
 
 	prStartServer {
 		updatingCondition.test = false;
@@ -842,27 +522,6 @@ SoundLabHardware {
 		});
 	}
 
-	//JackRouter - for macOS
-	setJackRouterInsOuts {arg numIns, numOuts;
-		if(thisProcess.platform.name == \osx, {
-			var configStr, configArr;
-			var jackRouterPath = "~/Library/Preferences/JAS.jpil".standardizePath;
-			File.use(jackRouterPath, "r", {|file| configStr = file.readAllString});
-			// "input string: ".post; configStr.postln;
-			configArr = configStr.split($\t);
-			configArr[1] = numIns.asString;
-			configArr[3] = numOuts.asString;
-			configStr = "".catList(configArr.collect({|item| "\t " ++ item}));
-			// "output string: ".post; configStr.postln;
-			//save here
-			File.use(jackRouterPath, "w", {|file|
-				file.write(configStr);
-				format("JackRouter configuration changed to % ins and % outs", numIns, numOuts).postln;
-			});
-		}, {
-			"configuring JackRouter is supported only on macOS".warn;
-		});
-	}
 
 }
 

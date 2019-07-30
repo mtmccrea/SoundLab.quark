@@ -1,6 +1,6 @@
 SoundLabDecoderPatch {
 	// copyArgs
-	var <sl, <decoderName, inbusnum, <outbusnum, <loadCondition;
+	var <sl, <decoderName, inbusnum, outbusnum, <loadCondition;
 	var <server, <group, <decodersynth, <compsynth, <attributes, <decType;
 
 	*new { |soundlab, decoderName, inbusnum, outbusnum, loadCondition|
@@ -34,7 +34,8 @@ SoundLabDecoderPatch {
 				};
 
 				server = sl.server;
-				group = CtkGroup.play(addAction: \before, target: sl.patcherGroup, server: server);
+
+				group = CtkGroup.play(addAction: \head, target: 1, server: server);
 				server.sync;
 
 				decodersynth = sl.decoderLib[synthdefName].note(
@@ -78,4 +79,5 @@ SoundLabDecoderPatch {
 
 	// NOTE: this changes with the stereo setting, so ask the synth
 	inbusnum {^decodersynth.in_busnum}
+	outbusnum {^decodersynth.out_busnum}
 }

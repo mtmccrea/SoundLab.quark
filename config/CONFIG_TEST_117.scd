@@ -9,15 +9,14 @@ IdentityDictionary(know: true)
 	\numSatChans,			24,
 	\numSubChans, 			4,
 	\defaultDecoderName,	\Sph_18ch_6x6x6, // must match a name in \decAttributeList below
-	\jconvHWOutChannel,		0,
-	\stereoChanIndex,		[28, 29],
-	\rotateDegree,			-90,	// option to rotate the listening position to this angle
+	\stereoChanIndex,		[0, 1],
+	\rotateDegree,			0,	// option to rotate the listening position to this angle
 	\xOverHPF,				60,
 	\xOverLPF,				60,
 	\shelfFreq,				nil,		// takes predecdence over listening Diameter
 	\listeningDiameter,		0.5,	// sweet spot size in meters
 	\stereoGain,			-3,		// gain on stereo bus in dB, to balance with decoders
-	\initSampleRate, 		44100,  //used at initialization
+	\initSampleRate, 		48000,  //used at initialization
 
 	/* SoundLabHardware settings */
 
@@ -29,7 +28,6 @@ IdentityDictionary(know: true)
 	// \cardNameIncludes,		"RME",
 	\cardNameIncludes,		nil, // for OSX
 	// \jackPath,				"/usr/bin/jackd",
-	\jackPath,				"/usr/local/bin/jackdmp", // for osx
 	\fixAudioInputGoingToTheDecoder, true,
 	\hwPeriodSize, 			256,
 	\hwPeriodNum,			1,
@@ -38,7 +36,7 @@ IdentityDictionary(know: true)
 	\whichMadiOutput,       nil,
 
 	/* file paths */
-	\kernelsPath,          	"~/Documents/SoundLabs/SoundLabKernels117/".standardizePath,
+	\kernelsPath,          	"~/Documents/SoundLabKernels/SoundLabKernels117/".standardizePath,
 	\decoderMatricesPath,	nil
 ])
 
@@ -65,7 +63,7 @@ IdentityDictionary(know: true)
 
 /*
 --decoder attributes--
-decoderName, kind, k, dimensions, arrayOutIndices, numInChannels;
+decoderName, kind, k, dimensions, arrayOutIndices, numInChannels, gain;
 decoderName: unique name as it will show up on GUI (Symbol)
 kind: diametric, discrete (Symbol)
 k: dual (Symbol)
@@ -75,6 +73,7 @@ arrayOutIndices (Array of ints):
 		for dome: specify only the first half of out indexes for horizontal plane, followed by all upper dome out indices
 		for discrete: specify all out indexes
 numInChannels: number of input channels into the decoder/router (Int)
+gain: global makeup gain
 */
 .put(\decAttributeList,
 	[

@@ -1,5 +1,5 @@
 // TODO:
-// ~~ create a distinction between the functionality that uses JConvolver (usingKernels boolean)
+// ~~ create a distinction between the functionality that uses PartConv (usingKernels boolean)
 // and simply doing \basic_balance correction (which doesn't use convolution), so the \basic_balance
 // isn't labeled as a "kernel", i.e. curKernel ~~
 
@@ -17,13 +17,16 @@ SoundLab {
 	var <clipListener, <reloadGUIListener, <clipMonDef, <patcherDef, <sterPatcherDef, <stereoSubPatcherDef;
 	var <patcherGroup, <stereoPatcherSynths, <satPatcherSynths, <subPatcherSynths;
 	var <monitorGroup_ins, <monitorGroup_outs, <monitorSynths_outs, <monitorSynths_ins;
-	var <jconvolver, <nextjconvolver, <jconvinbus, <nextjconvinbus, <jconvHWOutChannel, <stereoGain;
+	var <partConvolverPatch, <nextPartConvolverPatch, <partconvinbus, <nextpartconvinbus, <stereoGain;
+	var <newDecoderPatch, <partConvSynthDef;
+	var <fftsize;
 
 	// SoundLabUtils
 	var <compDict, <decAttributes, <decAttributeList, <matrixDecoderNames;
 	var <spkrAzims, <spkrElevs, <spkrDirs, <spkrOppDict, <spkrDels, <spkrGains, <spkrDists;
 	var <decoderLib, <synthLib, <loadedDelDistGain;
 	var <slhw;
+	var <kernelInputs;
 	var <forceCleanupFunc, <recompileWindow;
 
 	*new { |configFileName="CONFIG_205.scd", useKernels=true, loadGUI=true, useSLHW=true|
@@ -32,11 +35,13 @@ SoundLab {
 
 	// NOTE: Jack will create numHarwareOuts * 3 for routing to
 	// system hardware (0..numHardwareOuts-1)
-	// jconvolver 1 (numHardwareOuts..numHardwareOuts*2-1)
-	// jconvolver 2 (numHardwareOuts..numHardwareOuts*3-1)
+	// partConvolver 1 (numHardwareOuts..numHardwareOuts*2-1)
+	// partConvolver 2 (numHardwareOuts..numHardwareOuts*3-1)
 	// Thus SC will boot with s.option.numOutputBusChannels = numHarwareOuts * 3.
 	init {
 		var filePath;
+
+		CtkObj.latency_(nil);
 
 		forceCleanupFunc = {this.cleanup(true)};
 		ShutDown.add(forceCleanupFunc);
@@ -54,7 +59,7 @@ SoundLab {
 			});
 
 		}, {
-			Error("FIle not found at" + filePath).throw;
+			Error("File not found at" + filePath).throw;
 		});
 
 
@@ -71,8 +76,8 @@ SoundLab {
 		rotateDegree		= config.rotateDegree ?? {-90};	// default rotation to the right
 		xOverHPF			= config.xOverHPF ?? {80};		// default xover 80Hz if not specified
 		xOverLPF			= config.xOverLPF ?? {80};		// default xover 80Hz if not specified
-		jconvHWOutChannel	= config.jconvHWOutChannel ?? {0};	// default xover 80Hz if not specified
 		stereoGain			= config.stereoGain ?? 0;		// gain in dB to balance stereo with decoders
+		fftsize             = config.fftsize ?? {1024};
 		initSR = config.initSampleRate;
 		// Note: shelfFreq in config takes precedence over listeningDiameter
 		// order / pi * 340 / listeningDiameter
@@ -130,10 +135,6 @@ SoundLab {
 		rotated = rotated ?? {false};
 		matrixDecoderNames = [];
 
-		config.jconvolverPath !? {
-			Jconvolver.executablePath_(config.jconvolverPath)
-		};
-
 		this.prInitRigDimensions;
 		this.prInitDecoderAttributes;
 
@@ -163,9 +164,131 @@ SoundLab {
 		);
 
 		if(usingSLHW,
-			{ this.prInitSLHW(initSR)},
+			{ this.prInitSLHW(initSR); server = slhw.server},
 			{ this.prInitDefaultHW(initSR) }
 		);
+
+		server.doWhenBooted({
+		("NumOutputBusChannels:" + server.options.numOutputBusChannels).postln;
+		kernelInputs = CtkAudio.new(numKernelChans, server: server);
+		});
+	}
+
+	prParseKernelDir {
+		kernels = [];
+		kernelDirPathName.entries.do({ |sr_pn|
+			var sr, nm, knm, result;
+
+			(sr_pn.isFolder && (sr_pn.folderName.asInteger == server.sampleRate)).if{
+
+				sr_pn.entries.do({ |kern_pn|
+					kern_pn.isFolder.if{
+						// kernel "category name"
+						knm = kern_pn.folderName;
+						kern_pn.entries.do{ |entry_pn|
+							// kernel folder
+							if(entry_pn.isFolder, {
+								// could add check here for soundfiles within
+								// to confirm it's a kernel folder
+
+								// kernel stored as String of the path relative to sample rate
+								kernels = kernels.add( knm ++ "/" ++ entry_pn.folderName )
+							});
+						}
+					}
+				})
+			}
+		})
+	}
+
+	prCheckKernelSR {
+		var thisKernelPath;
+		( curKernel.notNil and: (curKernel != \basic_balance) ).if({
+			var namedFolder, kernelFolder, pn;
+
+			pn = PathName(curKernel.asString);
+			namedFolder = pn.allFolders[pn.allFolders.size-2];
+			kernelFolder = pn.allFolders.last;
+			("testing " ++ (namedFolder ++ "/" ++ kernelFolder)).postln;
+
+			if( kernels.collect(_.asSymbol).includes((namedFolder ++ "/" ++ kernelFolder).asSymbol), {
+				var newPath;
+				// update curKernel to new SR path
+				newPath = format( "%%/%/%/", config.kernelsPath, server.sampleRate.asInteger, namedFolder, kernelFolder);
+				File.exists(newPath).if({
+					thisKernelPath = newPath;
+				});
+			}, {
+				this.changed(\reportStatus,
+					warn("Last kernel wasn't found at this sample rate. Defaulting to basic_balance.")
+				);
+			})
+		});
+		^thisKernelPath
+	}
+
+	prDefinePatchSynths {
+
+		sterPatcherDef = CtkSynthDef(\sterpatcher, { arg in_bus=0, out_bus=0, amp=1;
+			var in;
+			// stereo patchers don't use ReplaceOut because
+			// often stereo channels are shared with
+			// satellite channels, and ReplaceOut would overwrite
+			// the satellite's bus contents
+
+			// Out.ar(out_bus, In.ar(in_bus, 1))
+			in = In.ar(in_bus, 2);
+
+			2.do{|i|
+				Out.ar( stereoChanIndex[i],
+					// catch if stereo channels weren't measured (like 117,
+					// where they're speakers apart from the ambisonics rig)
+					in[i]
+					* (config.defaultSpkrGainsDB[stereoChanIndex[i]] ?? 0).dbamp
+					* amp
+					* stereoGain.dbamp
+				)
+			};
+		});
+
+		stereoSubPatcherDef = CtkSynthDef(\stersubpatcher, { arg in_bus=0, out_bus=0, amp=1;
+			if( numSubChans == 1,
+				{	// summing stereo into 1 sub
+					Out.ar(out_bus,
+						In.ar(in_bus, 2).sum
+						* (2.sqrt/2)
+						* config.defaultSpkrGainsDB[numSatChans].dbamp
+						* stereoGain.dbamp
+					)
+				},{ // encoding stereo t b format then decoding to multipl subs
+					var stereoBF = FoaEncode.ar(
+						In.ar(in_bus, 2),
+						FoaEncoderMatrix.newStereo(pi)
+					);
+
+					// simple cardioid mono decoder for each sub direction
+					numSubChans.do{ |i|
+						Out.ar( out_bus + i,
+							FoaDecode.ar(stereoBF,
+								FoaDecoderMatrix.newMono(
+									config.spkrAzimuthsRad[numSatChans + i],
+									0, 0.5)   // no elevation, cardioid
+							)
+							* (2/numSubChans) // balance the energy based on the number of subs
+							* config.defaultSpkrGainsDB[numSatChans+i].dbamp
+							* amp
+							* stereoGain.dbamp
+						)
+					};
+			});
+		});
+
+		clipMonDef = CtkSynthDef(\clipMonitor, { arg in_bus=0, clipThresh = 0.977;
+			var sig, peak;
+			sig = In.ar(in_bus, 1);
+			peak = Peak.ar(sig, Impulse.kr(10));
+			SendReply.ar( peak > clipThresh, '/clip', [in_bus, peak] );
+		});
 	}
 
 	// this happens after hardware is intitialized and server is booted
@@ -186,128 +309,24 @@ SoundLab {
 				// 2.wait; // give server time to get sorted
 
 				// get an up-to-date list of the kernels available at this sample rate
-				kernels = [];
+
 				// "kernelDirPathName: ".post; kernelDirPathName.postln;
-				kernelDirPathName !? {
-					kernelDirPathName.entries.do({ |sr_pn|
-						var sr, nm, knm, result;
-
-						(sr_pn.isFolder && (sr_pn.folderName.asInteger == server.sampleRate)).if{
-
-							sr_pn.entries.do({ |kern_pn|
-								kern_pn.isFolder.if{
-									// kernel "category name"
-									knm = kern_pn.folderName;
-									kern_pn.entries.do{ |entry_pn|
-										// kernel folder
-										if(entry_pn.isFolder, {
-											// could add check here for soundfiles within
-											// to confirm it's a kernel folder
-
-											// kernel stored as String of the path relative to sample rate
-											kernels = kernels.add( knm ++ "/" ++ entry_pn.folderName )
-										});
-									}
-								}
-							})
-						}
-					});
-				};
+				kernelDirPathName !? {this.prParseKernelDir};
 
 				kernels = [\basic_balance] ++ kernels;
 
 				// in the case of a SR change, check to make sure the curKernel
 				// is still available at this sampleRate
-				if( curKernel.notNil and: (curKernel != \basic_balance) ){
-					var namedFolder, kernelFolder, pn;
+				requestKernel = this.prCheckKernelSR;
 
-					pn = PathName(curKernel.asString);
-					namedFolder = pn.allFolders[pn.allFolders.size-2];
-					kernelFolder = pn.allFolders.last;
-					("testing " ++ (namedFolder ++ "/" ++ kernelFolder)).postln;
+				requestKernel.isNil.if({this.setNoKernel});
 
-					if( kernels.collect(_.asSymbol).includes((namedFolder ++ "/" ++ kernelFolder).asSymbol), {
-						var newPath;
-						// update curKernel to new SR path
-						newPath = format( "%%/%/%/", config.kernelsPath, server.sampleRate.asInteger, namedFolder, kernelFolder);
-						File.exists(newPath).if({
-							requestKernel = newPath;
-						},{ this.setNoKernel });
-					},{
-						this.changed(\reportStatus,
-							warn("Last kernel wasn't found at this sample rate. Defaulting to basic_balance.")
-						);
-					})
-				}{ this.setNoKernel };
+				// kill any running partConvolvers
+				partConvolverPatch !? {"Stopping a running partConvolverPatch".postln; partConvolverPatch.free(xfade)};
+				nextPartConvolverPatch !? {"Stopping a running partConvolverPatch".postln; nextPartConvolverPatch.free(xfade)};
 
-				// kill any running Jconvolvers
-				jconvolver !? {"Stopping a running jconvolver".postln; jconvolver.free};
-				nextjconvolver !? {"Stopping a running jconvolver".postln; nextjconvolver.free};
 
-				patcherDef = CtkSynthDef(\patcher, { arg in_bus=0, out_bus=0;
-					ReplaceOut.ar(out_bus, In.ar(in_bus, 1))
-				});
-
-				sterPatcherDef = CtkSynthDef(\sterpatcher, { arg in_bus=0, out_bus=0, amp=1;
-					var in;
-					// stereo patchers don't use ReplaceOut because
-					// often stereo channels are shared with
-					// satellite channels, and ReplaceOut would overwrite
-					// the satellite's bus contents
-
-					// Out.ar(out_bus, In.ar(in_bus, 1))
-					in = In.ar(in_bus, 2);
-
-					2.do{|i|
-						Out.ar( stereoChanIndex[i],
-							// catch if stereo channels weren't measured (like 117,
-							// where they're speakers apart from the ambisonics rig)
-							in[i]
-							* (config.defaultSpkrGainsDB[stereoChanIndex[i]] ?? 0).dbamp
-							* amp
-							* stereoGain.dbamp
-						)
-					};
-				});
-
-				stereoSubPatcherDef = CtkSynthDef(\stersubpatcher, { arg in_bus=0, out_bus=0, amp=1;
-					if( numSubChans == 1,
-						{	// summing stereo into 1 sub
-							Out.ar(out_bus,
-								In.ar(in_bus, 2).sum
-								* (2.sqrt/2)
-								* config.defaultSpkrGainsDB[numSatChans].dbamp
-								* stereoGain.dbamp
-							)
-						},{ // encoding stereo t b format then decoding to multipl subs
-							var stereoBF = FoaEncode.ar(
-								In.ar(in_bus, 2),
-								FoaEncoderMatrix.newStereo(pi)
-							);
-
-							// simple cardioid mono decoder for each sub direction
-							numSubChans.do{ |i|
-								Out.ar( out_bus + i,
-									FoaDecode.ar(stereoBF,
-										FoaDecoderMatrix.newMono(
-											config.spkrAzimuthsRad[numSatChans + i],
-											0, 0.5)   // no elevation, cardioid
-									)
-									* (2/numSubChans) // balance the energy based on the number of subs
-									* config.defaultSpkrGainsDB[numSatChans+i].dbamp
-									* amp
-									* stereoGain.dbamp
-								)
-							};
-					});
-				});
-
-				clipMonDef = CtkSynthDef(\clipMonitor, { arg in_bus=0, clipThresh = 0.977;
-					var sig, peak;
-					sig = In.ar(in_bus, 1);
-					peak = Peak.ar(sig, Impulse.kr(10));
-					SendReply.ar( peak > clipThresh, '/clip', [in_bus, peak] );
-				});
+				this.prDefinePatchSynths;
 				server.sync;
 
 				/* proper NODE TREE order
@@ -320,70 +339,35 @@ SoundLab {
 				*/
 				// group for clip monitoring synths
 				monitorGroup_ins = CtkGroup.play( addAction: \head, target: 1, server: server);
-				monitorGroup_outs = CtkGroup.play( addAction: \tail, target: 1, server: server);
-				server.sync;
-				// group for patching synths
-				patcherGroup = CtkGroup.play( addAction: \after, target: monitorGroup_ins, server: server);
+				monitorGroup_outs = CtkGroup.play( addAction: \tail, target: 0, server: server);
 				server.sync;
 
 				[monitorGroup_ins, monitorGroup_outs].do(_.play);
-				server.sync;
-				patcherGroup.play;
-				server.sync;
-
-				// PATCHERS
-				// patcherOutBus is only satellites + stereo, NO subs
-				// outputs don't change on the patcher synths, only the inputs
-				// i.e. there's a patcher synth "attached" to each speaker output
-				satPatcherSynths = 3.collect({|j|
-					var start_in_dex;
-					start_in_dex = j * numHardwareOuts;
-					numSatChans.collect({ |i|
-						patcherDef.note( target: patcherGroup )
-						.in_bus_(start_in_dex+i).out_bus_(start_in_dex+i)
-						.play;
-					});
-				}).flat;
-				server.sync;
-
-				subPatcherSynths =  3.collect({|j|
-					var start_in_dex;
-					start_in_dex = j * numHardwareOuts;
-					numSubChans.collect({ |i|
-						patcherDef.note( target:patcherGroup )
-						.in_bus_(start_in_dex+numSatChans+i)
-						.out_bus_(start_in_dex+numSatChans+i)
-						.play
-					})
-				}).flat;
-				server.sync;
 
 				hwInStart = server.options.numOutputBusChannels;
 
-				// stereoPatcherSynths = 2.collect({|i|
-				stereoPatcherSynths = 1.collect({|i|
+				stereoPatcherSynths = [
 					// TAIL so avoid sending from stereo into satellite patcher synths (doubling the output)
 					sterPatcherDef.note( addAction: \tail, target: patcherGroup )
-					.in_bus_(hwInStart+i)
-					.out_bus_(stereoChanIndex[i]) // this isn't used now that once synths routes both channels
-					.play
-				})
+					.in_bus_(hwInStart)
+					.out_bus_(stereoChanIndex[0]) // this isn't used now that once synths routes both channels
+					.play,
 
-				// route stereo to subs as well,
-				// this synth also does gain comp on sub(s)
-				// add after patcher group to ensure it's the very last synth
-				// so it doesn't overwrite any busses
-				++ stereoSubPatcherDef.note( addAction: \tail, target: patcherGroup )
-				.in_bus_(hwInStart)
-				// TODO: this implies no filter correction on stereo sub send, is that OK?
-				.out_bus_(numSatChans)
-				.play
-				;
+					// route stereo to subs as well,
+					// this synth also does gain comp on sub(s)
+					// add after patcher group to ensure it's the very last synth
+					// so it doesn't overwrite any busses
+					stereoSubPatcherDef.note( addAction: \tail, target: patcherGroup )
+					.in_bus_(hwInStart)
+					// TODO: this implies no filter correction on stereo sub send, is that OK?
+					.out_bus_(numSatChans)
+					.play
+				];
 				server.sync;
 
-				while(	{stereoPatcherSynths.collect({|synth|synth.isPlaying}).includes(false)},
-					{"waiting on stereo patchers".postln; 0.02.wait;}
-				);
+				while({stereoPatcherSynths.collect({|synth|synth.isPlaying}).includes(false)}, {
+					"waiting on stereo patchers".postln; 0.02.wait
+				});
 				0.2.wait; // TODO find a better solution than wait
 				stereoActive.not.if{stereoPatcherSynths.do(_.pause)};
 
@@ -399,7 +383,7 @@ SoundLab {
 				};
 				server.sync; // to make sure stereo patchers have started
 
-				postf("Starting new signal chain\nequestKernel: %\n", requestKernel);
+				postf("Starting new signal chain\nrequestKernel: %\n", requestKernel);
 
 				this.startNewSignalChain(
 					if(curDecoderPatch.notNil,
@@ -437,8 +421,8 @@ SoundLab {
 	}
 
 	// kernelPath of nil designates no kernel change
-	startNewSignalChain { |deocderName, kernelPath, completeCondition|
-		var cond = Condition(false);
+	startNewSignalChain { |decoderName, kernelPath, completeCondition|
+		var cond = Condition(false), partConvGroup;
 
 		fork {
 			var testKey;
@@ -446,10 +430,10 @@ SoundLab {
 
 			if( kernelPath.notNil, {
 				if( kernelPath != \basic_balance, {
-					// load jconvolver
+					// load partConvolverPatch
 					usingKernels = true;
-					"loading new jconvolver".postln; // debug
-					this.loadJconvolver(kernelPath, cond); // this sets nextjconvolver var
+					"loading new partConvolverPatch".postln; // debug
+					this.loadPartConv(kernelPath, cond); // this sets nextPartConvolverPatch var
 				},{
 					// setting to basic balance
 					this.setNoKernel;
@@ -469,15 +453,15 @@ SoundLab {
 			// Load delays, distances and gains anew if needed
 
 			if( loadedDelDistGain.isNil					// startup
-				or: nextjconvolver.notNil				// kernel change
+				or: nextPartConvolverPatch.notNil				// kernel change
 				or: (kernelPath == \basic_balance),		// switching to basic_balance
 				{
 					var testKey, delDistGainKey;
 
-					delDistGainKey = if( nextjconvolver.notNil, {
-						// build the key from the kernel path (queried from nextjconvolver to be sure) and sample rate
+					delDistGainKey = if( nextPartConvolverPatch.notNil, {
+						// build the key from the kernel path and sample rate
 						var kpn;
-						kpn = PathName(nextjconvolver.kernelFolderPath);
+						kpn = PathName(nextPartConvolverPatch.kernelPath);
 
 						testKey = (this.sampleRate.asString ++ "/" ++ kpn.allFolders[kpn.allFolders.size-2]).asSymbol;
 					},{
@@ -491,12 +475,12 @@ SoundLab {
 					cond.test_(false);
 
 					// if loading delays, distances and gains fails, it will be set to default
-					// in which case nextjconvolver has to be "cancelled"
-					if( nextjconvolver.notNil and: (loadedDelDistGain == \default), {
-						nextjconvolver.free;
-						nextjconvolver = nil;
+					// in which case nextPartConvolverPatch has to be "cancelled"
+					if( nextPartConvolverPatch.notNil and: (loadedDelDistGain == \default), {
+						nextPartConvolverPatch.free(xfade);
+						nextPartConvolverPatch = nil;
 						warn( format(
-							"nextjconvolver kernel % doesn't match the key that sets the delays, distances and gains in the decoder synth\n", testKey
+							"nextPartConvolverPatch kernel % doesn't match the key that sets the delays, distances and gains in the decoder synth\n", testKey
 						));
 					});
 
@@ -512,12 +496,12 @@ SoundLab {
 			server.sync; // sync to let all the synths load
 
 			// start new decoder if needed
-			if( nextjconvolver.notNil or: 	// new jconvolver, so new outbus
-				deocderName.notNil,			// requested decoder change
+			if( nextPartConvolverPatch.notNil or: 	// new partConvolver, so new outbus
+				decoderName.notNil,			// requested decoder change
 				{
 					var newDecName;
 					// if no decoderName given, create new decoder matching the current one
-					newDecName = deocderName ?? {
+					newDecName = decoderName ?? {
 						curDecoderPatch !? {curDecoderPatch.decoderName}
 					};
 
@@ -530,18 +514,18 @@ NO NEW DECODER STARTED");
 						cond.test_(true).signal;
 					});
 
-				},{ warn("NO NEW DECODER CREATED - no nextjconvolver and/or no decoder name provided!")}
+				},{ warn("NO NEW DECODER CREATED - no nextPartConvolverPatch and/or no decoder name provided!")}
 			);
 
 			cond.wait;
 
 			// set new state vars based on results from each above step
-			nextjconvolver !? {
-				jconvolver !? {jconvolver.free}; 	// free the current jconvolver
-				jconvolver = nextjconvolver;		// update var with new instance
-				curKernel = jconvolver.kernelFolderPath;
-				jconvinbus = nextjconvinbus;
-				nextjconvolver = nil;				// reset var
+			nextPartConvolverPatch !? {
+				partConvolverPatch !? {partConvolverPatch.free(xfade)}; 	// free the current partConvolverPatch
+				partConvolverPatch = nextPartConvolverPatch;		// update var with new instance
+				curKernel = partConvolverPatch.kernelPath;
+				partconvinbus = nextpartconvinbus;
+				nextPartConvolverPatch = nil;				// reset var
 				this.changed(\kernel, curKernel);
 			};
 			"\n*** END ***\n".postln;
@@ -557,25 +541,20 @@ NO NEW DECODER STARTED");
 			xfade.wait;
 			[ patcherGroup, monitorGroup_ins, monitorGroup_outs ].do(_.free);
 
-			jconvolver !? {jconvolver.free};
-			nextjconvolver !? {nextjconvolver.free}; // ...just in case
+			partConvolverPatch !? {partConvolverPatch.free(xfade)};
+			nextPartConvolverPatch !? {nextPartConvolverPatch.free(xfade)}; // ...just in case
+			xfade.wait;
 			stateLoaded = false;
 			finishCondition !? {finishCondition.test_(true).signal}
 		}
 	}
 
 	startDecoder  { |newDecName, completeCondition|
-		var cond, newDecoderPatch, cur_decoutbus, new_decoutbus, new_decinbus;
+		var cond, cur_decoutbus, new_decoutbus, new_decinbus;
 		cond = Condition(false);
 		fork {
 			// select which of the 3 out groups to send decoder/correction to
-			new_decoutbus = if(usingKernels, {
-				if(jconvinbus.notNil, // jconvinbus set in loadJConvolver method
-					{ jconvinbus },
-					{ numHardwareOuts } // startup: first set of outputs routed to kernel
-				);
-			},{0}	// 0 for no kernels
-			);
+			new_decoutbus = usingKernels.if({kernelInputs.bus},{0});	// 0 for no kernels
 
 			new_decinbus = if( stereoActive, {hwInStart+2}, {hwInStart});
 
@@ -583,8 +562,9 @@ NO NEW DECODER STARTED");
 				decoderName: newDecName,
 				inbusnum: new_decinbus, 	// decoder inbusnum
 				outbusnum: new_decoutbus,	// decoder outbusnum
-				loadCondition: cond			// finishCondition
+				loadCondition: cond 	    // finishCondition
 			);
+			("DecoderOutbus:" + new_decoutbus.isKindOf(CtkAudio).if({new_decoutbus.bus}, {0})).postln;
 			cond.wait;
 			// if initializing SoundLabDecoderPatch fails, decoderName won't be set
 			newDecoderPatch.decoderName !? {
@@ -602,18 +582,18 @@ NO NEW DECODER STARTED");
 		}
 	}
 
-	// expects kernels to be located in kernelDirPath/sampleRate/kernelType/
-	loadJconvolver { |newKernelPath, completeCondition, timeout = 5|
+	loadPartConv { |newKernelPath, completeCondition, timeout = 5|
 		var kernelDir_pn, partSize, k_size,
 		numFoundKernels = 0, numtries = 50, trycnt=0,
-		newjconvolver, scOutbusConnect, jconvHWOut;
+		scOutbusConnect, partConvHWOut, cond;
+		cond = Condition(false);
 		fork {
 			block { |break|
 				kernelDir_pn = PathName(newKernelPath); //this.prFindKernelDir(newKernel);
 				kernelDir_pn.postln;
 				kernelDir_pn ?? {
 					this.changed(\reportStatus, warn("Kernel name not found: "++newKernelPath++".  No longer using kernels!"));
-					jconvolver ?? {
+					partConvolverPatch ?? {
 						// if no kernel already loaded, not using kernels
 						warn("No longer usingKernels");
 						this.setNoKernel;
@@ -621,19 +601,15 @@ NO NEW DECODER STARTED");
 					break.();
 				};
 
-				// initialize Jconvolver variables
-				partSize = if(usingSLHW, {slhw.jackPeriodSize},{512});
+				// initialize partConvolver variables
 				kernelDir_pn.filesDo({ |file|
 					if(file.extension == "wav", {
-						SoundFile.use(file.absolutePath, {|fl|
-							k_size = fl.numFrames;
-							numFoundKernels = numFoundKernels + 1;
-						})
+						numFoundKernels = numFoundKernels + 1;
 					})
 				});
 				// debug
-				postf("path to kernels: % \npartition size: % \nkernel size: %\n",
-					newKernelPath, partSize, k_size
+				postf("path to kernels: % \npartition size: % \n",
+					newKernelPath, fftsize
 				);
 				// check that we have enough kernels to match all necessary speakers
 				if( numFoundKernels != numKernelChans, {
@@ -644,77 +620,24 @@ NO NEW DECODER STARTED");
 					break.();
 				});
 
-				"Generating jconvolver configuration file...".postln;
-
-				config.jconvolverPath !? {
-					Jconvolver.executablePath_(config.jconvolverPath);
-				};
-
-				//name guessing, for now here
-
-				thisProcess.platform.name.switch(
-					\osx, {
-						if(Server.program.asString.endsWith("scsynth"), {
-							"config.audioDeviceName.notNil: ".post;  config.audioDeviceName.notNil.postln;
-							"config.audioDeviceName: ".post; config.audioDeviceName.postln;
-							if(config.audioDeviceName.notNil, {
-								Jconvolver.jackScOutNameDefault = "scsynth:out"; //assuming SC -> JackRouter
-							}, {
-								Jconvolver.jackScOutNameDefault = "SuperCollider:out_"; //assuming native JACK backend
-							});
-						}, {
-							Jconvolver.jackScOutNameDefault = "supernova:out"; //not tested
-						})
-					},
-					\linux, {
-						if(Server.program.asString.endsWith("scsynth"), {
-							Jconvolver.jackScOutNameDefault = "SuperCollider:out_";
-						}, {
-							Jconvolver.jackScOutNameDefault = "supernova:out"; //not tested
-						})
-					}
+				"Starting PartConvPatch".postln;
+				nextPartConvolverPatch = SoundLabPartConvPatch.new(this,
+					kernelPath: newKernelPath,
+					fftsize: fftsize,
+					inbusnum: kernelInputs,
+					outbusnum: 0,
+					loadCondition: cond
 				);
 
-				// osx.if{ // for osx
-				// 	Jconvolver.jackScOutNameDefault = "scsynth:out";
-				// 	Jconvolver.executablePath_("/usr/local/bin/jconvolver");
-				// };
+				cond.wait;
 
-				nextjconvinbus = if( jconvinbus.notNil,
-					{(jconvinbus + numHardwareOuts).wrap(1, numHardwareOuts*2)}, // replacing another instance
-					{numHardwareOuts} // first instance
-				);
+				cond.test_(false);
 
-				jconvHWOut = if(usingSLHW, {
-					slhw.firstOutput
-				},{
-					jconvHWOutChannel
-				});
-				Jconvolver.createSimpleConfigFileFromFolder(
-					kernelFolderPath: newKernelPath,
-					partitionSize: partSize,
-					maxKernelSize: k_size,
-					matchFileName: "*.wav",
-					autoConnectToScChannels: nextjconvinbus,
-					autoConnectToSoundcardChannels: jconvHWOut
-					// autoConnectToSoundcardChannels: jconvHWOutChannel
-				);
+				"Playing convolution synths!".postln;
 
-				jconvinbus = nextjconvinbus;
+				nextPartConvolverPatch.play(xfade);
 
-				newjconvolver = Jconvolver.newFromFolder(newKernelPath);
-
-				while( {newjconvolver.isRunning.not and: (trycnt < numtries)}, {
-					trycnt = trycnt+1;
-					(timeout/numtries).wait;
-				});
-				newjconvolver.isRunning.not.if{
-					warn("JConvolver didn't start after waiting "++timeout++" seconds.");
-					nextjconvolver = nil;
-					jconvolver ?? {this.setNoKernel}; // set to no kernel if no other jconv is running
-					break.();
-				};
-				nextjconvolver = newjconvolver;
+				partConvolverPatch !? {partConvolverPatch.free(xfade)};
 			};
 			completeCondition !? {completeCondition.test_(true).signal};
 		}
@@ -859,7 +782,7 @@ NO NEW DECODER STARTED");
 		curKernel = \basic_balance;
 		usingKernels = false;
 		this.changed(\kernel, curKernel);
-		nextjconvolver !? {nextjconvolver.free; nextjconvolver = nil;}
+		nextPartConvolverPatch !? {nextPartConvolverPatch.free(xfade); nextPartConvolverPatch = nil;}
 	}
 
 	// responding to changes in SoundLabHardware
@@ -1700,7 +1623,7 @@ NO NEW DECODER STARTED");
 					Env( [0,1,0],[fadeTime, fadeTime],\sin, 1),
 					gate, doneAction: 2 );
 
-				in = In.ar(in_busnum, decSpecs.numInputChans)  * env;
+				in = In.ar(in_busnum, decSpecs.numInputChans) * env;
 				decSpecs.arrayOutIndices.do{ |outbus, i|
 					Out.ar(outbus + out_busnum, in[i] * decSpecs.decGain.dbamp)
 				};
@@ -1745,6 +1668,7 @@ NO NEW DECODER STARTED");
 		// debug
 		postf("% (discrete) added.\n", decSpecs.synthdefName);
 	}
+
 
 	// load every possible decoding SynthDef based on decAttList
 	prLoadSynthDefs { |finishLoadCondition|
@@ -1842,7 +1766,6 @@ NO NEW DECODER STARTED");
 			config.midiDeviceName,		//midiDeviceName
 			config.midiPortName,		//midiPortName
 			config.cardNameIncludes,	//cardNameIncludes
-			config.jackPath, 			//jackPath
 			numHardwareIns, 			//serverIns
 			numHardwareOuts * 3, 		//serverOuts
 			numHardwareOuts, 			//numHwOutChToConnectTo
@@ -1880,10 +1803,10 @@ NO NEW DECODER STARTED");
 		so.sampleRate = initSR ?? 48000;
 		so.memSize = 8192 * 16;
 		so.numWireBufs = 64*8;
-		so.device = "JackRouter";
+		// so.device = "JackRouter";
 		// numHardwareOuts*3 to allow fading between settings,
 		// routed to different JACK busses
-		so.numOutputBusChannels = numHardwareOuts * 3;
+		so.numOutputBusChannels = numHardwareOuts;
 		so.numInputBusChannels = numHardwareIns;
 
 		// the following will otherwise be called from update: \audioIsRunning
@@ -1999,13 +1922,13 @@ NO NEW DECODER STARTED");
 	cleanup  {|force = false|
 		if(force, {format("%: starting immediate cleanup", this.class.name).warn});
 		ShutDown.remove(forceCleanupFunc);
-
 		[OSCdef(\clipListener), OSCdef(\reloadGUI)].do(_.free);
 		gui !? {gui.cleanup};
 		slhw !? {slhw.removeDependant(this)};
 		this.prClearServerSide; 			// frees jconvs
 		slhw !? {slhw.stopAudio(force)};
 		recompileWindow !? {{recompileWindow.close}.defer};
+		kernelInputs.free;
 	}
 
 	free {|force = false| this.cleanup(force)}

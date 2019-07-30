@@ -11,23 +11,19 @@ l = SoundLab.new("CONFIG_117.scd");
 ```
 changing the appropriate parameters. `ConfigFileName` should refer to the configuration file for the desired room.
 
-You can free the resources and quit the server, JACK, web gui and jcovolver by typing:
+You can free the resources and quit the server and web gui by typing:
 ```supercollider
 l.cleanup;
 ```
-The cleanup procedure is also triggered automatically when SuperCollider shuts down or then the class library is recompiled.
+The cleanup procedure is also triggered automatically when SuperCollider shuts down or when the class library is recompiled.
 
 
 -----
 ## Requirements:
 - SuperCollider
 - sc3-plugins
-- jconvolver ([jconvolver for macOS](http://www.matthiaskronlachner.com/?p=1515))
-- JACK ([JackOSX](http://jackaudio.org/downloads/))
 
 **Quarks** (These will be automatically installed.)
 - Ctk
 - atk-sc3 with [kernels](http://www.ambisonictoolkit.net/download/kernels/) and [matrices](http://www.ambisonictoolkit.net/download/matrices/)
-- https://github.com/dyfer/JconvolverSC.quark
-- https://github.com/dyfer/OscPipe.quark
 - http://github.com/dyfer/WsGUI.quark
