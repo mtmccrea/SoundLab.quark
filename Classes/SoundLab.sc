@@ -59,7 +59,7 @@ SoundLab {
 			});
 
 		}, {
-			Error("FIle not found at" + filePath).throw;
+			Error("File not found at" + filePath).throw;
 		});
 
 
@@ -164,7 +164,7 @@ SoundLab {
 		);
 
 		if(usingSLHW,
-			{ this.prInitSLHW(initSR)},
+			{ this.prInitSLHW(initSR); server = slhw.server},
 			{ this.prInitDefaultHW(initSR) }
 		);
 

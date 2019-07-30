@@ -61,6 +61,8 @@ SoundLabPartConvPatch {
 					Out.ar(out_busnum, conv * env)
 				});
 
+				s.sync;
+
 				"Loaded partconv synth".postln;
 
 				partConvSynth = partConvSynthDef.note(
